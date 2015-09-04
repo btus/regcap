@@ -3,6 +3,7 @@
 #include <iomanip>		// RAD: so far used only for setprecission() in cmd output
 #include <time.h>
 #include <vector>
+#include <cmath>
 #include "functions.h"
 
 using namespace std;
@@ -1031,7 +1032,7 @@ int main(int argc, char *argv[])
 			if(fan[i].oper == 5 || fan[i].oper == 16) {	// If using an HRV (5 or 16) with RIVEC. Avoids a divide by zero
 				qRivec = -1 * fan[i].q * 1000;
 			}
-			if(fan[i].oper == 13 && rivecFlagInd == 1 || fan[i].oper == 17 && rivecFlagInd == 1){ //If using CFIS or ERV+AHU with RIVEC control.
+			if((fan[i].oper == 13 && rivecFlagInd == 1) || (fan[i].oper == 17 && rivecFlagInd == 1)){ //If using CFIS or ERV+AHU with RIVEC control.
 					rivecFlag = 1;
 			}
 		}
