@@ -36,6 +36,17 @@ New inputs:
 	Addendum N weather factors (weatherFactor)
 */
 
+// ============================= FUNCTIONS ==============================================================
+void pause();
+
+// ============================= FUNCTION DEFINITIONS ==============================================================
+/* pause function for DOS version
+   could call 'read -p ""' for linux, but do nothing for now
+*/
+void pause() {
+   //pause();
+   }
+
 // Main function
 int main(int argc, char *argv[])
 { 	
@@ -43,8 +54,9 @@ int main(int argc, char *argv[])
 	time_t startTime, endTime;
 	time(&startTime);
 	string runStartTime = ctime(&startTime);
-	
-	// [File Paths] Paths for input and output file locations
+
+/* 
+	// [DOS File Paths] Paths for input and output file locations
 	string inPath = "Z:\\humidity_bdless\\newRHfix\\50%FlowRateFix\\";				// Location of input files. Brennan. 
 	string outPath = "Z:\\humidity_bdless\\out_RHfix\\50%FlowRateFix\\";				// Location to write output files. Brennan.
 	
@@ -61,6 +73,22 @@ int main(int argc, char *argv[])
 	string fanSchedulefile_name1 = "C:\\RC++\\schedules\\sched1" + SCHEDNUM;
 	string fanSchedulefile_name2 = "C:\\RC++\\schedules\\sched2" + SCHEDNUM;
 	string fanSchedulefile_name3 = "C:\\RC++\\schedules\\sched3" + SCHEDNUM;
+*/
+	// [Unix File Paths] Paths for input and output file locations
+	string inPath = "in/";				            // Location of input files.
+	string outPath = "out/";				         // Location to write output files.
+	string weatherPath = "weather/IECC/";			// Location of IECC weather files (DOE, All of US). "adjusted" contains files w/median values appended
+	//string weatherPath = "weather/CEC/";			// Location of CEC weather files (California)
+	
+	string batchFile_name = inPath + "input_bat_mac.csv";	// Name of batch input file (assumed to be in the same folder as the input files). 
+	string shelterFile_name = "shelter/bshelter.dat";	   // Location of shelter file
+
+	// Set to a, b or c to avoid potential conflicts while running more than one simulation
+	// at the same time using a common dynamic fan schedule input file
+	string SCHEDNUM = "a";
+	string fanSchedulefile_name1 = "schedules/sched1" + SCHEDNUM;
+	string fanSchedulefile_name2 = "schedules/sched2" + SCHEDNUM;
+	string fanSchedulefile_name3 = "schedules/sched3" + SCHEDNUM;
 	
 	// total days to run the simulation for:
 	int totaldays = 365;
@@ -75,7 +103,7 @@ int main(int argc, char *argv[])
 	ifstream batchFile(batchFile_name); 
 	if(!batchFile) { 
 		cout << "Cannot open: " << batchFile_name << endl;
-		system("pause");
+		pause();
 		return 1; 
 	} 
 
@@ -496,7 +524,7 @@ int main(int argc, char *argv[])
 		ofstream moistureFile(outPath + output_file + ".hum");
 		if(!moistureFile) { 
 			cout << "Cannot open: " << outPath + output_file + ".hum" << endl;
-			system("pause");
+			pause();
 			return 1; 
 		}
 
@@ -509,7 +537,7 @@ int main(int argc, char *argv[])
 
 		if(!buildingFile) { 
 			cout << "Cannot open: " << input_file + ".csv" << endl;
-			system("pause");
+			pause();
 			return 1; 
 		}
 
@@ -986,7 +1014,7 @@ int main(int argc, char *argv[])
 		ofstream filterFile(outPath + output_file + ".fil");
 		if(!filterFile) { 
 			cout << "Cannot open: " << outPath + output_file + ".fil" << endl;
-			system("pause");
+			pause();
 			return 1; 
 		}
 
@@ -1057,7 +1085,7 @@ int main(int argc, char *argv[])
 		ifstream shelterFile(shelterFile_name); 
 		if(!shelterFile) { 
 			cout << "Cannot open: " << shelterFile_name << endl;
-			system("pause");
+			pause();
 			return 1; 
 		}
 
@@ -1126,7 +1154,7 @@ int main(int argc, char *argv[])
 		ofstream outputFile(outPath + output_file + ".rco"); 
 		if(!outputFile) { 
 			cout << "Cannot open: " << outPath + output_file + ".rco" << endl;
-			system("pause");
+			pause();
 			return 1; 
 		}
 
@@ -1147,7 +1175,7 @@ int main(int argc, char *argv[])
 		//ifstream weatherFile(weatherPath + weather_file + ".ws2");	// WS2 for outdated TMY2 weather files
 		if(!weatherFile) { 
 			cout << "Cannot open: " << weatherPath + weather_file + ".ws3" << endl;
-			system("pause");
+			pause();
 			return 1; 
 		}
 
@@ -1333,7 +1361,7 @@ int main(int argc, char *argv[])
 			fanschedulefile.open(fanSchedule + ".txt"); 
 			if(!fanschedulefile) { 
 				cout << "Cannot open: " << fanSchedule + ".txt" << endl;
-				system("pause");
+				pause();
 				return 1; 
 			}			
 		}
@@ -1609,7 +1637,8 @@ int main(int argc, char *argv[])
 
 			// Print out simulation day to screen
 			if(minute_day == 0) {
-				system("CLS");
+				//system("CLS");
+				system("clear");
 				cout << "REGCAP++ Building Simulation Tool LBNL" << endl << endl;
 				cout << "Batch File: \t " << batchFile_name << endl;
 				cout << "Input File: \t " << inPath + input_file << ".csv" << endl;
@@ -4967,7 +4996,7 @@ int main(int argc, char *argv[])
 		ofstream ou2File(outPath + output_file + ".rc2"); 
 		if(!ou2File) { 
 			cout << "Cannot open: " << outPath + output_file + ".rc2" << endl;
-			system("pause");
+			pause();
 			return 1; 
 		}
 
@@ -4988,7 +5017,7 @@ int main(int argc, char *argv[])
 
 	}
 
-	system("pause");
+	pause();
 
 	return 0;
 }
