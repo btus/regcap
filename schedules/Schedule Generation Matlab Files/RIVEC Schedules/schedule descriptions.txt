@@ -1,0 +1,16 @@
+schedules for RIVEC DOE simulations.
+
+sched1.csv = Small House. 4 occupants. 2 bathrooms.
+sched2.csv = Medium House. 4 occupants. 3 bathrooms.
+sched3.csv = Large House. 5 occupants. 3 bathrooms.
+
+Column 1 = Dryer
+Column 2 = Kitchen range hood
+Column 3 = Bathroom 1
+Column 4 = Bathroom 2
+Column 5 = Bathroom 3
+
+1 = Fan ON
+0 = Fan OFF
+
+Schedules for one year. Minute-by-minute.
