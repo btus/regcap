@@ -1682,11 +1682,11 @@ int main(int argc, char *argv[])
 			//	dailyCumulativeTemp = -15.1 * 1440;
 			//	}
 
-			//if(minute_day == 0) {			// Resetting number of minutes into day every 24 hours
-			//	dailyAverageTemp = dailyCumulativeTemp / 1440;
-			//	averageTemp.push_back (dailyAverageTemp); //provides the prior day's average temperature...need to do something for day one
-			//	dailyCumulativeTemp = 0;			// Resets daily average outdoor temperature to 0 at beginning of new day
-			//}
+			if(minute_day == 0) {			// Resetting number of minutes into day every 24 hours
+			   dailyAverageTemp = dailyCumulativeTemp / 1440;
+			   averageTemp.push_back (dailyAverageTemp); //provides the prior day's average temperature...need to do something for day one
+			   dailyCumulativeTemp = 0;			// Resets daily average outdoor temperature to 0 at beginning of new day
+			}
 			
 			// For 7 day moving average heating/cooling thermostat decision
 			if(day > 7 && minute_day == 0) {
@@ -1698,7 +1698,7 @@ int main(int argc, char *argv[])
 				runningAverageTemp = runningAverageTemp/7;
 			}
 			
-			//dailyCumulativeTemp = dailyCumulativeTemp + weatherTemp;
+			dailyCumulativeTemp = dailyCumulativeTemp + weatherTemp;
 			
 			pRef = 1000 * pRef;					// Convert reference pressure to [Pa]
 			tempOut = 273.15 + weatherTemp;		// Convert outside air temperature to [K]
