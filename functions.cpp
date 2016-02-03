@@ -1,6 +1,8 @@
 #include "functions.h"
 #include <iomanip> // RAD: so far used only for setprecission() in cmd output
-#include <cmath>   // needed for mac g++
+#ifdef __APPLE__
+   #include <cmath>        // needed for mac g++
+#endif
 
 using namespace std;
 
