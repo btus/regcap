@@ -37,14 +37,16 @@ New inputs:
 */
 
 // ============================= FUNCTIONS ==============================================================
-void pause();
+void _pause();
 
 // ============================= FUNCTION DEFINITIONS ==============================================================
-/* pause function for DOS version
+/* _pause function for DOS version
    could call 'read -p ""' for linux, but do nothing for now
 */
-void pause() {
-   //pause();
+void _pause() {
+#ifdef _WIN32
+   system("pause");
+#endif
    }
 
 // Main function
@@ -55,7 +57,7 @@ int main(int argc, char *argv[])
 	time(&startTime);
 	string runStartTime = ctime(&startTime);
 
-/* 
+#ifdef _WIN32
 	// [DOS File Paths] Paths for input and output file locations
 	string inPath = "Z:\\humidity_bdless\\newRHfix\\50%FlowRateFix\\";				// Location of input files. Brennan. 
 	string outPath = "Z:\\humidity_bdless\\out_RHfix\\50%FlowRateFix\\";				// Location to write output files. Brennan.
@@ -73,7 +75,7 @@ int main(int argc, char *argv[])
 	string fanSchedulefile_name1 = "C:\\RC++\\schedules\\sched1" + SCHEDNUM;
 	string fanSchedulefile_name2 = "C:\\RC++\\schedules\\sched2" + SCHEDNUM;
 	string fanSchedulefile_name3 = "C:\\RC++\\schedules\\sched3" + SCHEDNUM;
-*/
+#elif __APPLE__
 	// [Unix File Paths] Paths for input and output file locations
 	string inPath = "in/";				            // Location of input files.
 	string outPath = "out/";				         // Location to write output files.
@@ -89,6 +91,7 @@ int main(int argc, char *argv[])
 	string fanSchedulefile_name1 = "schedules/sched1" + SCHEDNUM;
 	string fanSchedulefile_name2 = "schedules/sched2" + SCHEDNUM;
 	string fanSchedulefile_name3 = "schedules/sched3" + SCHEDNUM;
+#endif
 	
 	// total days to run the simulation for:
 	int totaldays = 365;
@@ -103,7 +106,7 @@ int main(int argc, char *argv[])
 	ifstream batchFile(batchFile_name); 
 	if(!batchFile) { 
 		cout << "Cannot open: " << batchFile_name << endl;
-		pause();
+		_pause();
 		return 1; 
 	} 
 
@@ -524,7 +527,7 @@ int main(int argc, char *argv[])
 		ofstream moistureFile(outPath + output_file + ".hum");
 		if(!moistureFile) { 
 			cout << "Cannot open: " << outPath + output_file + ".hum" << endl;
-			pause();
+			_pause();
 			return 1; 
 		}
 
@@ -537,7 +540,7 @@ int main(int argc, char *argv[])
 
 		if(!buildingFile) { 
 			cout << "Cannot open: " << input_file + ".csv" << endl;
-			pause();
+			_pause();
 			return 1; 
 		}
 
@@ -1014,7 +1017,7 @@ int main(int argc, char *argv[])
 		ofstream filterFile(outPath + output_file + ".fil");
 		if(!filterFile) { 
 			cout << "Cannot open: " << outPath + output_file + ".fil" << endl;
-			pause();
+			_pause();
 			return 1; 
 		}
 
@@ -1085,7 +1088,7 @@ int main(int argc, char *argv[])
 		ifstream shelterFile(shelterFile_name); 
 		if(!shelterFile) { 
 			cout << "Cannot open: " << shelterFile_name << endl;
-			pause();
+			_pause();
 			return 1; 
 		}
 
@@ -1154,7 +1157,7 @@ int main(int argc, char *argv[])
 		ofstream outputFile(outPath + output_file + ".rco"); 
 		if(!outputFile) { 
 			cout << "Cannot open: " << outPath + output_file + ".rco" << endl;
-			pause();
+			_pause();
 			return 1; 
 		}
 
@@ -1175,7 +1178,7 @@ int main(int argc, char *argv[])
 		//ifstream weatherFile(weatherPath + weather_file + ".ws2");	// WS2 for outdated TMY2 weather files
 		if(!weatherFile) { 
 			cout << "Cannot open: " << weatherPath + weather_file + ".ws3" << endl;
-			pause();
+			_pause();
 			return 1; 
 		}
 
@@ -1361,7 +1364,7 @@ int main(int argc, char *argv[])
 			fanschedulefile.open(fanSchedule + ".txt"); 
 			if(!fanschedulefile) { 
 				cout << "Cannot open: " << fanSchedule + ".txt" << endl;
-				pause();
+				_pause();
 				return 1; 
 			}			
 		}
@@ -4996,7 +4999,7 @@ int main(int argc, char *argv[])
 		ofstream ou2File(outPath + output_file + ".rc2"); 
 		if(!ou2File) { 
 			cout << "Cannot open: " << outPath + output_file + ".rc2" << endl;
-			pause();
+			_pause();
 			return 1; 
 		}
 
@@ -5017,7 +5020,7 @@ int main(int argc, char *argv[])
 
 	}
 
-	pause();
+	_pause();
 
 	return 0;
 }
