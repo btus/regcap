@@ -584,7 +584,9 @@ int main(int argc, char *argv[])
 		for(int i=0; i < 4; i++) {
 			buildingFile.getline(reading, 255);
 			wallFraction[i] = atof(reading);		// Fraction of leakage in walls 1 (North) 2 (South) 3 (East) 4 (West)
+		}
 
+		for(int i=0; i < 4; i++) {
 			buildingFile.getline(reading, 255);		// Fraction of leake in floor below wall 1, 2, 3 and 4
 			floorFraction[i] = atof(reading);
 		}
@@ -621,7 +623,6 @@ int main(int argc, char *argv[])
 
 		buildingFile.getline(reading, 255);
 		string rowOrIsolated = reading;			// House in a row (R) or isolated (any string other than R)
-		rowOrIsolated= "R";						// Defaults to R for now
 
 		buildingFile.getline(reading, 255);
 		double houseVolume = atof(reading);		// Conditioned volume of house (m3)
