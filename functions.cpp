@@ -1,5 +1,8 @@
 #include "functions.h"
 #include <iomanip> // RAD: so far used only for setprecission() in cmd output
+#ifdef __APPLE__
+   #include <cmath>        // needed for mac g++
+#endif
 
 using namespace std;
 
@@ -2083,9 +2086,9 @@ void f_flueFlow(double& tempHouse, double& flueShelterFactor, double& dPwind, do
 			massflue = Aeq * houseVolume / 3600 * airDensityOUT * 1;
 
 		if (massflue <= -Aeq * houseVolume / 3600 * airDensityIN * 1)
-			massflue = -Aeq * houseVolume / 3600 * airDensityIN * 1;		
+			massflue = -Aeq * houseVolume / 3600 * airDensityIN * 1;*/		
 
-		// 125% Flow Controller
+		//125% Flow Controller
 		/*if (massflue >= Aeq * houseVolume / 3600 * airDensityOUT * 1.25)
 			massflue = Aeq * houseVolume / 3600 * airDensityOUT * 1.25;
 

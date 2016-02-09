@@ -3,6 +3,9 @@
 #include <iomanip>		// RAD: so far used only for setprecission() in cmd output
 #include <time.h>
 #include <vector>
+#ifdef __APPLE__
+   #include <cmath>        // needed for mac g++
+#endif
 #include "functions.h"
 
 using namespace std;
@@ -35,6 +38,19 @@ New inputs:
 	Addendum N weather factors (weatherFactor)
 */
 
+// ============================= FUNCTIONS ==============================================================
+void _pause();
+
+// ============================= FUNCTION DEFINITIONS ==============================================================
+/* _pause function for DOS version
+   could call 'read -p ""' for linux, but do nothing for now
+*/
+void _pause() {
+#ifdef _WIN32
+   system("pause");
+#endif
+   }
+
 // Main function
 int main(int argc, char *argv[])
 { 	
@@ -42,8 +58,9 @@ int main(int argc, char *argv[])
 	time_t startTime, endTime;
 	time(&startTime);
 	string runStartTime = ctime(&startTime);
-	
-	// [File Paths] Paths for input and output file locations
+
+#ifdef _WIN32
+	// [DOS File Paths] Paths for input and output file locations
 	string inPath = "Z:\\humidity_bdless\\newRHfix\\50%FlowRateFix\\";				// Location of input files. Brennan. 
 	string outPath = "Z:\\humidity_bdless\\out_RHfix\\50%FlowRateFix\\";				// Location to write output files. Brennan.
 	
@@ -60,6 +77,23 @@ int main(int argc, char *argv[])
 	string fanSchedulefile_name1 = "C:\\RC++\\schedules\\sched1" + SCHEDNUM;
 	string fanSchedulefile_name2 = "C:\\RC++\\schedules\\sched2" + SCHEDNUM;
 	string fanSchedulefile_name3 = "C:\\RC++\\schedules\\sched3" + SCHEDNUM;
+#elif __APPLE__
+	// [Unix File Paths] Paths for input and output file locations
+	string inPath = "in/";				            // Location of input files.
+	string outPath = "out/";				         // Location to write output files.
+	string weatherPath = "weather/IECC/";			// Location of IECC weather files (DOE, All of US). "adjusted" contains files w/median values appended
+	//string weatherPath = "weather/CEC/";			// Location of CEC weather files (California)
+	
+	string batchFile_name = inPath + "input_bat_mac.csv";	// Name of batch input file (assumed to be in the same folder as the input files). 
+	string shelterFile_name = "shelter/bshelter.dat";	   // Location of shelter file
+
+	// Set to a, b or c to avoid potential conflicts while running more than one simulation
+	// at the same time using a common dynamic fan schedule input file
+	string SCHEDNUM = "a";
+	string fanSchedulefile_name1 = "schedules/sched1" + SCHEDNUM;
+	string fanSchedulefile_name2 = "schedules/sched2" + SCHEDNUM;
+	string fanSchedulefile_name3 = "schedules/sched3" + SCHEDNUM;
+#endif
 	
 	// total days to run the simulation for:
 	int totaldays = 365;
@@ -74,7 +108,7 @@ int main(int argc, char *argv[])
 	ifstream batchFile(batchFile_name); 
 	if(!batchFile) { 
 		cout << "Cannot open: " << batchFile_name << endl;
-		system("pause");
+		_pause();
 		return 1; 
 	} 
 
@@ -495,7 +529,7 @@ int main(int argc, char *argv[])
 		ofstream moistureFile(outPath + output_file + ".hum");
 		if(!moistureFile) { 
 			cout << "Cannot open: " << outPath + output_file + ".hum" << endl;
-			system("pause");
+			_pause();
 			return 1; 
 		}
 
@@ -508,7 +542,7 @@ int main(int argc, char *argv[])
 
 		if(!buildingFile) { 
 			cout << "Cannot open: " << input_file + ".csv" << endl;
-			system("pause");
+			_pause();
 			return 1; 
 		}
 
@@ -550,7 +584,9 @@ int main(int argc, char *argv[])
 		for(int i=0; i < 4; i++) {
 			buildingFile.getline(reading, 255);
 			wallFraction[i] = atof(reading);		// Fraction of leakage in walls 1 (North) 2 (South) 3 (East) 4 (West)
+		}
 
+		for(int i=0; i < 4; i++) {
 			buildingFile.getline(reading, 255);		// Fraction of leake in floor below wall 1, 2, 3 and 4
 			floorFraction[i] = atof(reading);
 		}
@@ -587,7 +623,6 @@ int main(int argc, char *argv[])
 
 		buildingFile.getline(reading, 255);
 		string rowOrIsolated = reading;			// House in a row (R) or isolated (any string other than R)
-		rowOrIsolated= "R";						// Defaults to R for now
 
 		buildingFile.getline(reading, 255);
 		double houseVolume = atof(reading);		// Conditioned volume of house (m3)
@@ -985,7 +1020,7 @@ int main(int argc, char *argv[])
 		ofstream filterFile(outPath + output_file + ".fil");
 		if(!filterFile) { 
 			cout << "Cannot open: " << outPath + output_file + ".fil" << endl;
-			system("pause");
+			_pause();
 			return 1; 
 		}
 
@@ -1031,7 +1066,7 @@ int main(int argc, char *argv[])
 			if(fan[i].oper == 5 || fan[i].oper == 16) {	// If using an HRV (5 or 16) with RIVEC. Avoids a divide by zero
 				qRivec = -1 * fan[i].q * 1000;
 			}
-			if(fan[i].oper == 13 && rivecFlagInd == 1 || fan[i].oper == 17 && rivecFlagInd == 1){ //If using CFIS or ERV+AHU with RIVEC control.
+			if((fan[i].oper == 13 && rivecFlagInd == 1) || (fan[i].oper == 17 && rivecFlagInd == 1)){ //If using CFIS or ERV+AHU with RIVEC control.
 					rivecFlag = 1;
 			}
 		}
@@ -1056,7 +1091,7 @@ int main(int argc, char *argv[])
 		ifstream shelterFile(shelterFile_name); 
 		if(!shelterFile) { 
 			cout << "Cannot open: " << shelterFile_name << endl;
-			system("pause");
+			_pause();
 			return 1; 
 		}
 
@@ -1125,7 +1160,7 @@ int main(int argc, char *argv[])
 		ofstream outputFile(outPath + output_file + ".rco"); 
 		if(!outputFile) { 
 			cout << "Cannot open: " << outPath + output_file + ".rco" << endl;
-			system("pause");
+			_pause();
 			return 1; 
 		}
 
@@ -1146,7 +1181,7 @@ int main(int argc, char *argv[])
 		//ifstream weatherFile(weatherPath + weather_file + ".ws2");	// WS2 for outdated TMY2 weather files
 		if(!weatherFile) { 
 			cout << "Cannot open: " << weatherPath + weather_file + ".ws3" << endl;
-			system("pause");
+			_pause();
 			return 1; 
 		}
 
@@ -1332,7 +1367,7 @@ int main(int argc, char *argv[])
 			fanschedulefile.open(fanSchedule + ".txt"); 
 			if(!fanschedulefile) { 
 				cout << "Cannot open: " << fanSchedule + ".txt" << endl;
-				system("pause");
+				_pause();
 				return 1; 
 			}			
 		}
@@ -1608,7 +1643,8 @@ int main(int argc, char *argv[])
 
 			// Print out simulation day to screen
 			if(minute_day == 0) {
-				system("CLS");
+				//system("CLS");
+				system("clear");
 				cout << "REGCAP++ Building Simulation Tool LBNL" << endl << endl;
 				cout << "Batch File: \t " << batchFile_name << endl;
 				cout << "Input File: \t " << inPath + input_file << ".csv" << endl;
@@ -1652,11 +1688,11 @@ int main(int argc, char *argv[])
 			//	dailyCumulativeTemp = -15.1 * 1440;
 			//	}
 
-			//if(minute_day == 0) {			// Resetting number of minutes into day every 24 hours
-			//	dailyAverageTemp = dailyCumulativeTemp / 1440;
-			//	averageTemp.push_back (dailyAverageTemp); //provides the prior day's average temperature...need to do something for day one
-			//	dailyCumulativeTemp = 0;			// Resets daily average outdoor temperature to 0 at beginning of new day
-			//}
+			if(minute_day == 0) {			// Resetting number of minutes into day every 24 hours
+			   dailyAverageTemp = dailyCumulativeTemp / 1440;
+			   averageTemp.push_back (dailyAverageTemp); //provides the prior day's average temperature...need to do something for day one
+			   dailyCumulativeTemp = 0;			// Resets daily average outdoor temperature to 0 at beginning of new day
+			}
 			
 			// For 7 day moving average heating/cooling thermostat decision
 			if(day > 7 && minute_day == 0) {
@@ -1668,7 +1704,7 @@ int main(int argc, char *argv[])
 				runningAverageTemp = runningAverageTemp/7;
 			}
 			
-			//dailyCumulativeTemp = dailyCumulativeTemp + weatherTemp;
+			dailyCumulativeTemp = dailyCumulativeTemp + weatherTemp;
 			
 			pRef = 1000 * pRef;					// Convert reference pressure to [Pa]
 			tempOut = 273.15 + weatherTemp;		// Convert outside air temperature to [K]
@@ -4966,7 +5002,7 @@ int main(int argc, char *argv[])
 		ofstream ou2File(outPath + output_file + ".rc2"); 
 		if(!ou2File) { 
 			cout << "Cannot open: " << outPath + output_file + ".rc2" << endl;
-			system("pause");
+			_pause();
 			return 1; 
 		}
 
@@ -4987,7 +5023,7 @@ int main(int argc, char *argv[])
 
 	}
 
-	system("pause");
+	_pause();
 
 	return 0;
 }
