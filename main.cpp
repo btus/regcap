@@ -52,44 +52,64 @@ void _pause() {
 #endif
    }
 
+/* safeGetline() reads in a line from a text file regardless of line ending
+   Handles Unix(LF), Windows(CRLF), and old Mac (CR)
+   From: http://stackoverflow.com/questions/6089231/getting-std-ifstream-to-handle-lf-cr-and-crlf
+   The characters in the stream are read one-by-one using a std::streambuf.
+   That is faster than reading them one-by-one using the std::istream.
+   Code that uses streambuf this way must be guarded by a sentry object.
+   The sentry object performs various tasks,
+   such as thread synchronization and updating the stream state.
+*/
+std::istream& safeGetline(std::istream& is, std::string& t)
+{
+    t.clear();
+
+
+    std::istream::sentry se(is, true);
+    std::streambuf* sb = is.rdbuf();
+
+    for(;;) {
+        int c = sb->sbumpc();
+        switch (c) {
+        case '\n':
+            return is;
+        case '\r':
+            if(sb->sgetc() == '\n')
+                sb->sbumpc();
+            return is;
+        case EOF:
+            // Also handle the case when the last line has no line ending
+            if(t.empty())
+                is.setstate(std::ios::eofbit);
+            return is;
+        default:
+            t += (char)c;
+        }
+    }
+}
+
 // Main function
 int main(int argc, char *argv[], char* envp[])
 { 	
 	// Read in batch file name from command line
-	string batchFile_name = "";
+	string batchFileName = "";
+	string configFileName = "";
 	if ( (argc <= 1) || (argv[argc-1] == NULL) || (argv[argc-1][0] == '-') ) {
 		cerr << "usage: " << argv[0] << " batch_file" << endl;
       return(1);
    }
    else {
-      batchFile_name = argv[argc-1];
+      batchFileName = argv[argc-1];
    }
 
-	// [start] Reading Batch File ============================================================================================
-	char reading[255];
-	int numSims;			// Number of simulations to run in the batch
-	string simFile[255], climateZone[255], outName[255];
-
-	ifstream batchFile(batchFile_name); 
+	// Open batch File ============================================================================================
+	ifstream batchFile(batchFileName); 
 	if(!batchFile) { 
-		cout << "Cannot open: " << batchFile_name << endl;
-		_pause();
+		cout << "Cannot open: " << batchFileName << endl;
 		return 1; 
 	} 
-
-	batchFile.getline(reading, 255);
-	numSims = atoi(reading);
-	batchFile.getline(reading, 255);
-	string configFileName = reading;
-
-	for(int i=0; i < numSims; i++) {
-		getline(batchFile, simFile[i]);
-		getline(batchFile, climateZone[i]);
-		getline(batchFile, outName[i]);
-	}
-
-	batchFile.close();
-	// [END] Reading Batch File ============================================================================================
+	batchFile >> configFileName;
 
 	// read in config file
 	Config config(configFileName, envp);
@@ -130,8 +150,17 @@ int main(int argc, char *argv[], char* envp[])
 	
 	// total days to run the simulation for:
 	int totaldays = 365;
+	int simNum = 0;
+	string simName = "";
 
-	for(int sim=0; sim < numSims; sim++) {		
+	// Main loop on each input file =======================================================
+	while(batchFile >> simName)  {		
+		simNum++;
+		string inputFileName = inPath + simName + ".csv";
+		string outputFileName = outPath + simName + ".rco";
+		string moistureFileName = outPath + simName + ".hum";
+		string filterFileName = outPath + simName + ".fil";
+		string summaryFileName = outPath + simName + ".rc2";
 
 		// Declare structures
 		winDoor_struct winDoor[10] = {0};
@@ -143,9 +172,11 @@ int main(int argc, char *argv[], char* envp[])
 		flue_struct flue[6] = {0};
 
 		//Declare arrays
+		char reading[255];
+		string weather_file;
 		double Sw[4];
-		double floorFraction[4];
-		double wallFraction[4];
+		double floorFraction[4]; 		// Fraction of leak in floor below wall 1, 2, 3 and 4
+		double wallFraction[4]; 		// Fraction of leak in wall 1, 2, 3 and 4
 		double Swinit[4][361];		
 		double mFloor[4] = {0,0,0,0};
 		double soffitFraction[5];
@@ -158,6 +189,83 @@ int main(int argc, char *argv[], char* envp[])
 		double heatThermostat[24];
 		double coolThermostat[24];
 
+		// Input variables
+		double C;
+		double n;		// Envelope Pressure Exponent
+		double h;		// Eaves Height [m]
+		double R;		// Ceiling Floor Leakage Sum
+		double X;		// Ceiling Floor Leakage Difference
+		int numFlues;			// Number of flues/chimneys/passive stacks
+		double flueShelterFactor;	// Shelter factor at the top of the flue (1 if the flue is higher than surrounding obstacles
+		int numPipes;				// Number of passive vents but appears to do much the same as flues
+		double Hfloor;
+		string rowOrIsolated;			// House in a row (R) or isolated (any string other than R)
+		double houseVolume;		// Conditioned volume of house (m3)
+		double floorArea;		// Conditioned floor area (m2)
+		double planArea;		// Footprint of house (m2)
+		double storyHeight = 2.5;				// Story height (m)
+		double houseLength;		// Long side of house (m) NOT USED IN CODE
+		double houseWidth;		// Short side of house (m) NOT USED IN CODE
+		double UAh;				// Heating U-Value (Thermal Conductance)
+		double UAc;				// Cooling U-Value (Thermal Conductance)
+		int numWinDoor;
+		int numFans;
+		double windowWE;
+		double windowN;
+		double windowS;
+		double winShadingCoef;
+		double ceilRval_heat;
+		double ceilRval_cool;
+		double latentLoad;
+		double internalGains1;
+		double atticVolume;
+		double atticC;
+		double atticPressureExp;
+		int numAtticVents;
+		double roofPitch;
+		string roofPeakOrient;		// Roof peak orientation, D = perpendicular to front of house (Wall 1), P = parrallel to front of house
+		double roofPeakHeight;
+		int numAtticFans;
+		double roofRval;
+		int roofType;
+		double ductLocation;			
+		double supThickness;
+		double retThickness;
+		double supRval;
+		double retRval;
+		double supLF0;						//Supply duct leakage fraction (e.g., 0.01 = 1% leakage).					
+		double retLF0;						//Return duct leakage fraction (e.g., 0.01 = 1% leakage)
+		double supLength;
+		double retLength;
+		double supDiameter;
+		double retDiameter;
+		double qAH_cool0;				// Cooling Air Handler air flow (m^3/s)
+		double qAH_heat0;				// Heating Air Handler air flow (m^3/s)
+		double supn;
+		double retn;
+		double supC;					//atof(reading); Supply leak flow coefficient
+		double retC;					//atof(reading); Return leak flow coefficient
+		double buried;
+		double capacityraw;
+		double capacityari;
+		double EERari;
+		double hcapacity;		// Heating capacity [kBtu/h]
+		double fanPower_heating0;		// Heating fan power [W]
+		double fanPower_cooling0;		// Cooling fan power [W]
+		double charge;
+		double AFUE;			// Annual Fuel Utilization Efficiency for the furnace
+		int bathroomSchedule;	// Bathroom schedule file to use (1, 2 or 3)
+		int numBedrooms;		// Number of bedrooms (for 62.2 target ventilation calculation)
+		int numStories;			// Number of stories in the building (for Nomalized Leakage calculation)
+		double weatherFactor;	// Weather Factor (w) (for infiltration calculation from ASHRAE 136)
+		double rivecFlagInd;	// Indicator variable that instructs a fan code 13 or 17 to be run by RIVEC controls. 1= yes, 0=no. Brennan.
+		double HumContType;	// Type of humidity control to be used in the RIVEC calculations. 1,2,...n Brennan.
+		double wCutoff;	// Humidity Ratio cut-off calculated as some percentile value for the climate zone. Brennan.
+		double wDiffMaxNeg;	// Maximum average indoor-outdoor humidity differene, when wIn < wOut. Climate zone average.
+		double wDiffMaxPos;	// Maximum average indoor-outdoor humidity differene, when wIn > wOut. Climate zone average.
+		double W25[12]; //25th percentiles for each month of the year, per TMY3
+		double W75[12]; //75th percentiles for each month of the year, per TMY3
+		
 		// Zeroing the variables to create the sums for the .ou2 file
 		long int MINUTE = 1;
 		int endrunon = 0;
@@ -522,17 +630,12 @@ int main(int argc, char *argv[], char* envp[])
 		//coolThermostat[23] = 273.15 + (78 - 32) * 5.0 / 9.0;
 		//// [END] Thermostat settings (RESAVE 2012) ========================================================================================
 
-		// This reads in the filename and climate zone data from a file instead of input by user
-		string input_file = simFile[sim];
-		string weather_file = climateZone[sim];
-		string output_file = outName[sim];
-
 		// Open moisture output file
 		ofstream moistureFile;
 		if(printMoistureFile) {
-			moistureFile.open(outPath + output_file + ".hum");
+			moistureFile.open(moistureFileName);
 			if(!moistureFile) { 
-				cout << "Cannot open: " << outPath + output_file + ".hum" << endl;
+				cout << "Cannot open: " << moistureFileName << endl;
 				_pause();
 				return 1; 
 			}
@@ -542,433 +645,178 @@ int main(int argc, char *argv[], char* envp[])
 		}
 
 		// [START] Read in Building Inputs =========================================================================================================================
-		ifstream buildingFile(inPath + input_file + ".csv"); 
+		ifstream buildingFile(inputFileName); 
 
 		if(!buildingFile) { 
-			cout << "Cannot open: " << input_file + ".csv" << endl;
+			cout << "Cannot open: " << inputFileName << endl;
 			_pause();
 			return 1; 
 		}
 
-		// 'atof' converts a string variable to a double variable
-		buildingFile.getline(reading, 255);
-		double C = atof(reading);		// Envelope Leakage Coefficient [m3/sPa^n]
+		buildingFile >> weather_file;
+		string weatherFileName = weatherPath + weather_file + ".WS3";  // for now until we move all weather file dependent inputs to input file
 
-		buildingFile.getline(reading, 255);
-		double n = atof(reading);		// Envelope Pressure Exponent
-
-		buildingFile.getline(reading, 255);
-		double h = atof(reading);		// Eaves Height [m]
-
-		buildingFile.getline(reading, 255);
-		double R = atof(reading);		// Ceiling Floor Leakage Sum
-
-		buildingFile.getline(reading, 255);
-		double X = atof(reading);		// Ceiling Floor Leakage Difference
-
-		double lc = (R + X) * 50;		// Percentage of leakage in the ceiling
-		double lf = (R - X) * 50;		// Percentage of leakage in the floor
-		double lw = 100 - lf - lc;		// Percentage of leakage in the walls
-
-		buildingFile.getline(reading, 255);
-		int numFlues = atoi(reading);			// Number of flues/chimneys/passive stacks
-
+		buildingFile >> C;
+		buildingFile >> n;
+		buildingFile >> h;
+		buildingFile >> R;
+		buildingFile >> X;
+		buildingFile >> numFlues;
 		for(int i=0; i < numFlues; i++) {
-			buildingFile.getline(reading, 255);
-			flue[i].flueC = atof(reading);		// Flue leakage
-
-			buildingFile.getline(reading, 255);
-			flue[i].flueHeight = atof(reading);	// Flue height [m]
-
-			buildingFile.getline(reading, 255);
-			flue[i].flueTemp = atof(reading);	// Flue gas temperature (-99 means temperature in flue changes)
+			buildingFile >> flue[i].flueC;
+			buildingFile >> flue[i].flueHeight;
+			buildingFile >> flue[i].flueTemp;
 		}
 
 		// =========================== Leakage Inputs ==============================
 		for(int i=0; i < 4; i++) {
-			buildingFile.getline(reading, 255);
-			wallFraction[i] = atof(reading);		// Fraction of leakage in walls 1 (North) 2 (South) 3 (East) 4 (West)
+			buildingFile >> wallFraction[i];
 		}
-
 		for(int i=0; i < 4; i++) {
-			buildingFile.getline(reading, 255);		// Fraction of leake in floor below wall 1, 2, 3 and 4
-			floorFraction[i] = atof(reading);
+			buildingFile >> floorFraction[i];
 		}
 
-		buildingFile.getline(reading, 255);
-		double flueShelterFactor = atof(reading);	// Shelter factor at the top of the flue (1 if the flue is higher than surrounding obstacles
-
-		buildingFile.getline(reading, 255);
-		int numPipes = atoi(reading);				// Number of passive vents but appears to do much the same as flues
-
+		buildingFile >> flueShelterFactor;
+		buildingFile >> numPipes;
 		for(int i=0; i < numPipes; i++) {
-			buildingFile.getline(reading, 255);
-			Pipe[i].wall = atoi(reading);
-
-			buildingFile.getline(reading, 255);
-			Pipe[i].h = atof(reading);
-
-			buildingFile.getline(reading, 255);
-			Pipe[i].A = atof(reading);
-
-			buildingFile.getline(reading, 255);
-			Pipe[i].n = atof(reading);
-
-			buildingFile.getline(reading, 255);
-			Pipe[i].Swf = atof(reading);
-
-			buildingFile.getline(reading, 255);
-			Pipe[i].Swoff = atof(reading);
+			buildingFile >> Pipe[i].wall;
+			buildingFile >> Pipe[i].h;
+			buildingFile >> Pipe[i].A;
+			buildingFile >> Pipe[i].n;
+			buildingFile >> Pipe[i].Swf;
+			buildingFile >> Pipe[i].Swoff;
 		}
 
 		// =========================== Building Inputs =============================
-		buildingFile.getline(reading, 255);
-		double Hfloor = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		string rowOrIsolated = reading;			// House in a row (R) or isolated (any string other than R)
-
-		buildingFile.getline(reading, 255);
-		double houseVolume = atof(reading);		// Conditioned volume of house (m3)
-
-		buildingFile.getline(reading, 255);
-		double floorArea = atof(reading);		// Conditioned floor area (m2)
-
-		buildingFile.getline(reading, 255);
-		double planArea = atof(reading);		// Footprint of house (m2)
-
-		double storyHeight = 2.5;				// Story height (m)
-
-		buildingFile.getline(reading, 255);
-		double houseLength = atof(reading);		// Long side of house (m) NOT USED IN CODE
-
-		buildingFile.getline(reading, 255);
-		double houseWidth = atof(reading);		// Short side of house (m) NOT USED IN CODE
-
-		buildingFile.getline(reading, 255);
-		double UAh = atof(reading);				// Heating U-Value (Thermal Conductance)
-
-		buildingFile.getline(reading, 255);
-		double UAc = atof(reading);				// Cooling U-Value (Thermal Conductance)
+		buildingFile >> Hfloor;
+		buildingFile >> rowOrIsolated;
+		buildingFile >> houseVolume;
+		buildingFile >> floorArea;
+		buildingFile >> planArea;
+		// buildingFile >> storyHeight  // not currently in file
+		buildingFile >> houseLength;
+		buildingFile >> houseWidth;
+		buildingFile >> UAh;
+		buildingFile >> UAc;
 
 		// ====================== Venting Inputs (Windows/Doors)====================
-		buildingFile.getline(reading, 255);
-		int numWinDoor = atoi(reading);
-
+		buildingFile >> numWinDoor;
 		// These are not currently used in the Excel input generating spreadsheet
 		// Add them back in if needed
 		/*for(int i=0; i < numWinDoor; i++) {
-		buildingFile.getline(reading, 255);
-		winDoor[i].wall = atoi(reading);
-
-		buildingFile.getline(reading, 255);
-		winDoor[i].High = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		winDoor[i].Wide = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		winDoor[i].Top = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		winDoor[i].Bottom = atof(reading);
+			buildingFile >> winDoor[i].wall;
+			buildingFile >> winDoor[i].High;
+			buildingFile >> winDoor[i].Wide;
+			buildingFile >> winDoor[i].Top;
+			buildingFile >> winDoor[i].Bottom;
 		}*/
 
 		// ================== Mechanical Venting Inputs (Fans etc) =================
-		buildingFile.getline(reading, 255);
-		int numFans = atoi(reading);
-
+		buildingFile >> numFans;
 		for(int i=0;  i < numFans; i++) {
-			buildingFile.getline(reading, 255);
-			fan[i].power = atof(reading);
-
-			buildingFile.getline(reading, 255);
-			fan[i].q = atof(reading);
-
-			buildingFile.getline(reading, 255);
-			fan[i].oper = atof(reading);
-
+			buildingFile >> fan[i].power;
+			buildingFile >> fan[i].q;
+			buildingFile >> fan[i].oper;
 			fan[i].on = 0;
 		}
 
-		buildingFile.getline(reading, 255);
-		double windowWE = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		double windowN = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		double windowS = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		double winShadingCoef = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		double ceilRval_heat = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		double ceilRval_cool = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		double latentLoad = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		double internalGains1 = atof(reading);
+		buildingFile >> windowWE;
+		buildingFile >> windowN;
+		buildingFile >> windowS;
+		buildingFile >> winShadingCoef;
+		buildingFile >> ceilRval_heat;
+		buildingFile >> ceilRval_cool;
+		buildingFile >> latentLoad;
+		buildingFile >> internalGains1;
 
 		// =========================== Attic Inputs ================================
-		buildingFile.getline(reading, 255);
-		double atticVolume = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		double atticC = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		double atticPressureExp = atof(reading);
-
+		buildingFile >> atticVolume;
+		buildingFile >> atticC;
+		buildingFile >> atticPressureExp;
 		for(int i=0; i < 5; i++) {
-			buildingFile.getline(reading, 255);
-			soffitFraction[i] = atof(reading);			
+			buildingFile >> soffitFraction[i];
 		}
 		for(int i=0; i < 4; i++) {
-			buildingFile.getline(reading, 255);
-			soffit[i].h = atof(reading);			
+			buildingFile >> soffit[i].h;
 		}
 
 		// =========================== Attic Vent Inputs ===========================
-		buildingFile.getline(reading, 255);
-		int numAtticVents = atoi(reading);
-
+		buildingFile >> numAtticVents;
 		for(int i=0; i < numAtticVents; i++) {
-			buildingFile.getline(reading, 255);
-			atticVent[i].wall = atoi(reading);
-
-			buildingFile.getline(reading, 255);
-			atticVent[i].h = atof(reading);
-
-			buildingFile.getline(reading, 255);
-			atticVent[i].A = atof(reading);
-
-			buildingFile.getline(reading, 255);
-			atticVent[i].n = atof(reading);
+			buildingFile >> atticVent[i].wall;
+			buildingFile >> atticVent[i].h;
+			buildingFile >> atticVent[i].A;
+			buildingFile >> atticVent[i].n;
 		}
 
 		// =========================== Roof Inputs =================================
-		buildingFile.getline(reading, 255);
-		double roofPitch = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		string roofPeakOrient = reading;		// Roof peak orientation, D = perpendicular to front of house (Wall 1), P = parrallel to front of house
-
-		buildingFile.getline(reading, 255);
-		double roofPeakHeight = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		int numAtticFans = atoi(reading);
-
+		buildingFile >> roofPitch;
+		buildingFile >> roofPeakOrient;
+		buildingFile >> roofPeakHeight;
+		buildingFile >> numAtticFans;
 		for(int i = 0; i < numAtticFans; i++) {
-			buildingFile.getline(reading, 255);
-			atticFan[i].power = atof(reading);
-
-			buildingFile.getline(reading, 255);
-			atticFan[i].q = atof(reading);
-
-			buildingFile.getline(reading, 255);
-			atticFan[i].oper = atof(reading);
+			buildingFile >> atticFan[i].power;
+			buildingFile >> atticFan[i].q;
+			buildingFile >> atticFan[i].oper;
 		}
 
-		buildingFile.getline(reading, 255);
-		double roofRval = atoi(reading);
-
-		buildingFile.getline(reading, 255);
-		int roofType = atoi(reading);
+		buildingFile >> roofRval;
+		buildingFile >> roofType;
 
 		// =========================== Duct Inputs =================================
-		buildingFile.getline(reading, 255);
-		double ductLocation = atof(reading);			
-
-		buildingFile.getline(reading, 255);
-		double supThickness = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		double retThickness = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		double supRval = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		double retRval = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		double supLF0 = atof(reading);						//Supply duct leakage fraction (e.g., 0.01 = 1% leakage).					
-
-		buildingFile.getline(reading, 255);
-		double retLF0 = atof(reading);						//Return duct leakage fraction (e.g., 0.01 = 1% leakage)
-
-		buildingFile.getline(reading, 255);
-		double supLength = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		double retLength = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		double supDiameter = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		double retDiameter = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		double qAH_cool0 = atof(reading);				// Cooling Air Handler air flow (m^3/s)
-
-		buildingFile.getline(reading, 255);
-		double qAH_heat0 = atof(reading);				// Heating Air Handler air flow (m^3/s)
-
-		buildingFile.getline(reading, 255);
-		double supn = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		double retn = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		double supC = atof(reading);					//atof(reading); Supply leak flow coefficient
-
-		buildingFile.getline(reading, 255);
-		double retC = atof(reading);					//atof(reading); Return leak flow coefficient
-
-		// NOTE: The buried variable is not used but left in code to continue proper file navigation
-		buildingFile.getline(reading, 255);
-		double buried = atof(reading);
+		buildingFile >> ductLocation;
+		buildingFile >> supThickness;
+		buildingFile >> retThickness;
+		buildingFile >> supRval;
+		buildingFile >> retRval;
+		buildingFile >> supLF0;
+		buildingFile >> retLF0;
+		buildingFile >> supLength;
+		buildingFile >> retLength;
+		buildingFile >> supDiameter;
+		buildingFile >> retDiameter;
+		buildingFile >> qAH_cool0;
+		buildingFile >> qAH_heat0;
+		buildingFile >> supn;
+		buildingFile >> retn;
+		buildingFile >> supC;
+		buildingFile >> retC;
+		buildingFile >> buried; // NOTE: The buried variable is not used but left in code to continue proper file navigation
 
 		// =========================== Equipment Inputs ============================
-
-		buildingFile.getline(reading, 255);
-		double capacityraw = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		double capacityari = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		double EERari = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		double hcapacity = atof(reading);		// Heating capacity [kBtu/h]
-
-		buildingFile.getline(reading, 255);
-		double fanPower_heating0 = atof(reading);		// Heating fan power [W]
-
-		buildingFile.getline(reading, 255);
-		double fanPower_cooling0 = atof(reading);		// Cooling fan power [W]
-
-		buildingFile.getline(reading, 255);
-		double charge = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		double AFUE = atof(reading);			// Annual Fuel Utilization Efficiency for the furnace
-
-		buildingFile.getline(reading, 255);
-		int bathroomSchedule = atoi(reading);	// Bathroom schedule file to use (1, 2 or 3)
-
-		buildingFile.getline(reading, 255);
-		int numBedrooms = atoi(reading);		// Number of bedrooms (for 62.2 target ventilation calculation)
-
-		buildingFile.getline(reading, 255);
-		int numStories = atoi(reading);			// Number of stories in the building (for Nomalized Leakage calculation)
-
-		buildingFile.getline(reading, 255);
-		double weatherFactor = atof(reading);	// Weather Factor (w) (for infiltration calculation from ASHRAE 136)
-
-		buildingFile.getline(reading, 255);
-		double rivecFlagInd = atof(reading);	// Indicator variable that instructs a fan code 13 or 17 to be run by RIVEC controls. 1= yes, 0=no. Brennan.
+		buildingFile >> capacityraw;
+		buildingFile >> capacityari;
+		buildingFile >> EERari;
+		buildingFile >> hcapacity;
+		buildingFile >> fanPower_heating0;
+		buildingFile >> fanPower_cooling0;
+		buildingFile >> charge;
+		buildingFile >> AFUE;
+		buildingFile >> bathroomSchedule;
+		buildingFile >> numBedrooms;
+		buildingFile >> numStories;
+		buildingFile >> weatherFactor;
+		buildingFile >> rivecFlagInd;
 
 		//The variable from here down wree added by Brennan as part of the Smart Ventilation Humidity Control project
-
-		buildingFile.getline(reading, 255);
-		double HumContType = atof(reading);	// Type of humidity control to be used in the RIVEC calculations. 1,2,...n Brennan.
-
-		buildingFile.getline(reading, 255);
-		double wCutoff = atof(reading);	// Humidity Ratio cut-off calculated as some percentile value for the climate zone. Brennan.
-
-		buildingFile.getline(reading, 255);
-		double wDiffMaxNeg = atof(reading);	// Maximum average indoor-outdoor humidity differene, when wIn < wOut. Climate zone average.
-
-		buildingFile.getline(reading, 255);
-		double wDiffMaxPos = atof(reading);	// Maximum average indoor-outdoor humidity differene, when wIn > wOut. Climate zone average.
-
-		buildingFile.getline(reading, 255); //25th percentiles for each month of the year, per TMY3
-		double W25_1 = atof(reading);
-				
-		buildingFile.getline(reading, 255);
-		double W25_2 = atof(reading);
-				
-		buildingFile.getline(reading, 255);
-		double W25_3 = atof(reading);
-				
-		buildingFile.getline(reading, 255);
-		double W25_4 = atof(reading);
-				
-		buildingFile.getline(reading, 255);
-		double W25_5 = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		double W25_6 = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		double W25_7 = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		double W25_8 = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		double W25_9 = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		double W25_10 = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		double W25_11 = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		double W25_12 = atof(reading);
-				
-		buildingFile.getline(reading, 255); //75th percentiles for each month of the year, per TMY3
-		double W75_1 = atof(reading);
-				
-		buildingFile.getline(reading, 255);
-		double W75_2 = atof(reading);
-				
-		buildingFile.getline(reading, 255);
-		double W75_3 = atof(reading);
-				
-		buildingFile.getline(reading, 255);
-		double W75_4 = atof(reading);
-				
-		buildingFile.getline(reading, 255);
-		double W75_5 = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		double W75_6 = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		double W75_7 = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		double W75_8 = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		double W75_9 = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		double W75_10 = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		double W75_11 = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		double W75_12 = atof(reading);
+		buildingFile >> HumContType;
+		buildingFile >> wCutoff;
+		buildingFile >> wDiffMaxNeg;
+		buildingFile >> wDiffMaxPos;
+		for(int i = 0; i < 12; i++) {
+			buildingFile >> W25[i];
+		}
+		for(int i = 0; i < 12; i++) {
+			buildingFile >> W75[i];
+		}
 
 		buildingFile.close();
 
 		// [END] Read in Building Inputs ============================================================================================================================================
 
+		double lc = (R + X) * 50;		// Percentage of leakage in the ceiling
+		double lf = (R - X) * 50;		// Percentage of leakage in the floor
+		double lw = 100 - lf - lc;		// Percentage of leakage in the walls
 
 		// In case the user enters leakage fraction in % rather than as a fraction
 		if(supLF0 > 1)
@@ -1023,9 +871,9 @@ int main(int argc, char *argv[], char* envp[])
 		// Open filter loading file
 		ofstream filterFile;
 		if(printFilterFile) {
-			filterFile.open(outPath + output_file + ".fil");
+			filterFile.open(filterFileName);
 			if(!filterFile) { 
-				cout << "Cannot open: " << outPath + output_file + ".fil" << endl;
+				cout << "Cannot open: " << filterFileName << endl;
 				_pause();
 				return 1; 
 			}
@@ -1165,9 +1013,9 @@ int main(int argc, char *argv[], char* envp[])
 		// ================= CREATE OUTPUT FILE =================================================
 		ofstream outputFile;
 		if(printOutputFile) {
-			ofstream outputFile(outPath + output_file + ".rco"); 
+			ofstream outputFile(outputFileName); 
 			if(!outputFile) { 
-				cout << "Cannot open: " << outPath + output_file + ".rco" << endl;
+				cout << "Cannot open: " << outputFileName << endl;
 				_pause();
 				return 1; 
 			}
@@ -1182,10 +1030,9 @@ int main(int argc, char *argv[], char* envp[])
 		// Node 5 is house materials that interact with house air only (Node HR[4])
 
 		// ================== OPEN WEATHER FILE FOR INPUT ========================================
-		ifstream weatherFile(weatherPath + weather_file + ".ws3");		// WS3 for updated TMY3 weather files
-		//ifstream weatherFile(weatherPath + weather_file + ".ws2");	// WS2 for outdated TMY2 weather files
+		ifstream weatherFile(weatherFileName);
 		if(!weatherFile) { 
-			cout << "Cannot open: " << weatherPath + weather_file + ".ws3" << endl;
+			cout << "Cannot open: " << weatherFileName << endl;
 			_pause();
 			return 1; 
 		}
@@ -1543,10 +1390,6 @@ int main(int argc, char *argv[], char* envp[])
 		int LowMonths[3] = {0, 0, 0};
 		double HiMonthDose = 1;
 		double LowMonthDose = 1;
-		double W25 = 0; //25th percentile control, for outdoor humidity sensor control #14
-		double W75 = 0; //75th percentile control, for outdoor humidity sensor control #14
-		
-
 
 		
 		// ==============================================================================================
@@ -1651,12 +1494,12 @@ int main(int argc, char *argv[], char* envp[])
 				//system("CLS");
 				system("clear");
 				cout << "REGCAP++ Building Simulation Tool LBNL" << endl << endl;
-				cout << "Batch File: \t " << batchFile_name << endl;
-				cout << "Input File: \t " << inPath + input_file << ".csv" << endl;
-				cout << "Output File: \t " << outPath + output_file << ".rco" << endl;
-				cout << "Weather File: \t " << weather_file << endl << endl;
+				cout << "Batch File: \t " << batchFileName << endl;
+				cout << "Input File: \t " << inputFileName << endl;
+				cout << "Output File: \t " << outputFileName << endl;
+				cout << "Weather File: \t " << weatherFileName << endl << endl;
 				
-				cout << "Simulation: " << sim + 1 << "/" << numSims << endl << endl;
+				cout << "Simulation: " << simNum << endl << endl;
 				cout << "Day = " << day << endl;
 			}
 
@@ -2918,66 +2761,13 @@ int main(int argc, char *argv[], char* envp[])
 
 						if(HumContType == 14){ 
 						//Outdoor-only sensor based control, control based on 25th and 75th percentile monthly values for each month and climate zone.
-
-						switch (month) {
-						case 1:
-							W75 = W75_1;
-							W25 = W25_1;
-							break;
-						case 2:
-							W75 = W75_2;
-							W25 = W25_2;
-							break;
-						case 3:
-							W75 = W75_3;
-							W25 = W25_3;
-							break;
-						case 4:
-							W75 = W75_4;
-							W25 = W25_4;
-							break;
-						case 5:
-							W75 = W75_5;
-							W25 = W25_5;
-							break;
-						case 6:
-							W75 = W75_6;
-							W25 = W25_6;
-							break;
-						case 7:
-							W75 = W75_7;
-							W25 = W25_7;
-							break;
-						case 8:
-							W75 = W75_8;
-							W25 = W25_8;
-							break;
-						case 9:
-							W75 = W75_9;
-							W25 = W25_9;
-							break;
-						case 10:
-							W75 = W75_10;
-							W25 = W25_10;
-							break;
-						case 11:
-							W75 = W75_11;
-							W25 = W25_11;
-							break;
-						case 12:
-							W75 = W75_12;
-							W25 = W25_12;
-							break;
-						}
-
-
-							if(HROUT >= W75){ //If humid outside, reduce ventilation. 
+							if(HROUT >= W75[month-1]){ //If humid outside, reduce ventilation. 
 								if(relExp >= 2.5 || relDose > 1.5){
 									rivecOn = 1; 
 								} else {
 									rivecOn = 0;
 								}
-							} else if (HROUT <= W25){ //If dry outside, increase vnetilation.
+							} else if (HROUT <= W25[month-1]){ //If dry outside, increase vnetilation.
 								if(relDose > 0.5){ //but we do if exp is high
 									rivecOn = 1;
 								} else {
@@ -5012,9 +4802,9 @@ int main(int argc, char *argv[], char* envp[])
 		RHexcAnnual70 = RHtot70 / MINUTE;
 		
 		// Write summary output file (RC2 file)
-		ofstream ou2File(outPath + output_file + ".rc2"); 
+		ofstream ou2File(summaryFileName); 
 		if(!ou2File) { 
-			cout << "Cannot open: " << outPath + output_file + ".rc2" << endl;
+			cout << "Cannot open: " << summaryFileName << endl;
 			_pause();
 			return 1; 
 		}
@@ -5035,8 +4825,7 @@ int main(int argc, char *argv[], char* envp[])
 		ou2File.close();
 
 	}
-
-	_pause();
+	batchFile.close();
 
 	return 0;
 }
