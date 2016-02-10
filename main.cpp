@@ -527,17 +527,19 @@ int main(int argc, char *argv[], char* envp[])
 		string weather_file = climateZone[sim];
 		string output_file = outName[sim];
 
-		// Opening moisture output file
-		ofstream moistureFile(outPath + output_file + ".hum");
-		if(!moistureFile) { 
-			cout << "Cannot open: " << outPath + output_file + ".hum" << endl;
-			_pause();
-			return 1; 
+		// Open moisture output file
+		ofstream moistureFile;
+		if(printMoistureFile) {
+			moistureFile.open(outPath + output_file + ".hum");
+			if(!moistureFile) { 
+				cout << "Cannot open: " << outPath + output_file + ".hum" << endl;
+				_pause();
+				return 1; 
+			}
+
+			moistureFile << "HROUT\tHRattic\tHRreturn\tHRsupply\tHRhouse\tHRmaterials\tRH%house\tRHind60\tRHind70" << endl;
+			//moistureFile << "HR_Attic\tHR_Return\tHR_Supply\tHR_House\tHR_Materials" << endl; This is the old format.
 		}
-
-		moistureFile << "HROUT\tHRattic\tHRreturn\tHRsupply\tHRhouse\tHRmaterials\tRH%house\tRHind60\tRHind70" << endl;
-
-		//moistureFile << "HR_Attic\tHR_Return\tHR_Supply\tHR_House\tHR_Materials" << endl; This is the old format.
 
 		// [START] Read in Building Inputs =========================================================================================================================
 		ifstream buildingFile(inPath + input_file + ".csv"); 
@@ -1019,14 +1021,16 @@ int main(int argc, char *argv[], char* envp[])
 		double k_DL = 0;				// Gradual change in return duct leakage from filter loading [% per 10^6kg of air mass through filter]
 		
 		// Open filter loading file
-		ofstream filterFile(outPath + output_file + ".fil");
-		if(!filterFile) { 
-			cout << "Cannot open: " << outPath + output_file + ".fil" << endl;
-			_pause();
-			return 1; 
+		ofstream filterFile;
+		if(printFilterFile) {
+			filterFile.open(outPath + output_file + ".fil");
+			if(!filterFile) { 
+				cout << "Cannot open: " << outPath + output_file + ".fil" << endl;
+				_pause();
+				return 1; 
+			}
+			filterFile << "mAH_cumu\tqAH\twAH\tretLF" << endl;
 		}
-
-		filterFile << "mAH_cumu\tqAH\twAH\tretLF" << endl;
 		
 		// Filter loading coefficients are in the sub_filterLoading sub routine
 		if(filterLoadingFlag == 1)
@@ -1159,24 +1163,23 @@ int main(int argc, char *argv[], char* envp[])
 		double AL5 = C * sqrt(airDensityRef / 2) * pow(4, (n - .5));
 
 		// ================= CREATE OUTPUT FILE =================================================
-		ofstream outputFile(outPath + output_file + ".rco"); 
-		if(!outputFile) { 
-			cout << "Cannot open: " << outPath + output_file + ".rco" << endl;
-			_pause();
-			return 1; 
+		ofstream outputFile;
+		if(printOutputFile) {
+			ofstream outputFile(outPath + output_file + ".rco"); 
+			if(!outputFile) { 
+				cout << "Cannot open: " << outPath + output_file + ".rco" << endl;
+				_pause();
+				return 1; 
+			}
+			outputFile << "Time\tMin\twindSpeed\ttempOut\ttempHouse\tsetpoint\ttempAttic\ttempSupply\ttempReturn\tAHflag\tAHpower\tHcap\tcompressPower\tCcap\tmechVentPower\tHR\tSHR\tMcoil\thousePress\tQhouse\tACH\tACHflue\tventSum\tnonRivecVentSum\tfan1\tfan2\tfan3\tfan4\tfan5\tfan6\tfan7\trivecOn\tturnover\trelExpRIVEC\trelDoseRIVEC\toccupiedExpReal\toccupiedDoseReal\toccupied\toccupiedExp\toccupiedDose\tDAventLoad\tMAventLoad\tHROUT\tHRhouse\tRH%house\tRHind60\tRHind70" << endl; 
 		}
-
+		
 		// 5 HR nodes
 		// Node 1 is attic air (Node HR[0])
 		// Node 2 is return air (Node HR[1])
 		// Node 3 is supply air (Node HR[2])
 		// Node 4 is house air (Node HR[3])
 		// Node 5 is house materials that interact with house air only (Node HR[4])
-
-		// Write output file headers
-
-		outputFile << "Time\tMin\twindSpeed\ttempOut\ttempHouse\tsetpoint\ttempAttic\ttempSupply\ttempReturn\tAHflag\tAHpower\tHcap\tcompressPower\tCcap\tmechVentPower\tHR\tSHR\tMcoil\thousePress\tQhouse\tACH\tACHflue\tventSum\tnonRivecVentSum\tfan1\tfan2\tfan3\tfan4\tfan5\tfan6\tfan7\trivecOn\tturnover\trelExpRIVEC\trelDoseRIVEC\toccupiedExpReal\toccupiedDoseReal\toccupied\toccupiedExp\toccupiedDose\tDAventLoad\tMAventLoad\tHROUT\tHRhouse\tRH%house\tRHind60\tRHind70" << endl; 
-
 
 		// ================== OPEN WEATHER FILE FOR INPUT ========================================
 		ifstream weatherFile(weatherPath + weather_file + ".ws3");		// WS3 for updated TMY3 weather files
@@ -4910,22 +4913,25 @@ int main(int argc, char *argv[], char* envp[])
 			//outputFile << "Time\tMin\twindSpeed\ttempOut\ttempHouse\tsetpoint\ttempAttic\ttempSupply\ttempReturn\tAHflag\tAHpower\tHcap\tcompressPower\tCcap\tmechVentPower\tHR\tSHR\tMcoil\thousePress\tQhouse\tACH\tACHflue\tventSum\tnonRivecVentSum\tfan1\tfan2\tfan3\tfan4\tfan5\tfan6\tfan7\trivecOn\tturnover\trelExpRIVEC\trelDoseRIVEC\toccupiedExpReal\toccupiedDoseReal\toccupied\toccupiedExp\toccupiedDose\tDAventLoad\tMAventLoad\tHROUT\tHRhouse\tRH%house\tRHind60\tRHind70" << endl; 
 
 			// tab separated instead of commas- makes output files smaller
-			outputFile << HOUR << "\t" << MINUTE << "\t" << windSpeed << "\t" << tempOut << "\t" << tempHouse << "\t" << setpoint << "\t";
-			outputFile << tempAttic << "\t" << tempSupply << "\t" << tempReturn << "\t" << AHflag << "\t" << AHfanPower << "\t";
-			outputFile << hcap << "\t" << compressorPower << "\t" << capacityc << "\t" << mechVentPower << "\t" << HR[3] * 1000 << "\t" << SHR << "\t" << Mcoil << "\t";
-			outputFile << Pint << "\t"<< qHouse << "\t" << houseACH << "\t" << flueACH << "\t" << ventSum << "\t" << nonRivecVentSum << "\t";
-			outputFile << fan[0].on << "\t" << fan[1].on << "\t" << fan[2].on << "\t" << fan[3].on << "\t" << fan[4].on << "\t" << fan[5].on << "\t" << fan[6].on << "\t" ;
-			outputFile << rivecOn << "\t" << turnover << "\t" << relExp << "\t" << relDose << "\t" << occupiedExpReal << "\t" << occupiedDoseReal << "\t";
-			outputFile << occupied[HOUR] << "\t" << occupiedExp << "\t" << occupiedDose << "\t" << DAventLoad << "\t" << MAventLoad << "\t" << HROUT << "\t" << HR[3] << "\t" << RHhouse << "\t" << RHind60 << "\t" << RHind70 << endl; //<< "\t" << mIN << "\t" << mOUT << "\t" ; //Brennan. Added DAventLoad and MAventLoad and humidity values.
-			//outputFile << mCeiling << "\t" << mHouseIN << "\t" << mHouseOUT << "\t" << mSupReg << "\t" << mRetReg << "\t" << mSupAHoff << "\t" ;
-			//outputFile << mRetAHoff << "\t" << mHouse << "\t"<< flag << "\t"<< AIM2 << "\t" << AEQaim2FlowDiff << "\t" << qFanFlowRatio << "\t" << C << endl; //Breann/Yihuan added these for troubleshooting
-
+			if(printOutputFile) {
+				outputFile << HOUR << "\t" << MINUTE << "\t" << windSpeed << "\t" << tempOut << "\t" << tempHouse << "\t" << setpoint << "\t";
+				outputFile << tempAttic << "\t" << tempSupply << "\t" << tempReturn << "\t" << AHflag << "\t" << AHfanPower << "\t";
+				outputFile << hcap << "\t" << compressorPower << "\t" << capacityc << "\t" << mechVentPower << "\t" << HR[3] * 1000 << "\t" << SHR << "\t" << Mcoil << "\t";
+				outputFile << Pint << "\t"<< qHouse << "\t" << houseACH << "\t" << flueACH << "\t" << ventSum << "\t" << nonRivecVentSum << "\t";
+				outputFile << fan[0].on << "\t" << fan[1].on << "\t" << fan[2].on << "\t" << fan[3].on << "\t" << fan[4].on << "\t" << fan[5].on << "\t" << fan[6].on << "\t" ;
+				outputFile << rivecOn << "\t" << turnover << "\t" << relExp << "\t" << relDose << "\t" << occupiedExpReal << "\t" << occupiedDoseReal << "\t";
+				outputFile << occupied[HOUR] << "\t" << occupiedExp << "\t" << occupiedDose << "\t" << DAventLoad << "\t" << MAventLoad << "\t" << HROUT << "\t" << HR[3] << "\t" << RHhouse << "\t" << RHind60 << "\t" << RHind70 << endl; //<< "\t" << mIN << "\t" << mOUT << "\t" ; //Brennan. Added DAventLoad and MAventLoad and humidity values.
+				//outputFile << mCeiling << "\t" << mHouseIN << "\t" << mHouseOUT << "\t" << mSupReg << "\t" << mRetReg << "\t" << mSupAHoff << "\t" ;
+				//outputFile << mRetAHoff << "\t" << mHouse << "\t"<< flag << "\t"<< AIM2 << "\t" << AEQaim2FlowDiff << "\t" << qFanFlowRatio << "\t" << C << endl; //Breann/Yihuan added these for troubleshooting
+			}
+			
 			// ================================= WRITING MOISTURE DATA FILE =================================
 			//File column names, for reference.
 			//moistureFile << "HROUT\tHRattic\tHRreturn\tHRsupply\tHRhouse\tHRmaterials\tRH%house\tRHind60\tRHind70" << endl;
-
-			moistureFile << HROUT << "\t" << HR[0] << "\t" << HR[1] << "\t" << HR[2] << "\t" << HR[3] << "\t" << HR[4] << "\t" << RHhouse << "\t" << RHind60 << "\t" << RHind70 << endl;
-
+			if(printMoistureFile) {
+				moistureFile << HROUT << "\t" << HR[0] << "\t" << HR[1] << "\t" << HR[2] << "\t" << HR[3] << "\t" << HR[4] << "\t" << RHhouse << "\t" << RHind60 << "\t" << RHind70 << endl;
+			}
+			
 			// ================================= WRITING Filter Loading DATA FILE =================================
 			
 			massFilter_cumulative = massFilter_cumulative + (mAH * 60);	// Time steps are every minute and mAH is in [kg/s]
@@ -4933,7 +4939,9 @@ int main(int argc, char *argv[], char* envp[])
 			
 
 			// Filter loading output file
-			filterFile << massAH_cumulative << "\t"  << qAH << "\t" << AHfanPower << "\t" << retLF << endl;
+			if(printFilterFile) {
+				filterFile << massAH_cumulative << "\t"  << qAH << "\t" << AHfanPower << "\t" << retLF << endl;
+			}
 			
 			// Calculating sums for electrical and gas energy use
 			AH_kWh = AH_kWh + AHfanPower / 60000;						// Total air Handler energy for the simulation in kWh
@@ -4971,10 +4979,13 @@ int main(int argc, char *argv[], char* envp[])
 		//----------------------------------------------------
 
 		// Close files
-		outputFile.close();
 		weatherFile.close();
-		moistureFile.close();
-		filterFile.close();
+		if(printOutputFile)
+			outputFile.close();
+		if(printMoistureFile) 
+			moistureFile.close();
+		if(printFilterFile)
+			filterFile.close();
 
 		if(dynamicScheduleFlag == 1)								// Fan Schedule
 			fanschedulefile.close();
