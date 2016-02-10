@@ -1,0 +1,14 @@
+4
+regcap.cfg
+sim_1
+01
+sim_1
+sim_2
+02
+sim_2
+sim_3
+03
+sim_3
+sim_4
+04
+sim_4

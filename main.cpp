@@ -7,6 +7,7 @@
    #include <cmath>        // needed for mac g++
 #endif
 #include "functions.h"
+#include "config/config.h"
 
 using namespace std;
 
@@ -52,59 +53,23 @@ void _pause() {
    }
 
 // Main function
-int main(int argc, char *argv[])
+int main(int argc, char *argv[], char* envp[])
 { 	
-	// Simulation Batch Timing
-	time_t startTime, endTime;
-	time(&startTime);
-	string runStartTime = ctime(&startTime);
+	// Read in batch file name from command line
+	string batchFile_name = "";
+	if ( (argc <= 1) || (argv[argc-1] == NULL) || (argv[argc-1][0] == '-') ) {
+		cerr << "usage: " << argv[0] << " batch_file" << endl;
+      return(1);
+   }
+   else {
+      batchFile_name = argv[argc-1];
+   }
 
-#ifdef _WIN32
-	// [DOS File Paths] Paths for input and output file locations
-	string inPath = "Z:\\humidity_bdless\\newRHfix\\50%FlowRateFix\\";				// Location of input files. Brennan. 
-	string outPath = "Z:\\humidity_bdless\\out_RHfix\\50%FlowRateFix\\";				// Location to write output files. Brennan.
-	
-	string batchFile_name = inPath + "bat_50cfis_AllCases_b.txt";	// Name of batch input file (assumed to be in the same folder as the input files). Brennan. Originally .csv file. 
-	
-	string weatherPath = "C:\\RC++\\weather\\IECC\\";			// Location of IECC weather files (DOE, All of US). \\ "adjusted\\" contains files w/median values appended
-	//string weatherPath = "C:\\RC++\\weather\\CEC\\";			// Location of CEC weather files (California)
-	
-	string shelterFile_name = "C:\\RC++\\shelter\\bshelter.dat";	// Location of shelter file
-
-	// Set to a, b or c to avoid potential conflicts while running more than one simulation
-	// at the same time using a common dynamic fan schedule input file
-	string SCHEDNUM = "a";
-	string fanSchedulefile_name1 = "C:\\RC++\\schedules\\sched1" + SCHEDNUM;
-	string fanSchedulefile_name2 = "C:\\RC++\\schedules\\sched2" + SCHEDNUM;
-	string fanSchedulefile_name3 = "C:\\RC++\\schedules\\sched3" + SCHEDNUM;
-#elif __APPLE__
-	// [Unix File Paths] Paths for input and output file locations
-	string inPath = "in/";				            // Location of input files.
-	string outPath = "out/";				         // Location to write output files.
-	string weatherPath = "weather/IECC/";			// Location of IECC weather files (DOE, All of US). "adjusted" contains files w/median values appended
-	//string weatherPath = "weather/CEC/";			// Location of CEC weather files (California)
-	
-	string batchFile_name = inPath + "input_bat_mac.csv";	// Name of batch input file (assumed to be in the same folder as the input files). 
-	string shelterFile_name = "shelter/bshelter.dat";	   // Location of shelter file
-
-	// Set to a, b or c to avoid potential conflicts while running more than one simulation
-	// at the same time using a common dynamic fan schedule input file
-	string SCHEDNUM = "a";
-	string fanSchedulefile_name1 = "schedules/sched1" + SCHEDNUM;
-	string fanSchedulefile_name2 = "schedules/sched2" + SCHEDNUM;
-	string fanSchedulefile_name3 = "schedules/sched3" + SCHEDNUM;
-#endif
-	
-	// total days to run the simulation for:
-	int totaldays = 365;
-
+	// [start] Reading Batch File ============================================================================================
 	char reading[255];
 	int numSims;			// Number of simulations to run in the batch
 	string simFile[255], climateZone[255], outName[255];
 
-	cout << "\nRC++ [begin]" << endl << endl;
-
-	// [start] Reading Batch File ============================================================================================
 	ifstream batchFile(batchFile_name); 
 	if(!batchFile) { 
 		cout << "Cannot open: " << batchFile_name << endl;
@@ -114,20 +79,57 @@ int main(int argc, char *argv[])
 
 	batchFile.getline(reading, 255);
 	numSims = atoi(reading);
+	batchFile.getline(reading, 255);
+	string configFileName = reading;
 
-	cout << "Batch file info:" << endl;
 	for(int i=0; i < numSims; i++) {
 		getline(batchFile, simFile[i]);
 		getline(batchFile, climateZone[i]);
 		getline(batchFile, outName[i]);
-
-		cout << "simFile[" << i << "]: " << simFile[i] << endl;
-		cout << "climateZone[" << i << "]: " << climateZone[i] << endl;
-		cout << "outName[" << i << "]: " << outName[i] << endl << endl;		
 	}
 
 	batchFile.close();
 	// [END] Reading Batch File ============================================================================================
+
+	// read in config file
+	Config config(configFileName, envp);
+	
+	// File paths
+	string inPath = config.pString("inPath");
+	string outPath = config.pString("outPath");
+	string weatherPath = config.pString("weatherPath");
+	string shelterFile_name = config.pString("shelterFile_name");
+	
+	// output file control
+	bool printMoistureFile = config.pBool("printMoistureFile");
+	bool printFilterFile = config.pBool("printFilterFile");
+	bool printOutputFile = config.pBool("printOutputFile");
+
+#ifdef _WIN32
+	// [DOS File Paths] Paths for input and output file locations
+	// Set to a, b or c to avoid potential conflicts while running more than one simulation
+	// at the same time using a common dynamic fan schedule input file
+	string SCHEDNUM = "a";
+	string fanSchedulefile_name1 = "C:\\RC++\\schedules\\sched1" + SCHEDNUM;
+	string fanSchedulefile_name2 = "C:\\RC++\\schedules\\sched2" + SCHEDNUM;
+	string fanSchedulefile_name3 = "C:\\RC++\\schedules\\sched3" + SCHEDNUM;
+#elif __APPLE__
+	// [Unix File Paths] Paths for input and output file locations
+	// Set to a, b or c to avoid potential conflicts while running more than one simulation
+	// at the same time using a common dynamic fan schedule input file
+	string SCHEDNUM = "a";
+	string fanSchedulefile_name1 = "schedules/sched1" + SCHEDNUM;
+	string fanSchedulefile_name2 = "schedules/sched2" + SCHEDNUM;
+	string fanSchedulefile_name3 = "schedules/sched3" + SCHEDNUM;
+#endif
+
+	// Simulation Batch Timing
+	time_t startTime, endTime;
+	time(&startTime);
+	string runStartTime = ctime(&startTime);
+	
+	// total days to run the simulation for:
+	int totaldays = 365;
 
 	for(int sim=0; sim < numSims; sim++) {		
 
