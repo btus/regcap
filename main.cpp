@@ -69,7 +69,7 @@ int main(int argc, char *argv[], char* envp[])
 	// Open batch File ============================================================================================
 	ifstream batchFile(batchFileName); 
 	if(!batchFile) { 
-		cout << "Cannot open: " << batchFileName << endl;
+		cout << "Cannot open batch file: " << batchFileName << endl;
 		return 1; 
 	} 
 
@@ -153,6 +153,7 @@ int main(int argc, char *argv[], char* envp[])
 		// Input file variables
 		string weather_file;
 		string fanScheduleFileName;
+		string tstatFileName;
 		double C;
 		double n;		// Envelope Pressure Exponent
 		double h;		// Eaves Height [m]
@@ -277,328 +278,12 @@ int main(int argc, char *argv[], char* envp[])
 
 		double hret = 28;				// Initial number for hret in Btu/lb
 
-		// [START] Thermostat settings (RIVEC 2012) ========================================================================================
-
-		// Heating. Building America Simulation Protocols
-		heatThermostat[0] = 273.15 + (71 - 32) * 5.0 / 9.0;
-		heatThermostat[1] = 273.15 + (71 - 32) * 5.0 / 9.0;
-		heatThermostat[2] = 273.15 + (71 - 32) * 5.0 / 9.0;
-		heatThermostat[3] = 273.15 + (71 - 32) * 5.0 / 9.0;
-		heatThermostat[4] = 273.15 + (71 - 32) * 5.0 / 9.0;
-		heatThermostat[5] = 273.15 + (71 - 32) * 5.0 / 9.0;
-		heatThermostat[6] = 273.15 + (71 - 32) * 5.0 / 9.0;
-		heatThermostat[7] = 273.15 + (71 - 32) * 5.0 / 9.0;
-		heatThermostat[8] = 273.15 + (71 - 32) * 5.0 / 9.0;
-		heatThermostat[9] = 273.15 + (71 - 32) * 5.0 / 9.0;
-		heatThermostat[10] = 273.15 + (71 - 32) * 5.0 / 9.0;
-		heatThermostat[11] = 273.15 + (71 - 32) * 5.0 / 9.0;
-		heatThermostat[12] = 273.15 + (71 - 32) * 5.0 / 9.0;
-		heatThermostat[13] = 273.15 + (71 - 32) * 5.0 / 9.0;
-		heatThermostat[14] = 273.15 + (71 - 32) * 5.0 / 9.0;
-		heatThermostat[15] = 273.15 + (71 - 32) * 5.0 / 9.0;
-		heatThermostat[16] = 273.15 + (71 - 32) * 5.0 / 9.0;
-		heatThermostat[17] = 273.15 + (71 - 32) * 5.0 / 9.0;
-		heatThermostat[18] = 273.15 + (71 - 32) * 5.0 / 9.0;
-		heatThermostat[19] = 273.15 + (71 - 32) * 5.0 / 9.0;
-		heatThermostat[20] = 273.15 + (71 - 32) * 5.0 / 9.0;
-		heatThermostat[21] = 273.15 + (71 - 32) * 5.0 / 9.0;
-		heatThermostat[22] = 273.15 + (71 - 32) * 5.0 / 9.0;
-		heatThermostat[23] = 273.15 + (71 - 32) * 5.0 / 9.0;
-
-		// Cooling. Building America Simulation Protocols
-		coolThermostat[0] = 273.15 + (76 - 32) * 5.0 / 9.0;			// 00:00 -> 01:00
-		coolThermostat[1] = 273.15 + (76 - 32) * 5.0 / 9.0;			// 01:00 -> 02:00
-		coolThermostat[2] = 273.15 + (76 - 32) * 5.0 / 9.0;			// 02:00 -> 03:00
-		coolThermostat[3] = 273.15 + (76 - 32) * 5.0 / 9.0;			// 03:00 -> 04:00
-		coolThermostat[4] = 273.15 + (76 - 32) * 5.0 / 9.0;			// 04:00 -> 05:00
-		coolThermostat[5] = 273.15 + (76 - 32) * 5.0 / 9.0;			// 05:00 -> 06:00
-		coolThermostat[6] = 273.15 + (76 - 32) * 5.0 / 9.0;			// 06:00 -> 07:00
-		coolThermostat[7] = 273.15 + (76 - 32) * 5.0 / 9.0;			// 07:00 -> 08:00
-		coolThermostat[8] = 273.15 + (76 - 32) * 5.0 / 9.0;			// 08:00 -> 09:00	
-		coolThermostat[9] = 273.15 + (76 - 32) * 5.0 / 9.0;			// 09:00 -> 10:00
-		coolThermostat[10] = 273.15 + (76 - 32) * 5.0 / 9.0;		// 10:00 -> 11:00
-		coolThermostat[11] = 273.15 + (76 - 32) * 5.0 / 9.0;		// 11:00 -> 12:00
-		coolThermostat[12] = 273.15 + (76 - 32) * 5.0 / 9.0;		// 12:00 -> 13:00
-		coolThermostat[13] = 273.15 + (76 - 32) * 5.0 / 9.0;		// 13:00 -> 14:00
-		coolThermostat[14] = 273.15 + (76 - 32) * 5.0 / 9.0;		// 14:00 -> 15:00
-		coolThermostat[15] = 273.15 + (76 - 32) * 5.0 / 9.0;		// 15:00 -> 16:00
-		coolThermostat[16] = 273.15 + (76 - 32) * 5.0 / 9.0;		// 16:00 -> 17:00	
-		coolThermostat[17] = 273.15 + (76 - 32) * 5.0 / 9.0;		// 17:00 -> 18:00
-		coolThermostat[18] = 273.15 + (76 - 32) * 5.0 / 9.0;		// 18:00 -> 19:00
-		coolThermostat[19] = 273.15 + (76 - 32) * 5.0 / 9.0;		// 19:00 -> 20:00
-		coolThermostat[20] = 273.15 + (76 - 32) * 5.0 / 9.0;		// 20:00 -> 21:00
-		coolThermostat[21] = 273.15 + (76 - 32) * 5.0 / 9.0;		// 21:00 -> 22:00
-		coolThermostat[22] = 273.15 + (76 - 32) * 5.0 / 9.0;		// 22:00 -> 23:00
-		coolThermostat[23] = 273.15 + (76 - 32) * 5.0 / 9.0;		// 23:00 -> 24:00
-
-		//coolThermostat[0] = 273.15 + (73 - 32) * 5.0 / 9.0;			// 00:00 -> 01:00
-		//coolThermostat[1] = 273.15 + (73 - 32) * 5.0 / 9.0;			// 01:00 -> 02:00
-		//coolThermostat[2] = 273.15 + (73 - 32) * 5.0 / 9.0;			// 02:00 -> 03:00
-		//coolThermostat[3] = 273.15 + (73 - 32) * 5.0 / 9.0;			// 03:00 -> 04:00
-		//coolThermostat[4] = 273.15 + (73 - 32) * 5.0 / 9.0;			// 04:00 -> 05:00
-		//coolThermostat[5] = 273.15 + (73 - 32) * 5.0 / 9.0;			// 05:00 -> 06:00
-		//coolThermostat[6] = 273.15 + (73 - 32) * 5.0 / 9.0;			// 06:00 -> 07:00
-		//coolThermostat[7] = 273.15 + (73 - 32) * 5.0 / 9.0;			// 07:00 -> 08:00
-		//coolThermostat[8] = 273.15 + (73 - 32) * 5.0 / 9.0;			// 08:00 -> 09:00	
-		//coolThermostat[9] = 273.15 + (73 - 32) * 5.0 / 9.0;			// 09:00 -> 10:00
-		//coolThermostat[10] = 273.15 + (73 - 32) * 5.0 / 9.0;		// 10:00 -> 11:00
-		//coolThermostat[11] = 273.15 + (73 - 32) * 5.0 / 9.0;		// 11:00 -> 12:00
-		//coolThermostat[12] = 273.15 + (73 - 32) * 5.0 / 9.0;		// 12:00 -> 13:00
-		//coolThermostat[13] = 273.15 + (73 - 32) * 5.0 / 9.0;		// 13:00 -> 14:00
-		//coolThermostat[14] = 273.15 + (73 - 32) * 5.0 / 9.0;		// 14:00 -> 15:00
-		//coolThermostat[15] = 273.15 + (73 - 32) * 5.0 / 9.0;		// 15:00 -> 16:00
-		//coolThermostat[16] = 273.15 + (73 - 32) * 5.0 / 9.0;		// 16:00 -> 17:00	
-		//coolThermostat[17] = 273.15 + (73 - 32) * 5.0 / 9.0;		// 17:00 -> 18:00
-		//coolThermostat[18] = 273.15 + (73 - 32) * 5.0 / 9.0;		// 18:00 -> 19:00
-		//coolThermostat[19] = 273.15 + (73 - 32) * 5.0 / 9.0;		// 19:00 -> 20:00
-		//coolThermostat[20] = 273.15 + (73 - 32) * 5.0 / 9.0;		// 20:00 -> 21:00
-		//coolThermostat[21] = 273.15 + (73 - 32) * 5.0 / 9.0;		// 21:00 -> 22:00
-		//coolThermostat[22] = 273.15 + (73 - 32) * 5.0 / 9.0;		// 22:00 -> 23:00
-		//coolThermostat[23] = 273.15 + (73 - 32) * 5.0 / 9.0;		// 23:00 -> 24:00
-
-		//// Heating
-		//heatThermostat[0] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[1] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[2] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[3] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[4] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[5] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[6] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[7] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[8] = 273.15 + (70 - 32) * 5.0 / 9.0;
-		//heatThermostat[9] = 273.15 + (70 - 32) * 5.0 / 9.0;
-		//heatThermostat[10] = 273.15 + (70 - 32) * 5.0 / 9.0;
-		//heatThermostat[11] = 273.15 + (70 - 32) * 5.0 / 9.0;
-		//heatThermostat[12] = 273.15 + (70 - 32) * 5.0 / 9.0;
-		//heatThermostat[13] = 273.15 + (70 - 32) * 5.0 / 9.0;
-		//heatThermostat[14] = 273.15 + (70 - 32) * 5.0 / 9.0;
-		//heatThermostat[15] = 273.15 + (70 - 32) * 5.0 / 9.0;
-		//heatThermostat[16] = 273.15 + (70 - 32) * 5.0 / 9.0;
-		//heatThermostat[17] = 273.15 + (70 - 32) * 5.0 / 9.0;
-		//heatThermostat[18] = 273.15 + (70 - 32) * 5.0 / 9.0;
-		//heatThermostat[19] = 273.15 + (70 - 32) * 5.0 / 9.0;
-		//heatThermostat[20] = 273.15 + (70 - 32) * 5.0 / 9.0;
-		//heatThermostat[21] = 273.15 + (70 - 32) * 5.0 / 9.0;
-		//heatThermostat[22] = 273.15 + (70 - 32) * 5.0 / 9.0;
-		//heatThermostat[23] = 273.15 + (70 - 32) * 5.0 / 9.0;
-
-		//// Cooling
-		//coolThermostat[0] = 273.15 + (74 - 32) * 5.0 / 9.0;			// 00:00 -> 01:00
-		//coolThermostat[1] = 273.15 + (74 - 32) * 5.0 / 9.0;			// 01:00 -> 02:00
-		//coolThermostat[2] = 273.15 + (74 - 32) * 5.0 / 9.0;			// 02:00 -> 03:00
-		//coolThermostat[3] = 273.15 + (74 - 32) * 5.0 / 9.0;			// 03:00 -> 04:00
-		//coolThermostat[4] = 273.15 + (74 - 32) * 5.0 / 9.0;			// 04:00 -> 05:00
-		//coolThermostat[5] = 273.15 + (74 - 32) * 5.0 / 9.0;			// 05:00 -> 06:00
-		//coolThermostat[6] = 273.15 + (74 - 32) * 5.0 / 9.0;			// 06:00 -> 07:00
-		//coolThermostat[7] = 273.15 + (74 - 32) * 5.0 / 9.0;			// 07:00 -> 08:00
-		//coolThermostat[8] = 273.15 + (80 - 32) * 5.0 / 9.0;			// 08:00 -> 09:00	// 80 normal
-		//coolThermostat[9] = 273.15 + (80 - 32) * 5.0 / 9.0;			// 09:00 -> 10:00
-		//coolThermostat[10] = 273.15 + (80 - 32) * 5.0 / 9.0;		// 10:00 -> 11:00
-		//coolThermostat[11] = 273.15 + (80 - 32) * 5.0 / 9.0;		// 11:00 -> 12:00
-		//coolThermostat[12] = 273.15 + (80 - 32) * 5.0 / 9.0;		// 12:00 -> 13:00
-		//coolThermostat[13] = 273.15 + (80 - 32) * 5.0 / 9.0;		// 13:00 -> 14:00
-		//coolThermostat[14] = 273.15 + (80 - 32) * 5.0 / 9.0;		// 14:00 -> 15:00
-		//coolThermostat[15] = 273.15 + (80 - 32) * 5.0 / 9.0;		// 15:00 -> 16:00
-		//coolThermostat[16] = 273.15 + (80 - 32) * 5.0 / 9.0;		// 16:00 -> 17:00	// 74 in pre-cooling 80 normally
-		//coolThermostat[17] = 273.15 + (74 - 32) * 5.0 / 9.0;		// 17:00 -> 18:00
-		//coolThermostat[18] = 273.15 + (74 - 32) * 5.0 / 9.0;		// 18:00 -> 19:00
-		//coolThermostat[19] = 273.15 + (74 - 32) * 5.0 / 9.0;		// 19:00 -> 20:00
-		//coolThermostat[20] = 273.15 + (74 - 32) * 5.0 / 9.0;		// 20:00 -> 21:00
-		//coolThermostat[21] = 273.15 + (74 - 32) * 5.0 / 9.0;		// 21:00 -> 22:00
-		//coolThermostat[22] = 273.15 + (74 - 32) * 5.0 / 9.0;		// 22:00 -> 23:00
-		//coolThermostat[23] = 273.15 + (74 - 32) * 5.0 / 9.0;		// 23:00 -> 24:00
-
-		// Heating - HOME ENERGY SAVER 2013 http://www.hes.lbl.gov/consumer/faqs#h8
-		//heatThermostat[0] = 273.15 + (60 - 32) * 5.0 / 9.0;
-		//heatThermostat[1] = 273.15 + (60 - 32) * 5.0 / 9.0;
-		//heatThermostat[2] = 273.15 + (60 - 32) * 5.0 / 9.0;
-		//heatThermostat[3] = 273.15 + (60 - 32) * 5.0 / 9.0;
-		//heatThermostat[4] = 273.15 + (60 - 32) * 5.0 / 9.0;
-		//heatThermostat[5] = 273.15 + (60 - 32) * 5.0 / 9.0;
-		//heatThermostat[6] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[7] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[8] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[9] = 273.15 + (60 - 32) * 5.0 / 9.0;
-		//heatThermostat[10] = 273.15 + (60 - 32) * 5.0 / 9.0;
-		//heatThermostat[11] = 273.15 + (60 - 32) * 5.0 / 9.0;
-		//heatThermostat[12] = 273.15 + (60 - 32) * 5.0 / 9.0;
-		//heatThermostat[13] = 273.15 + (60 - 32) * 5.0 / 9.0;
-		//heatThermostat[14] = 273.15 + (60 - 32) * 5.0 / 9.0;
-		//heatThermostat[15] = 273.15 + (60 - 32) * 5.0 / 9.0;
-		//heatThermostat[16] = 273.15 + (60 - 32) * 5.0 / 9.0;
-		//heatThermostat[17] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[18] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[19] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[20] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[21] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[22] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[23] = 273.15 + (60 - 32) * 5.0 / 9.0;
-
-		////// Cooling - HOME ENERGY SAVER 2013 http://www.hes.lbl.gov/consumer/faqs#h8
-		//coolThermostat[0] = 273.15 + (78 - 32) * 5.0 / 9.0;			// 00:00 -> 01:00
-		//coolThermostat[1] = 273.15 + (78 - 32) * 5.0 / 9.0;			// 01:00 -> 02:00
-		//coolThermostat[2] = 273.15 + (78 - 32) * 5.0 / 9.0;			// 02:00 -> 03:00
-		//coolThermostat[3] = 273.15 + (78 - 32) * 5.0 / 9.0;			// 03:00 -> 04:00
-		//coolThermostat[4] = 273.15 + (78 - 32) * 5.0 / 9.0;			// 04:00 -> 05:00
-		//coolThermostat[5] = 273.15 + (78 - 32) * 5.0 / 9.0;			// 05:00 -> 06:00
-		//coolThermostat[6] = 273.15 + (75 - 32) * 5.0 / 9.0;			// 06:00 -> 07:00
-		//coolThermostat[7] = 273.15 + (75 - 32) * 5.0 / 9.0;			// 07:00 -> 08:00
-		//coolThermostat[8] = 273.15 + (75 - 32) * 5.0 / 9.0;			// 08:00 -> 09:00
-		//coolThermostat[9] = 273.15 + (80 - 32) * 5.0 / 9.0;			// 09:00 -> 10:00
-		//coolThermostat[10] = 273.15 + (80 - 32) * 5.0 / 9.0;		// 10:00 -> 11:00
-		//coolThermostat[11] = 273.15 + (80 - 32) * 5.0 / 9.0;		// 11:00 -> 12:00
-		//coolThermostat[12] = 273.15 + (80 - 32) * 5.0 / 9.0;		// 12:00 -> 13:00
-		//coolThermostat[13] = 273.15 + (80 - 32) * 5.0 / 9.0;		// 13:00 -> 14:00
-		//coolThermostat[14] = 273.15 + (80 - 32) * 5.0 / 9.0;		// 14:00 -> 15:00
-		//coolThermostat[15] = 273.15 + (80 - 32) * 5.0 / 9.0;		// 15:00 -> 16:00
-		//coolThermostat[16] = 273.15 + (80 - 32) * 5.0 / 9.0;		// 16:00 -> 17:00
-		//coolThermostat[17] = 273.15 + (75 - 32) * 5.0 / 9.0;		// 17:00 -> 18:00
-		//coolThermostat[18] = 273.15 + (75 - 32) * 5.0 / 9.0;		// 18:00 -> 19:00
-		//coolThermostat[19] = 273.15 + (75 - 32) * 5.0 / 9.0;		// 19:00 -> 20:00
-		//coolThermostat[20] = 273.15 + (75 - 32) * 5.0 / 9.0;		// 20:00 -> 21:00
-		//coolThermostat[21] = 273.15 + (75 - 32) * 5.0 / 9.0;		// 21:00 -> 22:00
-		//coolThermostat[22] = 273.15 + (75 - 32) * 5.0 / 9.0;		// 22:00 -> 23:00
-		//coolThermostat[23] = 273.15 + (78 - 32) * 5.0 / 9.0;		// 23:00 -> 24:00
-
-		// Cooling with Lower Setpoint for Humid CZs 1A and 2A
-		//coolThermostat[0] = 273.15 + (74 - 32) * 5.0 / 9.0;
-		//coolThermostat[1] = 273.15 + (74 - 32) * 5.0 / 9.0;
-		//coolThermostat[2] = 273.15 + (74 - 32) * 5.0 / 9.0;
-		//coolThermostat[3] = 273.15 + (74 - 32) * 5.0 / 9.0;
-		//coolThermostat[4] = 273.15 + (74 - 32) * 5.0 / 9.0;
-		//coolThermostat[5] = 273.15 + (74 - 32) * 5.0 / 9.0;
-		//coolThermostat[6] = 273.15 + (74 - 32) * 5.0 / 9.0;
-		//coolThermostat[7] = 273.15 + (74 - 32) * 5.0 / 9.0;
-		//coolThermostat[8] = 273.15 + (74 - 32) * 5.0 / 9.0;
-		//coolThermostat[9] = 273.15 + (74 - 32) * 5.0 / 9.0;
-		//coolThermostat[10] = 273.15 + (74 - 32) * 5.0 / 9.0;
-		//coolThermostat[11] = 273.15 + (74 - 32) * 5.0 / 9.0;
-		//coolThermostat[12] = 273.15 + (74 - 32) * 5.0 / 9.0;
-		//coolThermostat[13] = 273.15 + (74 - 32) * 5.0 / 9.0;
-		//coolThermostat[14] = 273.15 + (74 - 32) * 5.0 / 9.0;
-		//coolThermostat[15] = 273.15 + (74 - 32) * 5.0 / 9.0;
-		//coolThermostat[16] = 273.15 + (74 - 32) * 5.0 / 9.0;
-		//coolThermostat[17] = 273.15 + (74 - 32) * 5.0 / 9.0;
-		//coolThermostat[18] = 273.15 + (74 - 32) * 5.0 / 9.0;
-		//coolThermostat[19] = 273.15 + (74 - 32) * 5.0 / 9.0;
-		//coolThermostat[20] = 273.15 + (74 - 32) * 5.0 / 9.0;
-		//coolThermostat[21] = 273.15 + (74 - 32) * 5.0 / 9.0;
-		//coolThermostat[22] = 273.15 + (74 - 32) * 5.0 / 9.0;
-		//coolThermostat[23] = 273.15 + (74 - 32) * 5.0 / 9.0;
-
-		// Thermostat settings (RESAVE 2012 and T24, ACM 2008)
-		// Heating
-		//heatThermostat[0] = 273.15 + (65 - 32) * 5.0 / 9.0;
-		//heatThermostat[1] = 273.15 + (65 - 32) * 5.0 / 9.0;
-		//heatThermostat[2] = 273.15 + (65 - 32) * 5.0 / 9.0;
-		//heatThermostat[3] = 273.15 + (65 - 32) * 5.0 / 9.0;
-		//heatThermostat[4] = 273.15 + (65 - 32) * 5.0 / 9.0;
-		//heatThermostat[5] = 273.15 + (65 - 32) * 5.0 / 9.0;
-		//heatThermostat[6] = 273.15 + (65 - 32) * 5.0 / 9.0;
-		//heatThermostat[7] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[8] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[9] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[10] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[11] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[12] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[13] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[14] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[15] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[16] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[17] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[18] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[19] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[20] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[21] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[22] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[23] = 273.15 + (65 - 32) * 5.0 / 9.0;
-
-		//// Cooling
-		//coolThermostat[0] = 273.15 + (78 - 32) * 5.0 / 9.0;
-		//coolThermostat[1] = 273.15 + (78 - 32) * 5.0 / 9.0;
-		//coolThermostat[2] = 273.15 + (78 - 32) * 5.0 / 9.0;
-		//coolThermostat[3] = 273.15 + (78 - 32) * 5.0 / 9.0;
-		//coolThermostat[4] = 273.15 + (78 - 32) * 5.0 / 9.0;
-		//coolThermostat[5] = 273.15 + (78 - 32) * 5.0 / 9.0;
-		//coolThermostat[6] = 273.15 + (78 - 32) * 5.0 / 9.0;
-		//coolThermostat[7] = 273.15 + (83 - 32) * 5.0 / 9.0;
-		//coolThermostat[8] = 273.15 + (83 - 32) * 5.0 / 9.0;
-		//coolThermostat[9] = 273.15 + (83 - 32) * 5.0 / 9.0;
-		//coolThermostat[10] = 273.15 + (83 - 32) * 5.0 / 9.0;
-		//coolThermostat[11] = 273.15 + (83 - 32) * 5.0 / 9.0;
-		//coolThermostat[12] = 273.15 + (83 - 32) * 5.0 / 9.0;
-		//coolThermostat[13] = 273.15 + (82 - 32) * 5.0 / 9.0;
-		//coolThermostat[14] = 273.15 + (81 - 32) * 5.0 / 9.0;
-		//coolThermostat[15] = 273.15 + (80 - 32) * 5.0 / 9.0;
-		//coolThermostat[16] = 273.15 + (79 - 32) * 5.0 / 9.0;
-		//coolThermostat[17] = 273.15 + (78 - 32) * 5.0 / 9.0;
-		//coolThermostat[18] = 273.15 + (78 - 32) * 5.0 / 9.0;
-		//coolThermostat[19] = 273.15 + (78 - 32) * 5.0 / 9.0;
-		//coolThermostat[20] = 273.15 + (78 - 32) * 5.0 / 9.0;
-		//coolThermostat[21] = 273.15 + (78 - 32) * 5.0 / 9.0;
-		//coolThermostat[22] = 273.15 + (78 - 32) * 5.0 / 9.0;
-		//coolThermostat[23] = 273.15 + (78 - 32) * 5.0 / 9.0;
-
-		// Thermostat settings (RESAVE 2012 and T24, ACM 2008) PRECOOLING
-		//// Heating
-		//heatThermostat[0] = 273.15 + (65 - 32) * 5.0 / 9.0;
-		//heatThermostat[1] = 273.15 + (65 - 32) * 5.0 / 9.0;
-		//heatThermostat[2] = 273.15 + (65 - 32) * 5.0 / 9.0;
-		//heatThermostat[3] = 273.15 + (65 - 32) * 5.0 / 9.0;
-		//heatThermostat[4] = 273.15 + (65 - 32) * 5.0 / 9.0;
-		//heatThermostat[5] = 273.15 + (65 - 32) * 5.0 / 9.0;
-		//heatThermostat[6] = 273.15 + (65 - 32) * 5.0 / 9.0;
-		//heatThermostat[7] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[8] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[9] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[10] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[11] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[12] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[13] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[14] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[15] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[16] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[17] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[18] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[19] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[20] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[21] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[22] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[23] = 273.15 + (65 - 32) * 5.0 / 9.0;
-
-		//// Cooling
-		//coolThermostat[0] = 273.15 + (78 - 32) * 5.0 / 9.0;
-		//coolThermostat[1] = 273.15 + (78 - 32) * 5.0 / 9.0;
-		//coolThermostat[2] = 273.15 + (78 - 32) * 5.0 / 9.0;
-		//coolThermostat[3] = 273.15 + (78 - 32) * 5.0 / 9.0;
-		//coolThermostat[4] = 273.15 + (78 - 32) * 5.0 / 9.0;
-		//coolThermostat[5] = 273.15 + (78 - 32) * 5.0 / 9.0;
-		//coolThermostat[6] = 273.15 + (78 - 32) * 5.0 / 9.0;
-		//coolThermostat[7] = 273.15 + (83 - 32) * 5.0 / 9.0;
-		//coolThermostat[8] = 273.15 + (83 - 32) * 5.0 / 9.0;
-		//coolThermostat[9] = 273.15 + (83 - 32) * 5.0 / 9.0;
-		//coolThermostat[10] = 273.15 + (83 - 32) * 5.0 / 9.0;
-		//coolThermostat[11] = 273.15 + (83 - 32) * 5.0 / 9.0;
-		//coolThermostat[12] = 273.15 + (83 - 32) * 5.0 / 9.0;
-		//coolThermostat[13] = 273.15 + (75 - 32) * 5.0 / 9.0;
-		//coolThermostat[14] = 273.15 + (75 - 32) * 5.0 / 9.0;
-		//coolThermostat[15] = 273.15 + (75 - 32) * 5.0 / 9.0;
-		//coolThermostat[16] = 273.15 + (79 - 32) * 5.0 / 9.0;
-		//coolThermostat[17] = 273.15 + (78 - 32) * 5.0 / 9.0;
-		//coolThermostat[18] = 273.15 + (78 - 32) * 5.0 / 9.0;
-		//coolThermostat[19] = 273.15 + (78 - 32) * 5.0 / 9.0;
-		//coolThermostat[20] = 273.15 + (78 - 32) * 5.0 / 9.0;
-		//coolThermostat[21] = 273.15 + (78 - 32) * 5.0 / 9.0;
-		//coolThermostat[22] = 273.15 + (78 - 32) * 5.0 / 9.0;
-		//coolThermostat[23] = 273.15 + (78 - 32) * 5.0 / 9.0;
-		//// [END] Thermostat settings (RESAVE 2012) ========================================================================================
-
 		// Open moisture output file
 		ofstream moistureFile;
 		if(printMoistureFile) {
 			moistureFile.open(moistureFileName);
 			if(!moistureFile) { 
-				cout << "Cannot open: " << moistureFileName << endl;
+				cout << "Cannot open moisture file: " << moistureFileName << endl;
 				_pause();
 				return 1; 
 			}
@@ -611,7 +296,7 @@ int main(int argc, char *argv[], char* envp[])
 		ifstream buildingFile(inputFileName); 
 
 		if(!buildingFile) { 
-			cout << "Cannot open: " << inputFileName << endl;
+			cout << "Cannot open input file: " << inputFileName << endl;
 			_pause();
 			return 1; 
 		}
@@ -619,6 +304,7 @@ int main(int argc, char *argv[], char* envp[])
 		buildingFile >> weather_file;
 		string weatherFileName = weatherPath + weather_file + ".WS3";  // for now until we move all weather file dependent inputs to input file
 		buildingFile >> fanScheduleFileName;
+		buildingFile >> tstatFileName;
 
 		buildingFile >> C;
 		buildingFile >> n;
@@ -778,6 +464,25 @@ int main(int argc, char *argv[], char* envp[])
 
 		// [END] Read in Building Inputs ============================================================================================================================================
 
+		// Read in Thermostat Settings ==================================================================
+		ifstream tstatFile(tstatFileName); 
+		if(!tstatFile) { 
+			cout << "Cannot open thermostat file: " << tstatFileName << endl;
+			return 1; 
+		}
+		string header;
+		getline(tstatFile,header);
+		cout << header << endl;
+		for(int h = 0; h < 24; h++) {
+			double heatT;
+			double coolT;
+			tstatFile >> heatT >> coolT;
+			heatThermostat[h] = 273.15 + (heatT - 32) * 5.0 / 9.0;
+			coolThermostat[h] = 273.15 + (coolT - 32) * 5.0 / 9.0;
+			cout << heatT << coolT << endl;
+		}
+		tstatFile.close();
+return(0);
 		double lc = (R + X) * 50;		// Percentage of leakage in the ceiling
 		double lf = (R - X) * 50;		// Percentage of leakage in the floor
 		double lw = 100 - lf - lc;		// Percentage of leakage in the walls
@@ -837,7 +542,7 @@ int main(int argc, char *argv[], char* envp[])
 		if(printFilterFile) {
 			filterFile.open(filterFileName);
 			if(!filterFile) { 
-				cout << "Cannot open: " << filterFileName << endl;
+				cout << "Cannot open filter file: " << filterFileName << endl;
 				_pause();
 				return 1; 
 			}
@@ -903,7 +608,7 @@ int main(int argc, char *argv[], char* envp[])
 
 		ifstream shelterFile(shelterFile_name); 
 		if(!shelterFile) { 
-			cout << "Cannot open: " << shelterFile_name << endl;
+			cout << "Cannot open shelter file: " << shelterFile_name << endl;
 			_pause();
 			return 1; 
 		}
@@ -974,7 +679,7 @@ int main(int argc, char *argv[], char* envp[])
 		if(printOutputFile) {
 			ofstream outputFile(outputFileName); 
 			if(!outputFile) { 
-				cout << "Cannot open: " << outputFileName << endl;
+				cout << "Cannot open output file: " << outputFileName << endl;
 				_pause();
 				return 1; 
 			}
@@ -991,7 +696,7 @@ int main(int argc, char *argv[], char* envp[])
 		// ================== OPEN WEATHER FILE FOR INPUT ========================================
 		ifstream weatherFile(weatherFileName);
 		if(!weatherFile) { 
-			cout << "Cannot open: " << weatherFileName << endl;
+			cout << "Cannot open weather file: " << weatherFileName << endl;
 			_pause();
 			return 1; 
 		}
@@ -1157,7 +862,7 @@ int main(int argc, char *argv[], char* envp[])
 		ifstream fanScheduleFile;
 		fanScheduleFile.open(fanScheduleFileName); 
 		if(!fanScheduleFile) { 
-			cout << "Cannot open: " << fanScheduleFileName << endl;
+			cout << "Cannot open fan schedule: " << fanScheduleFileName << endl;
 			_pause();
 			return 1; 		
 		}
@@ -4729,7 +4434,7 @@ int main(int argc, char *argv[], char* envp[])
 		// Write summary output file (RC2 file)
 		ofstream ou2File(summaryFileName); 
 		if(!ou2File) { 
-			cout << "Cannot open: " << summaryFileName << endl;
+			cout << "Cannot open summary file: " << summaryFileName << endl;
 			_pause();
 			return 1; 
 		}
