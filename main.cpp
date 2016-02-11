@@ -1643,8 +1643,11 @@ int main(int argc, char *argv[])
 
 			// Print out simulation day to screen
 			if(minute_day == 0) {
-				//system("CLS");
+#ifdef _WIN32
+				system("CLS");
+#elif __APPLE__
 				system("clear");
+#endif
 				cout << "REGCAP++ Building Simulation Tool LBNL" << endl << endl;
 				cout << "Batch File: \t " << batchFile_name << endl;
 				cout << "Input File: \t " << inPath + input_file << ".csv" << endl;
