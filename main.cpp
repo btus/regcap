@@ -149,11 +149,13 @@ int main(int argc, char *argv[], char* envp[])
 		double HR[5];		
 		double heatThermostat[24];
 		double coolThermostat[24];
+		int occupied[2][24];	    // Used for setting which hours of the weekday/weekend the house is occupied (1) or vacant (0)
 
 		// Input file variables
 		string weather_file;
 		string fanScheduleFileName;
 		string tstatFileName;
+		string occupancyFileName;
 		double C;
 		double n;		// Envelope Pressure Exponent
 		double h;		// Eaves Height [m]
@@ -305,6 +307,7 @@ int main(int argc, char *argv[], char* envp[])
 		string weatherFileName = weatherPath + weather_file + ".WS3";  // for now until we move all weather file dependent inputs to input file
 		buildingFile >> fanScheduleFileName;
 		buildingFile >> tstatFileName;
+		buildingFile >> occupancyFileName;
 
 		buildingFile >> C;
 		buildingFile >> n;
@@ -480,6 +483,22 @@ int main(int argc, char *argv[], char* envp[])
 			coolThermostat[h] = 273.15 + (coolT - 32) * 5.0 / 9.0;
 		}
 		tstatFile.close();
+
+		// Read in Occupancy Settings ==================================================================
+		ifstream occupancyFile(occupancyFileName); 
+		if(!occupancyFile) { 
+			cout << "Cannot open occupancy file: " << occupancyFileName << endl;
+			return 1; 
+		}
+		getline(occupancyFile,header);
+		for(int h = 0; h < 24; h++) {
+			int weekday;
+			int weekend;
+			occupancyFile >> weekday >> weekend;
+			occupied[0][h] = weekday;
+			occupied[1][h] = weekend;
+		}
+		occupancyFile.close();
 
 		double lc = (R + X) * 50;		// Percentage of leakage in the ceiling
 		double lf = (R - X) * 50;		// Percentage of leakage in the floor
@@ -879,8 +898,7 @@ int main(int argc, char *argv[], char* envp[])
 		int bathThreeFan = 0;	// Dynamic schedule flag for third bathroom fan (0 or 1)
 		int HOUR;				// Hour of the day
 		//int ttime;			// replaced with the HOUR variable instead of having a separate counter just for thermostats
-		int weekendFlag;
-		int occupied[24] = {0};	// Used for setting which hours of the day the house is occupied (1) or vacant (0)
+		int dayFlag;
 		int compTime = 0;
 		int compTimeCount = 0;
 		int rivecOn = 0;		// 0 (off) or 1 (on) for RIVEC devices
@@ -1221,73 +1239,12 @@ int main(int argc, char *argv[], char* envp[])
 			//MINUTE++;
 			//MINUTE = MINUTE + dt;				// Is number of minutes into simulation - used for beginning and end of cycle fan operation
 			//ttime = int ((minute_day - 1) / 60) + 1;      // Hours into day for thermostat schedule, now using HOUR
-
-			// Day 1 of simulation is a Sunday then weekendFlag = 1 every Saturday and Sunday, equals 0 rest of the time
-			if((int (day / 7) == day / 7.) || (int ((day - 1) / 7) == (day - 1) / 7.))
-				weekendFlag = 1;
-			else
-				weekendFlag = 0;
-
-			// [START] Occupancy Schedules ====================================================================================
 			
-			// Set all occupied[n] = 1 to negate occupancy calculations of dose and exposure
-			// Weekends (Sat and Sun)
-			if(weekendFlag == 1) {
-
-				occupied[0] = 1;         //Midnight to 01:00
-				occupied[1] = 1;         //01:00 to 02:00
-				occupied[2] = 1;         //02:00 to 03:00
-				occupied[3] = 1;
-				occupied[4] = 1;
-				occupied[5] = 1;
-				occupied[6] = 1;
-				occupied[7] = 1;
-				occupied[8] = 1;
-				occupied[9] = 1;
-				occupied[10] = 1;
-				occupied[11] = 1;
-				occupied[12] = 1;        //Midday to 13:00
-				occupied[13] = 1;
-				occupied[14] = 1;
-				occupied[15] = 1;
-				occupied[16] = 1;
-				occupied[17] = 1;
-				occupied[18] = 1;
-				occupied[19] = 1;
-				occupied[20] = 1;
-				occupied[21] = 1;
-				occupied[22] = 1;
-				occupied[23] = 1;        //23:00 to Midnight
-			}
-
-			// Week days (Mon to Fri). Brennan: iain suggests changing al lthese to "1".
-			if(weekendFlag == 0) {
-				occupied[0] = 1;         //Midnight to 01:00
-				occupied[1] = 1;         //01:00 to 02:00
-				occupied[2] = 1;         //02:00 to 03:00
-				occupied[3] = 1;
-				occupied[4] = 1;
-				occupied[5] = 1;
-				occupied[6] = 1;
-				occupied[7] = 1;
-				occupied[8] = 1;		// 0, Brennan, I changed these to 1, per Iain.
-				occupied[9] = 1;
-				occupied[10] = 1;
-				occupied[11] = 1;
-				occupied[12] = 1;       //Midday to 13:00
-				occupied[13] = 1;
-				occupied[14] = 1;
-				occupied[15] = 1;		// 0, Brennan, I changed these to 1, per Iain.
-				occupied[16] = 1;
-				occupied[17] = 1;
-				occupied[18] = 1;
-				occupied[19] = 1;
-				occupied[20] = 1;
-				occupied[21] = 1;
-				occupied[22] = 1;
-				occupied[23] = 1;       //23:00 to Midnight
-			}
-			// [END] Occupancy Schedules ====================================================================================
+			// Day 1 of simulation is a Sunday then dayFlag = 1 every Saturday and Sunday, equals 0 rest of the time
+			if(day % 7 <= 1)
+				dayFlag = 1;
+			else
+				dayFlag = 0;
 
 			if(MINUTE == 1) {				// Setting initial humidity conditions
 				for(int i = 0; i < 5; i++) {
@@ -2929,7 +2886,7 @@ int main(int argc, char *argv[], char* envp[])
 						if(HumContType == 0){
 						//Rivec control of number 50 fan type, algorithm v6					     
 					
-							if(occupied[HOUR]) {				            	// Base occupied
+							if(occupied[dayFlag][HOUR]) {				            	// Base occupied
 								if(relExp >= 0.95 || relDose >= 1.0)
 									rivecOn = 1;
 
@@ -3358,7 +3315,7 @@ int main(int argc, char *argv[], char* envp[])
 					}
 
 				} else if(fan[i].oper == 19) {					// DRYER FAN
-					if(weekendFlag == 1) {						// Three hours of operation, two days per week
+					if(dayFlag == 1) {						// Three hours of operation, two days per week
 						if(HOUR > 12 && HOUR <= 15) {
 							fan[i].on = 1;
 							mechVentPower = mechVentPower + fan[i].power;
@@ -4261,7 +4218,7 @@ int main(int argc, char *argv[], char* envp[])
 			relExpReal = Aeq * turnoverReal;
 
 			// Relative Dose and Exposure for times when the house is occupied
-			if(occupied[HOUR] == 0) { //unoccupied. fixes dose at 1
+			if(occupied[dayFlag][HOUR] == 0) { //unoccupied. fixes dose at 1
 				relDose = 1 * (1 - exp(-rivecdt / 24)) + relDoseOld * exp(-rivecdt / 24);
 				relDoseReal = 1 * (1 - exp(-rivecdt / 24)) + relDoseRealOld * exp(-rivecdt / 24);
 			} else { //occupied. dose calculated by based on turnover.
@@ -4269,13 +4226,13 @@ int main(int argc, char *argv[], char* envp[])
 				relDoseReal = relExpReal * (1 - exp(-rivecdt / 24)) + relDoseRealOld * exp(-rivecdt / 24);
 			}
 			
-			occupiedDose = relDose * occupied[HOUR];				// dose and exposure for when the building is occupied
-			occupiedExp = relExp * occupied[HOUR];					//If house is always occupied, then relExp = occupiedExp
+			occupiedDose = relDose * occupied[dayFlag][HOUR];				// dose and exposure for when the building is occupied
+			occupiedExp = relExp * occupied[dayFlag][HOUR];					//If house is always occupied, then relExp = occupiedExp
 			
-			occupiedDoseReal = relDoseReal * occupied[HOUR];		// dose and exposure for when the building is occupied
-			occupiedExpReal = relExpReal * occupied[HOUR];			//If house is always occupied, then relExpReal = occupiedExpReal
+			occupiedDoseReal = relDoseReal * occupied[dayFlag][HOUR];		// dose and exposure for when the building is occupied
+			occupiedExpReal = relExpReal * occupied[dayFlag][HOUR];			//If house is always occupied, then relExpReal = occupiedExpReal
 
-			if(occupied[HOUR] == 1) {
+			if(occupied[dayFlag][HOUR] == 1) {
 				occupiedMinCount = occupiedMinCount + 1;			// counts number of minutes while house is occupied
 			}
 
@@ -4339,7 +4296,7 @@ int main(int argc, char *argv[], char* envp[])
 				outputFile << Pint << "\t"<< qHouse << "\t" << houseACH << "\t" << flueACH << "\t" << ventSum << "\t" << nonRivecVentSum << "\t";
 				outputFile << fan[0].on << "\t" << fan[1].on << "\t" << fan[2].on << "\t" << fan[3].on << "\t" << fan[4].on << "\t" << fan[5].on << "\t" << fan[6].on << "\t" ;
 				outputFile << rivecOn << "\t" << turnover << "\t" << relExp << "\t" << relDose << "\t" << occupiedExpReal << "\t" << occupiedDoseReal << "\t";
-				outputFile << occupied[HOUR] << "\t" << occupiedExp << "\t" << occupiedDose << "\t" << DAventLoad << "\t" << MAventLoad << "\t" << HROUT << "\t" << HR[3] << "\t" << RHhouse << "\t" << RHind60 << "\t" << RHind70 << endl; //<< "\t" << mIN << "\t" << mOUT << "\t" ; //Brennan. Added DAventLoad and MAventLoad and humidity values.
+				outputFile << occupied[dayFlag][HOUR] << "\t" << occupiedExp << "\t" << occupiedDose << "\t" << DAventLoad << "\t" << MAventLoad << "\t" << HROUT << "\t" << HR[3] << "\t" << RHhouse << "\t" << RHind60 << "\t" << RHind70 << endl; //<< "\t" << mIN << "\t" << mOUT << "\t" ; //Brennan. Added DAventLoad and MAventLoad and humidity values.
 				//outputFile << mCeiling << "\t" << mHouseIN << "\t" << mHouseOUT << "\t" << mSupReg << "\t" << mRetReg << "\t" << mSupAHoff << "\t" ;
 				//outputFile << mRetAHoff << "\t" << mHouse << "\t"<< flag << "\t"<< AIM2 << "\t" << AEQaim2FlowDiff << "\t" << qFanFlowRatio << "\t" << C << endl; //Breann/Yihuan added these for troubleshooting
 			}
