@@ -472,17 +472,15 @@ int main(int argc, char *argv[], char* envp[])
 		}
 		string header;
 		getline(tstatFile,header);
-		cout << header << endl;
 		for(int h = 0; h < 24; h++) {
 			double heatT;
 			double coolT;
 			tstatFile >> heatT >> coolT;
 			heatThermostat[h] = 273.15 + (heatT - 32) * 5.0 / 9.0;
 			coolThermostat[h] = 273.15 + (coolT - 32) * 5.0 / 9.0;
-			cout << heatT << coolT << endl;
 		}
 		tstatFile.close();
-return(0);
+
 		double lc = (R + X) * 50;		// Percentage of leakage in the ceiling
 		double lf = (R - X) * 50;		// Percentage of leakage in the floor
 		double lw = 100 - lf - lc;		// Percentage of leakage in the walls
