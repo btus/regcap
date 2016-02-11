@@ -1,2 +1,2 @@
 regcap.cfg
-sim_4
+sim_1

@@ -52,43 +52,6 @@ void _pause() {
 #endif
    }
 
-/* safeGetline() reads in a line from a text file regardless of line ending
-   Handles Unix(LF), Windows(CRLF), and old Mac (CR)
-   From: http://stackoverflow.com/questions/6089231/getting-std-ifstream-to-handle-lf-cr-and-crlf
-   The characters in the stream are read one-by-one using a std::streambuf.
-   That is faster than reading them one-by-one using the std::istream.
-   Code that uses streambuf this way must be guarded by a sentry object.
-   The sentry object performs various tasks,
-   such as thread synchronization and updating the stream state.
-*/
-std::istream& safeGetline(std::istream& is, std::string& t)
-{
-    t.clear();
-
-
-    std::istream::sentry se(is, true);
-    std::streambuf* sb = is.rdbuf();
-
-    for(;;) {
-        int c = sb->sbumpc();
-        switch (c) {
-        case '\n':
-            return is;
-        case '\r':
-            if(sb->sgetc() == '\n')
-                sb->sbumpc();
-            return is;
-        case EOF:
-            // Also handle the case when the last line has no line ending
-            if(t.empty())
-                is.setstate(std::ios::eofbit);
-            return is;
-        default:
-            t += (char)c;
-        }
-    }
-}
-
 // Main function
 int main(int argc, char *argv[], char* envp[])
 { 	
@@ -109,9 +72,9 @@ int main(int argc, char *argv[], char* envp[])
 		cout << "Cannot open: " << batchFileName << endl;
 		return 1; 
 	} 
-	batchFile >> configFileName;
 
 	// read in config file
+	batchFile >> configFileName;
 	Config config(configFileName, envp);
 	
 	// File paths
@@ -172,8 +135,6 @@ int main(int argc, char *argv[], char* envp[])
 		flue_struct flue[6] = {0};
 
 		//Declare arrays
-		char reading[255];
-		string weather_file;
 		double Sw[4];
 		double floorFraction[4]; 		// Fraction of leak in floor below wall 1, 2, 3 and 4
 		double wallFraction[4]; 		// Fraction of leak in wall 1, 2, 3 and 4
@@ -189,7 +150,9 @@ int main(int argc, char *argv[], char* envp[])
 		double heatThermostat[24];
 		double coolThermostat[24];
 
-		// Input variables
+		// Input file variables
+		string weather_file;
+		string fanScheduleFileName;
 		double C;
 		double n;		// Envelope Pressure Exponent
 		double h;		// Eaves Height [m]
@@ -243,8 +206,8 @@ int main(int argc, char *argv[], char* envp[])
 		double qAH_heat0;				// Heating Air Handler air flow (m^3/s)
 		double supn;
 		double retn;
-		double supC;					//atof(reading); Supply leak flow coefficient
-		double retC;					//atof(reading); Return leak flow coefficient
+		double supC;					// Supply leak flow coefficient
+		double retC;					// Return leak flow coefficient
 		double buried;
 		double capacityraw;
 		double capacityari;
@@ -655,6 +618,7 @@ int main(int argc, char *argv[], char* envp[])
 
 		buildingFile >> weather_file;
 		string weatherFileName = weatherPath + weather_file + ".WS3";  // for now until we move all weather file dependent inputs to input file
+		buildingFile >> fanScheduleFileName;
 
 		buildingFile >> C;
 		buildingFile >> n;
@@ -889,9 +853,6 @@ int main(int argc, char *argv[], char* envp[])
 		double qAH_cfm = qAH_cool / .0004719;
 		double qAHcorr = 1.62 - .62 * qAH_cfm / (400 * capacityraw) + .647 * log(qAH_cfm / (400 * capacityraw));	
 
-		// Occupancy and dynamic schedule flags
-		int dynamicScheduleFlag = 1;	// 1 = use dynamic fan schedules, 0 = do not use dynamic fan schedules
-
 		// For RIVEC calculations
 		int peakFlag = 0;				// Peak flag (0 or 1) prevents two periods during same day
 		int rivecFlag = 0;				// Dose controlled ventilation (RIVEC) flag 0 = off, 1 = use rivec (mainly for HRV/ERV control)
@@ -908,8 +869,6 @@ int main(int argc, char *argv[], char* envp[])
 			if(fan[i].oper == 21 || fan[i].oper == 22)
 				economizerUsed = 1;		// Lets REGCAP know that an economizer is being used
 				//economizerUsed = 0;		// Force economizer to be off
-			if(fan[i].oper == 23 || fan[i].oper == 24 || fan[i].oper == 25 || fan[i].oper == 26 || fan[i].oper == 27)
-				dynamicScheduleFlag = 1;
 			if(fan[i].oper == 30 || fan[i].oper == 31 || fan[i].oper == 50 || fan[i].oper == 51) { // RIVEC fans
 				qRivec = -1 * fan[i].q	* 1000;
 				rivecFlag = 1;
@@ -1164,11 +1123,6 @@ int main(int argc, char *argv[], char* envp[])
 		double totalOccupiedDose = 0;				//Cumulative sum for OccupiedDose
 		double meanOccupiedDose = 0;				// Mean occupied relative dose over the year
 
-
-
-
-
-
 		double turnoverRealOld = 0;
 		double relDoseRealOld = 0;
 		
@@ -1200,28 +1154,12 @@ int main(int argc, char *argv[], char* envp[])
 		// [START] Fan Schedule Inputs =========================================================================================
 		// Read in fan schedule (lists of 1s and 0s, 1 = fan ON, 0 = fan OFF, for every minute of the year)
 		// Different schedule file depending on number of bathrooms
-		string fanSchedule = "no_fan_schedule";
-		ifstream fanschedulefile;
-
-		if(dynamicScheduleFlag == 1) {
-			switch (bathroomSchedule) {
-			case 1:
-				fanSchedule = fanSchedulefile_name1;			// Two bathroom fans, 4 occupants, using a dynamic schedule
-				break;
-			case 2:
-				fanSchedule = fanSchedulefile_name2;			// Three bathroom fans, 4 occupants, using dynamic schedules
-				break;
-			case 3:
-				fanSchedule = fanSchedulefile_name3;			// Three bathroom fans, 5 occupants, using dynamic schedules
-				break;
-			}
-
-			fanschedulefile.open(fanSchedule + ".txt"); 
-			if(!fanschedulefile) { 
-				cout << "Cannot open: " << fanSchedule + ".txt" << endl;
-				_pause();
-				return 1; 
-			}			
+		ifstream fanScheduleFile;
+		fanScheduleFile.open(fanScheduleFileName); 
+		if(!fanScheduleFile) { 
+			cout << "Cannot open: " << fanScheduleFileName << endl;
+			_pause();
+			return 1; 		
 		}
 
 
@@ -1570,19 +1508,7 @@ int main(int argc, char *argv[], char* envp[])
 
 			// Fan Schedule Inputs
 			// Assumes operation of dryer and kitchen fans, then 1 - 3 bathroom fans
-			if(dynamicScheduleFlag == 1) {
-				switch (bathroomSchedule) {
-				case 1:
-					fanschedulefile >> dryerFan >> kitchenFan >> bathOneFan >> bathTwoFan;
-					break;
-				case 2:
-					fanschedulefile >> dryerFan >> kitchenFan >> bathOneFan >> bathTwoFan >> bathThreeFan;
-					break;
-				case 3:
-					fanschedulefile >> dryerFan >> kitchenFan >> bathOneFan >> bathTwoFan >> bathThreeFan;
-					break;
-				}
-			}
+			fanScheduleFile >> dryerFan >> kitchenFan >> bathOneFan >> bathTwoFan >> bathThreeFan;
 
 			HOUR = int (minute_day / 60);	// HOUR is hours into the current day - used to control diurnal cycles for fans
 
@@ -4777,8 +4703,7 @@ int main(int argc, char *argv[], char* envp[])
 		if(printFilterFile)
 			filterFile.close();
 
-		if(dynamicScheduleFlag == 1)								// Fan Schedule
-			fanschedulefile.close();
+		fanScheduleFile.close();
 
 		double total_kWh = AH_kWh + furnace_kWh + compressor_kWh + mechVent_kWh;
 

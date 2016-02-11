@@ -17,3 +17,8 @@ Column 2 = kitchen fan (range hood)
 Column 3 = bathroom fan 1
 Column 4 = bathroom fan 2
 Column 5 = bathroom fan 3
+
+Update 2/10/16 LIR
+REGCAP now reads in one file since c++ does not have lock files for read.
+File names are now sched1.txt, sched2.txt, and sched3.txt.
+Added 5th column to sched1.txt with all 0's so that same routine can read it in.
