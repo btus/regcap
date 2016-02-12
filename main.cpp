@@ -40,17 +40,9 @@ New inputs:
 */
 
 // ============================= FUNCTIONS ==============================================================
-void _pause();
 
 // ============================= FUNCTION DEFINITIONS ==============================================================
-/* _pause function for DOS version
-   could call 'read -p ""' for linux, but do nothing for now
-*/
-void _pause() {
-#ifdef _WIN32
-   system("pause");
-#endif
-   }
+
 
 // Main function
 int main(int argc, char *argv[], char* envp[])
@@ -88,24 +80,6 @@ int main(int argc, char *argv[], char* envp[])
 	bool printFilterFile = config.pBool("printFilterFile");
 	bool printOutputFile = config.pBool("printOutputFile");
 
-#ifdef _WIN32
-	// [DOS File Paths] Paths for input and output file locations
-	// Set to a, b or c to avoid potential conflicts while running more than one simulation
-	// at the same time using a common dynamic fan schedule input file
-	string SCHEDNUM = "a";
-	string fanSchedulefile_name1 = "C:\\RC++\\schedules\\sched1" + SCHEDNUM;
-	string fanSchedulefile_name2 = "C:\\RC++\\schedules\\sched2" + SCHEDNUM;
-	string fanSchedulefile_name3 = "C:\\RC++\\schedules\\sched3" + SCHEDNUM;
-#elif __APPLE__
-	// [Unix File Paths] Paths for input and output file locations
-	// Set to a, b or c to avoid potential conflicts while running more than one simulation
-	// at the same time using a common dynamic fan schedule input file
-	string SCHEDNUM = "a";
-	string fanSchedulefile_name1 = "schedules/sched1" + SCHEDNUM;
-	string fanSchedulefile_name2 = "schedules/sched2" + SCHEDNUM;
-	string fanSchedulefile_name3 = "schedules/sched3" + SCHEDNUM;
-#endif
-
 	// Simulation Batch Timing
 	time_t startTime, endTime;
 	time(&startTime);
@@ -115,6 +89,8 @@ int main(int argc, char *argv[], char* envp[])
 	int totaldays = 365;
 	int simNum = 0;
 	string simName = "";
+
+	cout << "REGCAP++ Building Simulation Tool LBNL" << endl;
 
 	// Main loop on each input file =======================================================
 	while(batchFile >> simName)  {		
@@ -286,7 +262,6 @@ int main(int argc, char *argv[], char* envp[])
 			moistureFile.open(moistureFileName);
 			if(!moistureFile) { 
 				cout << "Cannot open moisture file: " << moistureFileName << endl;
-				_pause();
 				return 1; 
 			}
 
@@ -299,7 +274,6 @@ int main(int argc, char *argv[], char* envp[])
 
 		if(!buildingFile) { 
 			cout << "Cannot open input file: " << inputFileName << endl;
-			_pause();
 			return 1; 
 		}
 
@@ -560,7 +534,6 @@ int main(int argc, char *argv[], char* envp[])
 			filterFile.open(filterFileName);
 			if(!filterFile) { 
 				cout << "Cannot open filter file: " << filterFileName << endl;
-				_pause();
 				return 1; 
 			}
 			filterFile << "mAH_cumu\tqAH\twAH\tretLF" << endl;
@@ -626,7 +599,6 @@ int main(int argc, char *argv[], char* envp[])
 		ifstream shelterFile(shelterFile_name); 
 		if(!shelterFile) { 
 			cout << "Cannot open shelter file: " << shelterFile_name << endl;
-			_pause();
 			return 1; 
 		}
 
@@ -697,7 +669,6 @@ int main(int argc, char *argv[], char* envp[])
 			ofstream outputFile(outputFileName); 
 			if(!outputFile) { 
 				cout << "Cannot open output file: " << outputFileName << endl;
-				_pause();
 				return 1; 
 			}
 			outputFile << "Time\tMin\twindSpeed\ttempOut\ttempHouse\tsetpoint\ttempAttic\ttempSupply\ttempReturn\tAHflag\tAHpower\tHcap\tcompressPower\tCcap\tmechVentPower\tHR\tSHR\tMcoil\thousePress\tQhouse\tACH\tACHflue\tventSum\tnonRivecVentSum\tfan1\tfan2\tfan3\tfan4\tfan5\tfan6\tfan7\trivecOn\tturnover\trelExpRIVEC\trelDoseRIVEC\toccupiedExpReal\toccupiedDoseReal\toccupied\toccupiedExp\toccupiedDose\tDAventLoad\tMAventLoad\tHROUT\tHRhouse\tRH%house\tRHind60\tRHind70" << endl; 
@@ -714,7 +685,6 @@ int main(int argc, char *argv[], char* envp[])
 		ifstream weatherFile(weatherFileName);
 		if(!weatherFile) { 
 			cout << "Cannot open weather file: " << weatherFileName << endl;
-			_pause();
 			return 1; 
 		}
 
@@ -880,7 +850,6 @@ int main(int argc, char *argv[], char* envp[])
 		fanScheduleFile.open(fanScheduleFileName); 
 		if(!fanScheduleFile) { 
 			cout << "Cannot open fan schedule: " << fanScheduleFileName << endl;
-			_pause();
 			return 1; 		
 		}
 
@@ -1050,6 +1019,13 @@ int main(int argc, char *argv[], char* envp[])
 		double HiMonthDose = 1;
 		double LowMonthDose = 1;
 
+		cout << endl;
+		cout << "Simulation: " << simNum << endl;
+		cout << "Batch File:\t " << batchFileName << endl;
+		cout << "Input File:\t " << inputFileName << endl;
+		cout << "Output File:\t " << outputFileName << endl;
+		cout << "Weather File:\t " << weatherFileName << endl;
+
 		
 		// ==============================================================================================
 		// ||				 THE SIMULATION LOOP FOR MINUTE-BY-MINUTE STARTS HERE:					   ||
@@ -1151,15 +1127,8 @@ int main(int argc, char *argv[], char* envp[])
 			// Print out simulation day to screen
 			if(minute_day == 0) {
 				//system("CLS");
-				system("clear");
-				cout << "REGCAP++ Building Simulation Tool LBNL" << endl << endl;
-				cout << "Batch File: \t " << batchFileName << endl;
-				cout << "Input File: \t " << inputFileName << endl;
-				cout << "Output File: \t " << outputFileName << endl;
-				cout << "Weather File: \t " << weatherFileName << endl << endl;
-				
-				cout << "Simulation: " << simNum << endl << endl;
-				cout << "Day = " << day << endl;
+				//system("clear");
+				cout << "\rDay = " << day << flush;
 			}
 
 			////These are the average temperature for the first day of the year.
@@ -4346,14 +4315,6 @@ int main(int argc, char *argv[], char* envp[])
 
 		//[END] Main Simulation Loop ==============================================================================================================================================
 
-		//------------Simulation Start and End Times----------
-		time(&endTime);
-		string runEndTime = ctime(&endTime);
-
-		cout << "\nStart of simulations\t= " << runStartTime;
-		cout << "End of simulations\t= " << runEndTime << endl;
-		//----------------------------------------------------
-
 		// Close files
 		weatherFile.close();
 		if(printOutputFile)
@@ -4390,7 +4351,6 @@ int main(int argc, char *argv[], char* envp[])
 		ofstream ou2File(summaryFileName); 
 		if(!ou2File) { 
 			cout << "Cannot open summary file: " << summaryFileName << endl;
-			_pause();
 			return 1; 
 		}
 
@@ -4411,6 +4371,14 @@ int main(int argc, char *argv[], char* envp[])
 
 	}
 	batchFile.close();
+
+	//------------Simulation Start and End Times----------
+	time(&endTime);
+	string runEndTime = ctime(&endTime);
+
+	cout << "\nStart of simulations\t= " << runStartTime;
+	cout << "End of simulations\t= " << runEndTime << endl;
+	//----------------------------------------------------
 
 	return 0;
 }

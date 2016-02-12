@@ -59,8 +59,9 @@ int main (int argc, char** argv) {
 	} 
 	//safeGetline(batchFile,test);
 	while(batchFile >> test)
-	   cout << "Test =" << test << "= end of test" << endl;
+	   cout << "\rTest =" << test << "= end of test";
 	
-  cout << "Here is PI:";
-  cout << M_PI -3.14159 << endl;
+	cout << endl;
+	cout << "Here is PI:";
+	cout << M_PI -3.14159 << endl;
 }
