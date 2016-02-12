@@ -10,6 +10,8 @@ using namespace std;
 const double g = 9.81;			// Acceleration due to gravity (m/s^2)
 const int ArraySize = 16;
 const double airTempRef = 293.15;		// Reference room temp [K] = 20 deg C
+const double SIGMA = 5.6704E-08;			// STEFAN-BOLTZMANN CONST (W/m^2/K^4)
+const double CpAir = 1005.7;				// specific heat of air [j/kg K]
 
 string strUppercase(string stringvar);
 int sgn(double sgnvar);
@@ -191,14 +193,12 @@ void sub_heat (
 	double A[16][ArraySize];
 	double toldcur[16];
 	double woodThickness;
-	double SIGMA;
 	double c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13;
 	double pws;
 	double PW;
 	double A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16;
 	double mShingles;
 	double M2, M3, M4, M5, M6, M7, M8, M9, M10, M11, M13, M14;
-	double CpAir;
 	double cp1, cp2, cp3, cp4, cp5, cp6, cp7, cp8, cp9, cp10, cp11, cp12, cp13, cp14, cp15, cp16;
 	double kWood;
 	double kAir;
@@ -267,7 +267,6 @@ void sub_heat (
 	}
 
 	woodThickness = .015;		// thickness of sheathing material
-	SIGMA = 5.6704E-08;			// STEFAN-BOLTZMANN CONST (W/m^2/K^4)
 
 	// THE FOLLOWING ARE CONSTANTS TO DETERMINE WATER VAPOUR PRESSURE
 	c1 = -5674.5359;
@@ -361,7 +360,6 @@ void sub_heat (
 	M16 = houseVolume * airDensityIN;
 
 	// Specific heat capacities
-	CpAir = 1005.7;												// specific heat of air [j/kg K]
 	cp1 = CpAir;
 	cp2 = 1210;													// CP plywood
 	cp3 = 1260;													// CP asphalt shingles
