@@ -39,6 +39,10 @@ New inputs:
 	Addendum N weather factors (weatherFactor)
 */
 
+// ============================== CONSTANTS ===============================================
+const double airDensityRef = 1.20411;	// Reference air density at 20 deg C at sea level [kg/m3]
+const double airTempRef = 293.15;		// Reference room temp [K] = 20 deg C
+
 // ============================= FUNCTIONS ==============================================================
 
 // ============================= FUNCTION DEFINITIONS ==============================================================
@@ -85,8 +89,6 @@ int main(int argc, char *argv[], char* envp[])
 	time(&startTime);
 	string runStartTime = ctime(&startTime);
 	
-	// total days to run the simulation for:
-	int totaldays = 365;
 	int simNum = 0;
 	string simName = "";
 
@@ -248,12 +250,6 @@ int main(int argc, char *argv[], char* envp[])
 		double RHind70 = 0; //index value (0 or 1) if RHhouse > 70 
 		double RHtot70 = 0; //cumulative sum of index value (0 or 1) if RHhouse > 70
 		double RHexcAnnual70 = 0; //annual fraction of the year where RHhouse > 70
-
-		// "constants":
-		double airDensityRef = 1.20411;	// Reference air density at 20 deg C at sea level [kg/m3]
-		double airTempRef = 293.15;		// Reference room temp [K] = 20 deg C
-		double pi = 3.1415926;
-
 		double hret = 28;				// Initial number for hret in Btu/lb
 
 		// Open moisture output file
@@ -488,10 +484,10 @@ int main(int argc, char *argv[], char* envp[])
 		double suprho = 16.018 * 2;									// Supply duct density. The factor of two represents the plastic and sprical [kg/m^3]
 		double retCp = 753.624;										// Specific heat capacity of steel [j/kg/K]
 		double retrho = 16.018 * 2;									// Return duct density [kg/m^3]
-		double supArea = (supDiameter + 2 * supThickness) * pi * supLength;		// Surface area of supply ducts [m2]
-		double retArea = (retDiameter + 2 * retThickness) * pi * retLength;		// Surface area of return ducts [m2]
-		double supVolume = (pow(supDiameter, 2) * pi / 4) * supLength;			// Volume of supply ducts [m3]
-		double retVolume = (pow(retDiameter, 2) * pi / 4) * retLength;			// Volume of return ducts [m3]
+		double supArea = (supDiameter + 2 * supThickness) * M_PI * supLength;		// Surface area of supply ducts [m2]
+		double retArea = (retDiameter + 2 * retThickness) * M_PI * retLength;		// Surface area of return ducts [m2]
+		double supVolume = (pow(supDiameter, 2) * M_PI / 4) * supLength;			// Volume of supply ducts [m3]
+		double retVolume = (pow(retDiameter, 2) * M_PI / 4) * retLength;			// Volume of return ducts [m3]
 		hcapacity = hcapacity * .29307107 * 1000 * AFUE;			// Heating capacity of furnace converted from kBtu/hr to Watts and with AFUE adjustment
 		double MWha = .5 * floorArea / 186;							// MWha is the moisture transport coefficient that scales with floor area (to scale with surface area of moisture)
 					
@@ -1258,8 +1254,8 @@ int main(int argc, char *argv[], char* envp[])
 				month = 12;
 
 			int NOONMIN = 720 - minute_day;
-			double HA = pi * .25 * NOONMIN / 180;			// Hour Angle
-			double L = pi * latitude / 180;					// LATITUDE
+			double HA = M_PI * .25 * NOONMIN / 180;			// Hour Angle
+			double L = M_PI * latitude / 180;					// LATITUDE
 
 			// SOLAR DECLINATION FROM ASHRAE P.27.2, 27.9IP  BASED ON 21ST OF EACH MONTH
 			double dec;
@@ -1267,11 +1263,11 @@ int main(int argc, char *argv[], char* envp[])
 
 			switch (month) {
 			case 1:
-				dec = -20 * pi / 180;
+				dec = -20 * M_PI / 180;
 				Csol = .103;
 				break;
 			case 2:
-				dec = -10.8 * pi / 180;
+				dec = -10.8 * M_PI / 180;
 				Csol = .104;
 				break;
 			case 3:
@@ -1279,23 +1275,23 @@ int main(int argc, char *argv[], char* envp[])
 				Csol = .109;
 				break;
 			case 4:
-				dec = 11.6 * pi / 180;
+				dec = 11.6 * M_PI / 180;
 				Csol = .12;
 				break;
 			case 5:
-				dec = 20 * pi / 180;
+				dec = 20 * M_PI / 180;
 				Csol = .13;
 				break;
 			case 6:
-				dec = 23.45 * pi / 180;
+				dec = 23.45 * M_PI / 180;
 				Csol = .137;
 				break;
 			case 7:
-				dec = 20.6 * pi / 180;
+				dec = 20.6 * M_PI / 180;
 				Csol = .138;
 				break;
 			case 8:
-				dec = 12.3 * pi / 180;
+				dec = 12.3 * M_PI / 180;
 				Csol = .134;
 				break;
 			case 9:
@@ -1303,15 +1299,15 @@ int main(int argc, char *argv[], char* envp[])
 				Csol = .121;
 				break;
 			case 10:
-				dec = -10.5 * pi / 180;
+				dec = -10.5 * M_PI / 180;
 				Csol = .111;
 				break;
 			case 11:
-				dec = -19.8 * pi / 180;
+				dec = -19.8 * M_PI / 180;
 				Csol = .106;
 				break;
 			case 12:
-				dec = -23.45 * pi / 180;
+				dec = -23.45 * M_PI / 180;
 				Csol = .103;
 				break;
 			}
@@ -1328,7 +1324,7 @@ int main(int argc, char *argv[], char* envp[])
 			double diffuse = solth - hdirect;
 
 			// FOR SOUTH ROOF
-			double SIGMA = pi * roofPitch / 180;		//ROOF PITCH ANGLE
+			double SIGMA = M_PI * roofPitch / 180;		//ROOF PITCH ANGLE
 			CTHETA = CBETA * 1 * sin(SIGMA) + SBETA * cos(SIGMA);
 			double ssolrad = idirect * CTHETA + diffuse;
 
@@ -2902,8 +2898,8 @@ int main(int argc, char *argv[], char* envp[])
 				AHminutes++;			// counting number of air handler operation minutes in the hour
 
 			// the following air flows depend on if we are heating or cooling
-			supVelAH = qAH / (pow(supDiameter,2) * pi / 4);
-			retVelAH = qAH / (pow(retDiameter,2) * pi / 4);
+			supVelAH = qAH / (pow(supDiameter,2) * M_PI / 4);
+			retVelAH = qAH / (pow(retDiameter,2) * M_PI / 4);
 			qSupReg = -qAH * supLF + qAH;
 			qRetReg = qAH * retLF - qAH;
 			qRetLeak = -qAH * retLF;
@@ -2924,8 +2920,8 @@ int main(int argc, char *argv[], char* envp[])
 					mRetLeak = 0;
 					mSupLeak = 0;
 					mRetReg = 0;
-					supVel = abs(mSupAHoff) / airDensitySUP / (pow(supDiameter,2) * pi / 4);
-					retVel = abs(mRetAHoff) / airDensityRET / (pow(retDiameter,2) * pi / 4);
+					supVel = abs(mSupAHoff) / airDensitySUP / (pow(supDiameter,2) * M_PI / 4);
+					retVel = abs(mRetAHoff) / airDensityRET / (pow(retDiameter,2) * M_PI / 4);
 					AHfanPower = 0;		// Fan power consumption [W]
 					AHfanHeat = 0;		// Fan heat into air stream [W]
 					hcap = 0;			// Gas burned by furnace NOT heat output (that is hcapacity)
@@ -3079,8 +3075,8 @@ int main(int argc, char *argv[], char* envp[])
 						AHflag = 100;
 						AHminutes = AHminutes + 1;
 						qAH = qAH_cool;
-						supVelAH = qAH / (pow(supDiameter,2) * pi / 4);
-						retVelAH = qAH / (pow(retDiameter,2) * pi / 4);
+						supVelAH = qAH / (pow(supDiameter,2) * M_PI / 4);
+						retVelAH = qAH / (pow(retDiameter,2) * M_PI / 4);
 						qSupReg = -qAH * supLF + qAH;
 						qRetReg = qAH * retLF - qAH;
 						qRetLeak = -qAH * retLF;
@@ -3105,8 +3101,8 @@ int main(int argc, char *argv[], char* envp[])
 							AHflag = 100;
 							AHminutes = AHminutes + 1;
 							qAH = qAH_cool;
-							supVelAH = qAH / (pow(supDiameter,2) * pi / 4);
-							retVelAH = qAH / (pow(retDiameter,2) * pi / 4);
+							supVelAH = qAH / (pow(supDiameter,2) * M_PI / 4);
+							retVelAH = qAH / (pow(retDiameter,2) * M_PI / 4);
 							qSupReg = -qAH * supLF + qAH;
 							qRetReg = qAH * retLF - qAH;
 							qRetLeak = -qAH * retLF;
@@ -3163,8 +3159,8 @@ int main(int argc, char *argv[], char* envp[])
 							AHflag = 100;
 							AHminutes = AHminutes + 1;
 							qAH = qAH_cool;
-							supVelAH = qAH / (pow(supDiameter,2) * pi / 4);
-							retVelAH = qAH / (pow(retDiameter,2) * pi / 4);
+							supVelAH = qAH / (pow(supDiameter,2) * M_PI / 4);
+							retVelAH = qAH / (pow(retDiameter,2) * M_PI / 4);
 							qSupReg = -qAH * supLF + qAH;
 							qRetReg = qAH * retLF - qAH;
 							qRetLeak = -qAH * retLF;
@@ -3200,8 +3196,8 @@ int main(int argc, char *argv[], char* envp[])
 							AHflag = 100;
 							AHminutes = AHminutes + 1;
 							qAH = qAH_cool;
-							supVelAH = qAH / (pow(supDiameter,2) * pi / 4);
-							retVelAH = qAH / (pow(retDiameter,2) * pi / 4);
+							supVelAH = qAH / (pow(supDiameter,2) * M_PI / 4);
+							retVelAH = qAH / (pow(retDiameter,2) * M_PI / 4);
 							qSupReg = -qAH * supLF + qAH;
 							qRetReg = qAH * retLF - qAH;
 							qRetLeak = -qAH * retLF;
@@ -3994,7 +3990,7 @@ int main(int argc, char *argv[], char* envp[])
 					sub_houseLeak(AHflag, flag, windSpeed, direction, tempHouse, tempAttic, tempOut, C, n, h, R, X, numFlues,
 						flue, wallFraction, floorFraction, Sw, flueShelterFactor, numWinDoor, winDoor, numFans, fan, numPipes,
 						Pipe, mIN, mOUT, Pint, mFlue, mCeiling, mFloor, atticC, dPflue, dPceil, dPfloor, Crawl,
-						Hfloor, rowOrIsolated, soffitFraction, Patticint, wallCp, airDensityRef, airTempRef, mSupReg, mAH, mRetLeak, mSupLeak,
+						Hfloor, rowOrIsolated, soffitFraction, Patticint, wallCp, mSupReg, mAH, mRetLeak, mSupLeak,
 						mRetReg, mHouseIN, mHouseOUT, supC, supn, retC, retn, mSupAHoff, mRetAHoff, Aeq, airDensityIN, airDensityOUT, airDensityATTIC, ceilingC, houseVolume, windPressureExp, Q622);
 					//Yihuan : put the mCeilingIN on comment 
 					flag = flag + 1;
@@ -4007,7 +4003,7 @@ int main(int argc, char *argv[], char* envp[])
 					// call atticleak subroutine to calculate air flow to/from the attic
 					sub_atticLeak(flag, windSpeed, direction, tempHouse, tempOut, tempAttic, atticC, atticPressureExp, h, roofPeakHeight,
 						flueShelterFactor, Sw, numAtticVents, atticVent, soffit, mAtticIN, mAtticOUT, Patticint, mCeiling, rowOrIsolated,
-						soffitFraction, roofPitch, roofPeakOrient, numAtticFans, atticFan, airDensityRef, airTempRef, mSupReg, mRetLeak, mSupLeak, matticenvin,
+						soffitFraction, roofPitch, roofPeakOrient, numAtticFans, atticFan, mSupReg, mRetLeak, mSupLeak, matticenvin,
 						matticenvout, dtau, mSupAHoff, mRetAHoff, airDensityIN, airDensityOUT, airDensityATTIC);
 				}
 
@@ -4017,7 +4013,7 @@ int main(int argc, char *argv[], char* envp[])
 				bsize = sizeof(b)/sizeof(b[0]);
 
 				// Call heat subroutine to calculate heat exchange
-				sub_heat(tempOut, airDensityRef, airTempRef, mCeiling, AL4, windSpeed, ssolrad, nsolrad, tempOld, atticVolume, houseVolume, sc, b, ERRCODE, TSKY,
+				sub_heat(tempOut, mCeiling, AL4, windSpeed, ssolrad, nsolrad, tempOld, atticVolume, houseVolume, sc, b, ERRCODE, TSKY,
 					floorArea, roofPitch, ductLocation, mSupReg, mRetReg, mRetLeak, mSupLeak, mAH, supRval, retRval, supDiameter,
 					retDiameter, supArea, retArea, supThickness, retThickness, supVolume, retVolume, supCp, retCp, supVel, retVel, suprho,
 					retrho, pRef, HROUT, diffuse, UA, matticenvin, matticenvout, mHouseIN, mHouseOUT, planArea, mSupAHoff,
@@ -4307,11 +4303,10 @@ int main(int argc, char *argv[], char* envp[])
 			minute_day++;												// Minute count (of day so 1 to 60)
 			//timeSteps++;												// Simulation time steps
 
-			if(MINUTE > (totaldays * 1440))
+			if(MINUTE > (365 * 1440))
 				break;
 
 		} while (weatherFile);			// Run until end of weather file
-		//} while (day <= totaldays);	// Run for one calendar year
 
 		//[END] Main Simulation Loop ==============================================================================================================================================
 
