@@ -202,6 +202,12 @@ int main(int argc, char *argv[], char* envp[])
 		int numBedrooms;			// Number of bedrooms (for 62.2 target ventilation calculation)
 		int numStories;			// Number of stories in the building (for Nomalized Leakage calculation)
 		double weatherFactor;	// Weather Factor (w) (for infiltration calculation from ASHRAE 136)
+		int terrain;				// 1 = large city centres, 2 = urban and suburban, 3 = open terrain, 4 = open sea
+		int Crawl;					// Is there a crawlspace - 1=crawlspace (use first floorFraction), 0=not a crawlspace (use all floorFractions)
+		double HRV_ASE;			// Apparent Sensible Effectiveness of HRV unit
+		double ERV_SRE;			// Sensible Recovery Efficiency of ERV unit. SRE and TRE based upon averages from ERV units in HVI directory, as of 5/2015.
+		double ERV_TRE;			// Total Recovery Efficiency of ERV unit, includes humidity transfer for moisture subroutine		
+		int AeqCalcs;				// 1=62.2-2013, 2 and 3 are for 62.2-2010, 4=62.2-2013 with no infiltration credit
 		// Inputs to set filter type and loading rate
 		int filterLoadingFlag;	// Filter loading flag = 0 (OFF) or 1 (ON)
 		int MERV;					// MERV rating of filter (may currently be set to 5, 8, 11 or 16)
@@ -425,12 +431,18 @@ int main(int argc, char *argv[], char* envp[])
 		buildingFile >> numBedrooms;
 		buildingFile >> numStories;
 		buildingFile >> weatherFactor;
+		buildingFile >> terrain;
+		buildingFile >> AeqCalcs;
+		buildingFile >> Crawl;
+		buildingFile >> HRV_ASE;
+		buildingFile >> ERV_SRE;
+		buildingFile >> ERV_TRE;
+cout << terrain << AeqCalcs << Crawl << HRV_ASE << ERV_SRE << ERV_TRE << endl;
 		// =========================== Filter Inputs ============================
 		buildingFile >> filterLoadingFlag;
 		buildingFile >> MERV;
 		buildingFile >> loadingRate;
 		buildingFile >> AHMotorType;
-cout << filterLoadingFlag << MERV << loadingRate << AHMotorType << endl;
 		buildingFile >> rivecFlagInd;
 		//The variable from here down were added by Brennan as part of the Smart Ventilation Humidity Control project
 		buildingFile >> HumContType;
@@ -613,8 +625,6 @@ cout << filterLoadingFlag << MERV << loadingRate << AHMotorType << endl;
 		double windPressureExp;		// Power law exponent of the wind speed profile at the building site
 		double layerThickness;		// Atmospheric boundary layer thickness [m]
 
-		int terrain = 2;	// 1 = large city centres, 2 = urban and suburban, 3 = open terrain, 4 = open sea
-
 		switch (terrain) {
 		case 1:
 			// 1. Large city centres, at least 50% of buildings are higher than 25m
@@ -735,15 +745,10 @@ cout << filterLoadingFlag << MERV << loadingRate << AHMotorType << endl;
 		double NL = 1000 * (ELA / floorArea) * pow(numStories, .3);				// Normalized Leakage Calculation. Iain! Brennan! this does not match 62.2-2013 0.4 exponent assumption.
 		double wInfil = weatherFactor * NL;										// Infiltration credit from updated ASHRAE 136 weather factors [ACH]
 		double defaultInfil = .001 * ((floorArea / 100) * 10) * 3600 / houseVolume;	// Default infiltration credit [ACH] (ASHRAE 62.2, 4.1.3 p.4). This NO LONGER exists in 62.2-2013
-
 		double rivecX = (.05 * floorArea + 3.5 * (numBedrooms + 1)) / qRivec;
 		double rivecY = 0;
-
 		double Q622 = .001 * (.05 * floorArea + 3.5 * (numBedrooms + 1)) * (3600 / houseVolume); // ASHRAE 62.2 Mechanical Ventilation Rate [ACH]
-		
 		double Aeq = 0;		// Equivalent air change rate of house to meet 62.2 minimum for RIVEC calculations. Choose one of the following:
-
-		int AeqCalcs = 1; //Brennan. ALWAYS use option 1 (or 4 for existing home with flow deficit), to do 62.2-2013 Aeq calculation. Options 2 and 3 are for 62.2-2010.
 
 		switch (AeqCalcs) {
 			// 1. 62.2-2013 ventilation rate with no infiltration credit [ACH]. Brennan
@@ -869,7 +874,6 @@ cout << filterLoadingFlag << MERV << loadingRate << AHMotorType << endl;
 		int compTimeCount = 0;
 		int rivecOn = 0;		// 0 (off) or 1 (on) for RIVEC devices
 		int mainIterations;
-		int Crawl = 0;
 		int ERRCODE = 0;
 		int economizerRan = 0;	// 0 or else 1 if economizer has run that day
 		int hcFlag = 1;
@@ -887,10 +891,7 @@ cout << filterLoadingFlag << MERV << loadingRate << AHMotorType << endl;
 		double hcap;				// Heating capacity of furnace (or gas burned by furnace)
 		double mHRV =0;				// Mass flow of stand-alone HRV unit
 		double mHRV_AH = 0;			// Mass flow of HRV unit integrated with the Air Handler
-		double HRV_ASE = 0.82;		// Apparent Sensible Effectiveness of HRV unit
 		double mERV_AH = 0;			// Mass flow of stand-alone ERV unit
-		double ERV_SRE = 0.63;		// Sensible Recovery Efficiency of ERV unit. SRE and TRE based upon averages from ERV units in HVI directory, as of 5/2015.
-		double ERV_TRE = 0.51;		// Total Recovery Efficiency of ERV unit, includes humidity transfer for moisture subroutine		
 		double fanHeat;
 		double ventSumIN;			// Sum of all ventilation flows into house
 		double ventSumOUT;			// Sum of all ventilation flows out from house
