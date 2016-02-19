@@ -1424,7 +1424,6 @@ void sub_houseLeak (
 
 			Pint = Pint - sgn(mIN + mOUT) * dPint;
 			dPint = dPint / 2;
-
 		} while (dPint > .0001);
 		//} while (dPint > .01);
 
