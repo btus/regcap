@@ -197,18 +197,24 @@ int main(int argc, char *argv[], char* envp[])
 		double fanPower_heating0;		// Heating fan power [W]
 		double fanPower_cooling0;		// Cooling fan power [W]
 		double charge;
-		double AFUE;			// Annual Fuel Utilization Efficiency for the furnace
+		double AFUE;				// Annual Fuel Utilization Efficiency for the furnace
 		int bathroomSchedule;	// Bathroom schedule file to use (1, 2 or 3)
-		int numBedrooms;		// Number of bedrooms (for 62.2 target ventilation calculation)
+		int numBedrooms;			// Number of bedrooms (for 62.2 target ventilation calculation)
 		int numStories;			// Number of stories in the building (for Nomalized Leakage calculation)
 		double weatherFactor;	// Weather Factor (w) (for infiltration calculation from ASHRAE 136)
-		double rivecFlagInd;	// Indicator variable that instructs a fan code 13 or 17 to be run by RIVEC controls. 1= yes, 0=no. Brennan.
-		double HumContType;	// Type of humidity control to be used in the RIVEC calculations. 1,2,...n Brennan.
-		double wCutoff;	// Humidity Ratio cut-off calculated as some percentile value for the climate zone. Brennan.
-		double wDiffMaxNeg;	// Maximum average indoor-outdoor humidity differene, when wIn < wOut. Climate zone average.
-		double wDiffMaxPos;	// Maximum average indoor-outdoor humidity differene, when wIn > wOut. Climate zone average.
-		double W25[12]; //25th percentiles for each month of the year, per TMY3
-		double W75[12]; //75th percentiles for each month of the year, per TMY3
+		// Inputs to set filter type and loading rate
+		int filterLoadingFlag;	// Filter loading flag = 0 (OFF) or 1 (ON)
+		int MERV;					// MERV rating of filter (may currently be set to 5, 8, 11 or 16)
+		int loadingRate;			// loading rate of filter, f (0,1,2) = (low,med,high)
+		int AHMotorType;				// BPM (1) or PSC (0) air handler motor
+		// Inputs to set humidity control
+		double rivecFlagInd;		// Indicator variable that instructs a fan code 13 or 17 to be run by RIVEC controls. 1= yes, 0=no. Brennan.
+		double HumContType;		// Type of humidity control to be used in the RIVEC calculations. 1,2,...n Brennan.
+		double wCutoff;			// Humidity Ratio cut-off calculated as some percentile value for the climate zone. Brennan.
+		double wDiffMaxNeg;		// Maximum average indoor-outdoor humidity differene, when wIn < wOut. Climate zone average.
+		double wDiffMaxPos;		// Maximum average indoor-outdoor humidity differene, when wIn > wOut. Climate zone average.
+		double W25[12]; 			//25th percentiles for each month of the year, per TMY3
+		double W75[12]; 			//75th percentiles for each month of the year, per TMY3
 		
 		// Zeroing the variables to create the sums for the .ou2 file
 		long int MINUTE = 1;
@@ -419,9 +425,14 @@ int main(int argc, char *argv[], char* envp[])
 		buildingFile >> numBedrooms;
 		buildingFile >> numStories;
 		buildingFile >> weatherFactor;
+		// =========================== Filter Inputs ============================
+		buildingFile >> filterLoadingFlag;
+		buildingFile >> MERV;
+		buildingFile >> loadingRate;
+		buildingFile >> AHMotorType;
+cout << filterLoadingFlag << MERV << loadingRate << AHMotorType << endl;
 		buildingFile >> rivecFlagInd;
-
-		//The variable from here down wree added by Brennan as part of the Smart Ventilation Humidity Control project
+		//The variable from here down were added by Brennan as part of the Smart Ventilation Humidity Control project
 		buildingFile >> HumContType;
 		buildingFile >> wCutoff;
 		buildingFile >> wDiffMaxNeg;
@@ -488,12 +499,6 @@ int main(int argc, char *argv[], char* envp[])
 		double MWha = .5 * floorArea / 186;							// MWha is the moisture transport coefficient that scales with floor area (to scale with surface area of moisture)
 					
 		// [START] Filter Loading ==================================================================================
-		
-		// Inputs to set filter type and loading rate
-		int filterLoadingFlag = 0;		// Filter loading flag = 0 (OFF) or 1 (ON)
-		int MERV = 5;					// MERV rating of filter (may currently be set to 5, 8, 11 or 16)
-		int loadingRate = 0;			// loading rate of filter, f (0,1,2) = (low,med,high)
-		int BPMflag = 0;				// BPM (1) or PSC (0) air handler motor
 
 		int filterChanges = 0;			// Number of filters used throughout the year
 		double qAH_low = 0;				// Lowest speed of AH (set in sub_filterLoading)
@@ -533,7 +538,7 @@ int main(int argc, char *argv[], char* envp[])
 		
 		// Filter loading coefficients are in the sub_filterLoading sub routine
 		if(filterLoadingFlag == 1)
-			sub_filterLoading(MERV, loadingRate, BPMflag, A_qAH_heat, A_qAH_cool, A_wAH_heat, A_wAH_cool, A_DL, k_qAH, k_wAH, k_DL, qAH_heat0, qAH_cool0, qAH_low);
+			sub_filterLoading(MERV, loadingRate, AHMotorType, A_qAH_heat, A_qAH_cool, A_wAH_heat, A_wAH_cool, A_DL, k_qAH, k_wAH, k_DL, qAH_heat0, qAH_cool0, qAH_low);
 		// [END] Filter Loading ====================================================================================
 
 		// Cooling capacity air flow correction term (using CFM)

@@ -1715,7 +1715,7 @@ void sub_atticLeak (
 void sub_filterLoading ( 
 	int& MERV,
 	int& loadingRate,
-	int& BPMflag,
+	int& AHMotorType,
 	double& A_qAH_heat,
 	double& A_qAH_cool,
 	double& A_wAH_heat, 
@@ -1762,7 +1762,7 @@ void sub_filterLoading (
 		double k_wAH_array[3][4];		
 		double k_DL_array[3][4];			
 
-		if(BPMflag == 0) {
+		if(AHMotorType == 0) {
 			// =================================== PSC Coefficients ========================================
 			// Initial changes to AH airflow, power draw and duct static pressure due to filter
 			// 1x4 array of filter airflow resistance coefficients
