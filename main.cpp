@@ -219,8 +219,16 @@ int main(int argc, char *argv[], char* envp[])
 		double wCutoff;			// Humidity Ratio cut-off calculated as some percentile value for the climate zone. Brennan.
 		double wDiffMaxNeg;		// Maximum average indoor-outdoor humidity differene, when wIn < wOut. Climate zone average.
 		double wDiffMaxPos;		// Maximum average indoor-outdoor humidity differene, when wIn > wOut. Climate zone average.
-		double W25[12]; 			//25th percentiles for each month of the year, per TMY3
-		double W75[12]; 			//75th percentiles for each month of the year, per TMY3
+		double W25[12]; 			// 25th percentiles for each month of the year, per TMY3
+		double W75[12]; 			// 75th percentiles for each month of the year, per TMY3
+		int FirstCut;				// Monthly Indexes assigned based on climate zone
+		int SecondCut; 			// Monthly Indexes assigned based on climate zone
+		double doseTarget;		// Targeted dose value
+		double HiDose;				// Variable high dose value for real-time humidity control, based on worst-case large, low-occupancy home. 
+		int HiMonths[3];
+		int LowMonths[3];
+		double HiMonthDose;
+		double LowMonthDose;
 		
 		// Zeroing the variables to create the sums for the .ou2 file
 		long int MINUTE = 1;
@@ -437,7 +445,6 @@ int main(int argc, char *argv[], char* envp[])
 		buildingFile >> HRV_ASE;
 		buildingFile >> ERV_SRE;
 		buildingFile >> ERV_TRE;
-cout << terrain << AeqCalcs << Crawl << HRV_ASE << ERV_SRE << ERV_TRE << endl;
 		// =========================== Filter Inputs ============================
 		buildingFile >> filterLoadingFlag;
 		buildingFile >> MERV;
@@ -455,6 +462,16 @@ cout << terrain << AeqCalcs << Crawl << HRV_ASE << ERV_SRE << ERV_TRE << endl;
 		for(int i = 0; i < 12; i++) {
 			buildingFile >> W75[i];
 		}
+		buildingFile >> FirstCut;
+		buildingFile >> SecondCut;
+		buildingFile >> doseTarget;
+		buildingFile >> HiDose;
+		buildingFile >> HiMonths[0] >> HiMonths[1] >> HiMonths[2];
+		buildingFile >> LowMonths[0] >> LowMonths[1] >> LowMonths[2];
+		buildingFile >> HiMonthDose;
+		buildingFile >> LowMonthDose;
+
+cout << "HumContType:" << HumContType << " LowMonths[1]" << LowMonths[1] << " LowMonthDose:" << LowMonthDose << endl;
 
 		buildingFile.close();
 
@@ -877,8 +894,6 @@ cout << terrain << AeqCalcs << Crawl << HRV_ASE << ERV_SRE << ERV_TRE << endl;
 		int ERRCODE = 0;
 		int economizerRan = 0;	// 0 or else 1 if economizer has run that day
 		int hcFlag = 1;
-		int FirstCut = 0; //Monthly Indexes assigned based on climate zone
-		int SecondCut = 0; //Monthly Indexes assigned based on climate zone
 
 		double pRef;				// Outdoor air pressure read in from weather file
 		double sc;
@@ -1008,14 +1023,6 @@ cout << terrain << AeqCalcs << Crawl << HRV_ASE << ERV_SRE << ERV_TRE << endl;
 		double qFanFlowRatio = 0; //Brennan added
 		double FanQ = fan[0].q; //Brennan's attempt to fix the airflow outside of the if() structures in the fan.oper section. fan[0].q was always the whole house exhaust fan, to be operated continuously or controlled by temperature controls.
 		double FanP = fan[0].power; //Brennan's attempt to fix the fan power outside of the if() structures in the fan.oper section.
-
-		//Variables Brennan added for Smart Ventilatoin Humidity Control.
-		double doseTarget = 0.9; //Targeted dose value based on the climate zone file.
-		double HiDose = 1.5; //Variable high dose value for real-time humidity control, based on worst-case large, low-occupancy home. 
-		int HiMonths[3] = {0, 0, 0};
-		int LowMonths[3] = {0, 0, 0};
-		double HiMonthDose = 1;
-		double LowMonthDose = 1;
 
 		cout << endl;
 		cout << "Simulation: " << simNum << endl;
@@ -1484,177 +1491,99 @@ cout << terrain << AeqCalcs << Crawl << HRV_ASE << ERV_SRE << ERV_TRE << endl;
 				peakFlag = 1;			// Prevents two peak periods in the same day when there is heating and cooling
 
 			for(int i=0; i < numFans; i++) {
-
-
 				// [START] ---------------------FAN 50---------- RIVEC OPERATION BASED ON CONTROL ALGORITHM v6
 				// v6 of the algorithm only uses the peakStart and peakEnd variables, no more base or recovery periods.(
-
 				if(fan[i].oper == 50 || fan[i].oper == 13 || fan[i].oper == 17) { //traditional (50), cfis (13) or erv+ahu (17) fans for rivec control
- 
-					if(minute_hour == 1 || minute_hour == 11 || minute_hour == 21 || minute_hour == 31 || minute_hour == 41 || minute_hour == 51) {
+ 					if(minute_hour == 1 || minute_hour == 11 || minute_hour == 21 || minute_hour == 31 || minute_hour == 41 || minute_hour == 51) {
 						// rivecOn = 1 or 0: 1 = whole-house fan ON, 0 = whole-house fan OFF
 						rivecOn = 0;
 
 						//0.012 kg/kg
 
-
-
-
-						  
-				  //    	if(HumContType == 2){  				   				
-						////Indoor and Outdoor sensor based control. It really seems we will need some sense of the relative parts of the year when these are true...We may need to toy with these relExp thresholds
-						//	
-						//	if(RHhouse >= 55){ //Engage increased or decreased ventilation only if house RH is >60 (or 55% maybe?). 
-
-						//		if(HROUT > HR[3]){ //do not want to vent. Add some "by what amount" deadband value. 
-						//			if(relExp >= 2.5 || relDose > 1){ //have to with high exp
-						//				rivecOn = 1;
-						//			} else { //otherwise off
-						//				rivecOn = 0;
-						//			}
-						//		} else { //want to vent due to high indoor humidity, so maybe we just let it run, without relExp control?
-						//			if(relExp >= 0.50 || relDose > 1){ //control to exp = 0.5. Need to change this value based on weighted avg results.
-						//				rivecOn = 1; //OR we can change the does calculation based on expected periods of contol function (i.e., 1-week,1-month, etc.)
-						//			} else {
-						//				rivecOn = 0;
-						//			}
-						//		}
-						//	} else {
-						//		if(relExp >= 0.95 || relDose > 1){ 
-						//			rivecOn = 1;
-						//		} else {
-						//			rivecOn = 0;
-						//		}
-						//	}
-						//}
-
-				      	if(HumContType == 1){  	//Cooling system tie-in.			   				
-							
-							if(hcFlag == 2){ //test if we're in cooling season
-								if(AHflag == 2){
-									rivecOn = 1;
-								} else
-									if(relExp >= 2.5 || relDose > 1.0){ //have to with high exp
-										rivecOn = 1;
-									} else { //otherwise off
-										rivecOn = 0;					
-									}
-							} else //if NOT in cooling season
-								if(relExp >= 0.95 || relDose > 1.0){ //have to with high exp
-										rivecOn = 1;
-									} else { //otherwise off
-										rivecOn = 0;					
-									}
-								}
-
-
-				      	if(HumContType == 2){  	//Fixed control. 	   				
-						//Indoor and Outdoor sensor based control. 
-							
-							if(RHhouse >= 55){ //Engage increased or decreased ventilation only if house RH is >60 (or 55% maybe?). 
-
-								if(HROUT > HR[3]){ //do not want to vent. Add some "by what amount" deadband value. 
-									if(relExp >= 2.5 || relDose > 1.0){ //have to with high exp
-										rivecOn = 1;
-									} else { //otherwise off
-										rivecOn = 0;
-									}
-								} else { //want to vent due to high indoor humidity, so maybe we just let it run, without relExp control?
-									if(relExp >= 0.50 || relDose > 1.0){ //control to exp = 0.5. Need to change this value based on weighted avg results.
-										rivecOn = 1; //OR we can change the does calculation based on expected periods of contol function (i.e., 1-week,1-month, etc.)
-									} else {
-										rivecOn = 0;
-									}
-								}
-							} else {
-								if(relExp >= 0.95 || relDose > 1.0){ 
-									rivecOn = 1;
-								} else {
-									rivecOn = 0;
-								}
-							}
-						}
-
-				      	if(HumContType == 3){  	//Fixed control + cooling system tie-in.		   				
-						//Indoor and Outdoor sensor based control. 
-							
-							if(RHhouse >= 55){ //Engage increased or decreased ventilation only if house RH is >60 (or 55% maybe?). 
-
-								if(HROUT > HR[3]){ //do not want to vent. Add some "by what amount" deadband value. 
+				      	//Cooling system tie-in.
+				      	if(HumContType == 1){			   				
+								if(hcFlag == 2){ //test if we're in cooling season
 									if(AHflag == 2){
 										rivecOn = 1;
 									} else
 										if(relExp >= 2.5 || relDose > 1.0){ //have to with high exp
 											rivecOn = 1;
 										} else { //otherwise off
+											rivecOn = 0;					
+										}
+								} else //if NOT in cooling season
+									if(relExp >= 0.95 || relDose > 1.0){ //have to with high exp
+											rivecOn = 1;
+										} else { //otherwise off
+											rivecOn = 0;					
+										}
+								}
+
+  							//Fixed control. 	   				
+							//Indoor and Outdoor sensor based control. 
+				      	if(HumContType == 2){
+								if(RHhouse >= 55){ //Engage increased or decreased ventilation only if house RH is >60 (or 55% maybe?). 
+									if(HROUT > HR[3]){ //do not want to vent. Add some "by what amount" deadband value. 
+										if(relExp >= 2.5 || relDose > 1.0){ //have to with high exp
+											rivecOn = 1;
+										} else { //otherwise off
 											rivecOn = 0;
 										}
-								} else { //want to vent due to high indoor humidity, so maybe we just let it run, without relExp control?
-									if(relExp >= 0.50 || relDose > 1.0){ //control to exp = 0.5. Need to change this value based on weighted avg results.
-										rivecOn = 1; //OR we can change the does calculation based on expected periods of contol function (i.e., 1-week,1-month, etc.)
-									} else {
-										rivecOn = 0;
+									} else { //want to vent due to high indoor humidity, so maybe we just let it run, without relExp control?
+										if(relExp >= 0.50 || relDose > 1.0){ //control to exp = 0.5. Need to change this value based on weighted avg results.
+											rivecOn = 1; //OR we can change the does calculation based on expected periods of contol function (i.e., 1-week,1-month, etc.)
+										} else {
+											rivecOn = 0;
+										}
 									}
-								}
-							} else {
-								if(relExp >= 0.95 || relDose > 1.0){ 
-									rivecOn = 1;
 								} else {
-									rivecOn = 0;
-								}
-							}
-						}
-
-
-
-				      	if(HumContType == 4){ //Proportional control.  				   				
-						//Indoor and Outdoor sensor based control. 
-
-							if(RHhouse >= 55){
-
-								if(HROUT > HR[3]){ //More humid outside than inside, want to under-vent.  
-									relExpTarget = 1 + (2.5-1) * abs((HR[3]-HROUT) / (wDiffMaxNeg)); //wDiffMax has to be an avergaed value, because in a real-world controller you would not know this. 
-									if(relExpTarget > 2.5){
-										relExpTarget = 2.5;
-									}
-									if(relExp >= relExpTarget || relDose > 1){ //relDose may be over a 1-week or 2-week time span...
-										rivecOn = 1;
-									} else { //otherwise off
-										rivecOn = 0;
-									}
-								} else { // More humid inside than outside, want to over-vent
-									relExpTarget = 1 - abs((HR[3]- HROUT) / (wDiffMaxPos));
-									if(relExpTarget < 0){
-										relExpTarget = 0;
-									}
-									if(relExp >= relExpTarget || relDose > 1){ //
+									if(relExp >= 0.95 || relDose > 1.0){ 
 										rivecOn = 1;
 									} else {
 										rivecOn = 0;
 									}
 								}
-							} else {
-								if(relExp >= 0.95 || relDose > 1){ 
-									rivecOn = 1;
+							}
+
+  							//Fixed control + cooling system tie-in.		   				
+							//Indoor and Outdoor sensor based control. 
+				      	if(HumContType == 3){							
+								if(RHhouse >= 55){ //Engage increased or decreased ventilation only if house RH is >60 (or 55% maybe?). 
+									if(HROUT > HR[3]){ //do not want to vent. Add some "by what amount" deadband value. 
+										if(AHflag == 2){
+											rivecOn = 1;
+										} else
+											if(relExp >= 2.5 || relDose > 1.0){ //have to with high exp
+												rivecOn = 1;
+											} else { //otherwise off
+												rivecOn = 0;
+											}
+									} else { //want to vent due to high indoor humidity, so maybe we just let it run, without relExp control?
+										if(relExp >= 0.50 || relDose > 1.0){ //control to exp = 0.5. Need to change this value based on weighted avg results.
+											rivecOn = 1; //OR we can change the does calculation based on expected periods of contol function (i.e., 1-week,1-month, etc.)
+										} else {
+											rivecOn = 0;
+										}
+									}
 								} else {
-									rivecOn = 0;
+									if(relExp >= 0.95 || relDose > 1.0){ 
+										rivecOn = 1;
+									} else {
+										rivecOn = 0;
+									}
 								}
 							}
-						}
-						
 
-				      	if(HumContType == 5){ //Proportional control + cooling system tie-in. 				   				
-						//Indoor and Outdoor sensor based control. 
-							if(RHhouse >= 55){
-
-								if(HROUT > HR[3]){ //More humid outside than inside, want to under-vent.  
-									relExpTarget = 1 + (2.5-1) * abs((HR[3]-HROUT) / (wDiffMaxNeg)); //wDiffMax has to be an avergaed value, because in a real-world controller you would not know this. 
-									if(relExpTarget > 2.5){
-										relExpTarget = 2.5;
-									}
-									if(AHflag == 2){
-										rivecOn = 1;
-									} else if(relExp >= relExpTarget || relDose > 1){ //relDose may be over a 1-week or 2-week time span...
+ 							//Proportional control.  				   				
+							//Indoor and Outdoor sensor based control. 
+				      	if(HumContType == 4) {
+								if(RHhouse >= 55) {
+									if(HROUT > HR[3]){ //More humid outside than inside, want to under-vent.  
+										relExpTarget = 1 + (2.5-1) * abs((HR[3]-HROUT) / (wDiffMaxNeg)); //wDiffMax has to be an avergaed value, because in a real-world controller you would not know this. 
+										if(relExpTarget > 2.5){
+											relExpTarget = 2.5;
+										}
+										if(relExp >= relExpTarget || relDose > 1){ //relDose may be over a 1-week or 2-week time span...
 											rivecOn = 1;
 										} else { //otherwise off
 											rivecOn = 0;
@@ -1670,1204 +1599,346 @@ cout << terrain << AeqCalcs << Crawl << HRV_ASE << ERV_SRE << ERV_TRE << endl;
 											rivecOn = 0;
 										}
 									}
-							} else {
-								if(relExp >= 0.95 || relDose > 1){ 
-									rivecOn = 1;
 								} else {
-									rivecOn = 0;
+									if(relExp >= 0.95 || relDose > 1){ 
+										rivecOn = 1;
+									} else {
+										rivecOn = 0;
+									}
 								}
 							}
-						}
-
-
-						if(HumContType == 6){ //Monthly Seasonal Control
-						//Monthly timer-based control, based on mean HRdiff by month. doseTargets are based on weighted average targeting dose = 1.5 during low-ventilation months, targeting annual dose of 0.98. 
-
-							if(weather_file == "Orlando"){
-								FirstCut = 4; 
-								SecondCut = 11;
-								doseTarget = 0.46;
-							} if(weather_file == "Charleston"){
-								FirstCut = 5; 
-								SecondCut = 10;
-								doseTarget = 0.72;
-							} if(weather_file == "07"){ //Baltimore
-								FirstCut = 6; 
-								SecondCut = 9;
-								doseTarget = 0.876;
-							} if(weather_file == "01"){ //Miami
-								FirstCut = 4; 
-								SecondCut = 11;
-								doseTarget = 0.46;
-							} if(weather_file == "02"){ //Houston
-								FirstCut = 4; 
-								SecondCut = 10;
-								doseTarget = 0.61;
-							} if(weather_file == "04"){ //Memphis
-								FirstCut = 5; 
-								SecondCut = 10;
-								doseTarget = 0.72;
-							}
-
-							if(month <= FirstCut || month >= SecondCut){ //High ventilation months with net-humidity transport from inside to outside.
-								if(relDose > doseTarget){
-									rivecOn = 1;
-								} else {						
-									rivecOn = 0;
-								} 
-							} else { //Low ventilation months with net-humidity transport from outside to inside.
-								if(relExp >= 2.5 || relDose > 1.5){
-									rivecOn = 1;
+	
+							//Proportional control + cooling system tie-in. 				   				
+							//Indoor and Outdoor sensor based control.
+				      	if(HumContType == 5) { 
+								if(RHhouse >= 55) {
+									if(HROUT > HR[3]) { //More humid outside than inside, want to under-vent.  
+										relExpTarget = 1 + (2.5-1) * abs((HR[3]-HROUT) / (wDiffMaxNeg)); //wDiffMax has to be an avergaed value, because in a real-world controller you would not know this. 
+										if(relExpTarget > 2.5) {
+											relExpTarget = 2.5;
+										}
+										if(AHflag == 2) {
+											rivecOn = 1;
+										} else if(relExp >= relExpTarget || relDose > 1) { //relDose may be over a 1-week or 2-week time span...
+											rivecOn = 1;
+										} else { //otherwise off
+											rivecOn = 0;
+										}
+									} else { // More humid inside than outside, want to over-vent
+										relExpTarget = 1 - abs((HR[3]- HROUT) / (wDiffMaxPos));
+										if(relExpTarget < 0) {
+											relExpTarget = 0;
+										}
+										if(relExp >= relExpTarget || relDose > 1) {
+											rivecOn = 1;
+										} else {
+											rivecOn = 0;
+										}
+									}
 								} else {
-									rivecOn = 0;
+									if(relExp >= 0.95 || relDose > 1) { 
+										rivecOn = 1;
+									} else {
+										rivecOn = 0;
+									}
 								}
 							}
-						}
 
-
-				  //    	if(HumContType == 7){  	//Fixed control + cooling system tie-in + Monthly Seasonal Control.		   				
-						////Indoor and Outdoor sensor based control. 
-
-						//	if(weather_file == "Orlando"){
-						//		FirstCut = 4; 
-						//		SecondCut = 11;
-						//		doseTarget = 0.46;
-						//	} if(weather_file == "Charleston"){
-						//		FirstCut = 5; 
-						//		SecondCut = 10;
-						//		doseTarget = 0.72;
-						//	} if(weather_file == "07"){ //Baltimore
-						//		FirstCut = 6; 
-						//		SecondCut = 9;
-						//		doseTarget = 0.876;
-						//	} if(weather_file == "01"){ //Miami
-						//		FirstCut = 4; 
-						//		SecondCut = 11;
-						//		doseTarget = 0.46;
-						//	} if(weather_file == "02"){ //Houston
-						//		FirstCut = 4; 
-						//		SecondCut = 10;
-						//		doseTarget = 0.61;
-						//	} if(weather_file == "04"){ //Memphis
-						//		FirstCut = 5; 
-						//		SecondCut = 10;
-						//		doseTarget = 0.72;
-						//	}
-
-						//	if(month <= FirstCut || month >= SecondCut){
-						//		doseTarget = doseTarget;
-						//	} else {
-						//		doseTarget = 1.5;
-						//	}
-
-						//	if(RHhouse >= 55){ //Engage increased or decreased ventilation only if house RH is >60 (or 55% maybe?). 
-
-						//		if(HROUT > HR[3]){ //do not want to vent. Add some "by what amount" deadband value. 
-						//			if(AHflag == 2){
-						//				rivecOn = 1;
-						//			} else
-						//				if(relExp >= 2.5 || relDose > doseTarget){ //have to with high exp 0.61
-						//					rivecOn = 1;
-						//				} else { //otherwise off
-						//					rivecOn = 0;
-						//				}
-						//		} else { //want to vent due to high indoor humidity, so maybe we just let it run, without relExp control?
-						//			if(relExp >= 0.5 || relDose > doseTarget){ //control to exp = 0.5. Need to change this value based on weighted avg results.
-						//				rivecOn = 1; //OR we can change the does calculation based on expected periods of contol function (i.e., 1-week,1-month, etc.)
-						//			} else {
-						//				rivecOn = 0;
-						//			}
-						//		}
-
-						//	} else {
-						//		if(relExp >= 0.95 || relDose > doseTarget){
-						//			rivecOn = 1;
-						//		} else {
-						//			rivecOn = 0;
-						//		}
-						//	}
-						//}
-
-
-				      	if(HumContType == 7){  	//Fixed control + cooling system tie-in + Monthly Seasonal Control.		   				
-						//Indoor and Outdoor sensor based control. 
-
-							//if(weather_file == "Orlando"){
-							//	doseTarget = 0.46;
-							//} if(weather_file == "Charleston"){
-							//	doseTarget = 0.72;
-							//} if(weather_file == "07"){ //Baltimore
-							//	doseTarget = 0.876;
-							//} if(weather_file == "01"){ //Miami
-							//	doseTarget = 0.46;
-							//} if(weather_file == "02"){ //Houston
-							//	doseTarget = 0.61;
-							//} if(weather_file == "04"){ //Memphis
-							//	doseTarget = 0.72;
-							//}
-
-							//if(weather_file == "Orlando"){
-							//	HiDose = 1.2;
-							//	doseTarget = 0.51;
-							//} if(weather_file == "Charleston"){
-							//	HiDose = 1.3;
-							//	doseTarget = 0.47;
-							//} if(weather_file == "07"){ //Baltimore
-							//	HiDose = 1.4;
-							//	doseTarget = 0.66;
-							//} if(weather_file == "01"){ //Miami
-							//	HiDose = 1.1;
-							//	doseTarget = 0.59;
-							//} if(weather_file == "02"){ //Houston
-							//	HiDose = 1.3;
-							//	doseTarget = 0.36;
-							//} if(weather_file == "04"){ //Memphis
-							//	HiDose = 1.3;
-							//	doseTarget = 0.64;
-							//}
-
-							if(weather_file == "Orlando"){
-								HiDose = 1.2;
-								doseTarget = 0.38; 
-							} if(weather_file == "Charleston"){
-								HiDose = 1.2; 
-								doseTarget = 0.47;
-							} if(weather_file == "07"){ //Baltimore
-								HiDose = 1.3;
-								doseTarget = 0.66;
-							} if(weather_file == "01"){ //Miami
-								HiDose = 1.1;
-								doseTarget = 0.38; 
-							} if(weather_file == "02"){ //Houston
-								HiDose = 1.2; 
-								doseTarget = 0.36;
-							} if(weather_file == "04"){ //Memphis
-								HiDose = 1.2;
-								doseTarget = 0.64; 
+ 							//Monthly Seasonal Control
+							//Monthly timer-based control, based on mean HRdiff by month. doseTargets are based on weighted average targeting dose = 1.5 during low-ventilation months, targeting annual dose of 0.98. 
+							if(HumContType == 6) {
+								if(month <= FirstCut || month >= SecondCut) { //High ventilation months with net-humidity transport from inside to outside.
+									if(relDose > doseTarget) {
+										rivecOn = 1;
+									} else {						
+										rivecOn = 0;
+									} 
+								} else { //Low ventilation months with net-humidity transport from outside to inside.
+									if(relExp >= 2.5 || relDose > 1.5) {
+										rivecOn = 1;
+									} else {
+										rivecOn = 0;
+									}
+								}
 							}
 
-							if(HROUT > HR[3]){ //do not want to vent. 
-								if(AHflag == 2){
-									rivecOn = 1;
-								} else
-									if(relExp >= 2.5 || relDose > HiDose){ 
+							//Fixed control + cooling system tie-in + Monthly Seasonal Control.		   				
+							//Indoor and Outdoor sensor based control.
+				      	if(HumContType == 7) { 
+								if(HROUT > HR[3]) { //do not want to vent. 
+									if(AHflag == 2) {
+										rivecOn = 1;
+									} else if(relExp >= 2.5 || relDose > HiDose) { 
 										rivecOn = 1;
 									} else { //otherwise off
 										rivecOn = 0;
 									}
-							} else { //want to vent due to high indoor humidity, so maybe we just let it run, without relExp control?
-								if(relDose > doseTarget){ 
-									rivecOn = 1; 
-								} else {
-									rivecOn = 0;
+								} else { //want to vent due to high indoor humidity, so maybe we just let it run, without relExp control?
+									if(relDose > doseTarget) { 
+										rivecOn = 1; 
+									} else {
+										rivecOn = 0;
+									}
 								}
 							}
-						}
 
-
-
-						if(HumContType == 8){ //Monthly Seasonal controller + time of day
-						//Monthly timer-based control, based on mean HRdiff by month. doseTargets are based on weighted average targeting dose = 1.5 during low-ventilation months, targeting annual dose of 0.98. 
-
-							if(weather_file == "Orlando"){
-								FirstCut = 4; 
-								SecondCut = 11;
-								doseTarget = 0.46;
-								//PreLows = {;
-								//PreHighs = ;
-								//SummLows =
-								//SummHighs = 
-								//PostLows = 
-								//PostHighs = 
-							} if(weather_file == "Charleston"){
-								FirstCut = 5; 
-								SecondCut = 10;
-								doseTarget = 0.72;
-							} if(weather_file == "07"){ //Baltimore
-								FirstCut = 6; 
-								SecondCut = 9;
-								doseTarget = 0.876;
-							} if(weather_file == "01"){ //Miami
-								FirstCut = 4; 
-								SecondCut = 11;
-								doseTarget = 0.46;
-							} if(weather_file == "02"){ //Houston
-								FirstCut = 4; 
-								SecondCut = 10;
-								doseTarget = 0.61;
-							} if(weather_file == "04"){ //Memphis
-								FirstCut = 5; 
-								SecondCut = 10;
-								doseTarget = 0.72;
+ 							// Monthly Seasonal controller + time of day
+							// Monthly timer-based control, based on mean HRdiff by month. doseTargets are based on weighted average
+							// targeting dose = 1.5 during low-ventilation months, targeting annual dose of 0.98. 
+							if(HumContType == 8) {
+								if(month <= FirstCut || month >= SecondCut) { //High ventilation months with net-humidity transport from inside to outside.
+									if(HOUR >= 3 && HOUR <= 7) { //Maybe change this to the warmest hours of the day.
+										rivecOn = 1;
+									} else {
+										if(relDose > doseTarget) {
+											rivecOn = 1;
+										} else {						
+											rivecOn = 0;
+										} 
+									}
+								} else { //Low ventilation months with net-humidity transport from outside to inside.
+									if(HOUR >= 8 && HOUR <= 11) {
+										rivecOn = 0;
+									} if(HOUR >= 15 && HOUR <=18) {
+										rivecOn = 1;
+									} else {
+										if(relExp >= 2.5 || relDose > 1.5) {
+											rivecOn = 1;
+										} else {
+											rivecOn = 0;
+										}
+									}
+								}
 							}
 
-							if(month <= FirstCut || month >= SecondCut){ //High ventilation months with net-humidity transport from inside to outside.
-								if(HOUR >= 3 && HOUR <= 7){ //Maybe change this to the warmest hours of the day.
-									rivecOn = 1;
+  							//Fixed control + Monthly Seasonal Control.		   				
+							//Indoor and Outdoor sensor based control.
+						  	if(HumContType == 9) { 
+								if(HROUT > HR[3]) { //do not want to vent. Add some "by what amount" deadband value. 
+									if(relExp >= 2.5 || relDose > HiDose) { //have to with high exp 0.61
+										rivecOn = 1;
+									} else { //otherwise off
+										rivecOn = 0;
+									}
+								} else { //want to vent due to high indoor humidity, so maybe we just let it run, without relExp control?
+									if(relDose > doseTarget) { //control to exp = 0.5. Need to change this value based on weighted avg results.
+										rivecOn = 1; //OR we can change the does calculation based on expected periods of contol function (i.e., 1-week,1-month, etc.)
+									} else {
+										rivecOn = 0;
+									}
+								}
+							}
+
+							//The real opportunities for control based on outside are when the outside value is changing rapidly. Sharp increases, decrease ventilation. Sharp decreases, increase ventilation. 
+							//Need to undervent at above the 75th percentile and overvent below the 25th percentile based on a per month basis. 
+							//Outdoor-only sensor based control
+							if(HumContType == 10) {
+								if(HROUT > 0.012) { //If humid outside, reduce ventilation. 
+									if(relExp >= 2.5 || relDose > 1) {
+										rivecOn = 1; 
+									} else {
+										rivecOn = 0;
+									}
+								} else { //If dry outside, increase vnetilation.
+									if(relExp >= 0.95 || relDose > 1) { //but we do if exp is high
+										rivecOn = 1;
+									} else {
+										rivecOn = 0; //otherwise don't vent under high humidity condition.
+									}
+								}
+							}
+
+ 							// Monthly Advanced Seasonal Control
+							// Monthly timer-based control, based on mean HRdiff by month. 
+							// doseTargets are based on weighted average targeting dose = 1.5 during low-ventilation months, targeting annual dose of 0.98. 
+							// Setting the appropriate Dose Target based on the month						
+							if(HumContType == 11) {
+								double doseTargetTmp;
+								if(month == HiMonths[0] || month == HiMonths[1] || month == HiMonths[2]){
+									doseTargetTmp = HiMonthDose;
+								} else if(month == LowMonths[0] || month == LowMonths[1]  || month == LowMonths[2]) {
+									doseTargetTmp = LowMonthDose;
+								} else if(month > FirstCut && month < SecondCut) {
+									doseTargetTmp = 1.5;
 								} else {
-									if(relDose > doseTarget){
+									doseTargetTmp = doseTarget;
+								}
+								if(doseTargetTmp >= 1.5) {
+									if(relExp >= 2.5 || relDose > doseTargetTmp) {
+										rivecOn = 1; 
+									} else {
+										rivecOn = 0;
+									}
+								}
+								else {
+									if(relDose > doseTargetTmp) {
 										rivecOn = 1;
 									} else {						
 										rivecOn = 0;
 									} 
 								}
-							} else { //Low ventilation months with net-humidity transport from outside to inside.
-								if(HOUR >= 8 && HOUR <= 11){
-									rivecOn = 0;
-								} if(HOUR >= 15 && HOUR <=18){
-									rivecOn = 1;
+							}
+
+
+  							//Monthly Seasonal Control + Cooling system tie-in.		   				
+							//Indoor and Outdoor sensor based control. 
+						  	if(HumContType == 12) {
+						  		double doseTargetTmp;
+								if(month <= FirstCut || month >= SecondCut) {
+									doseTargetTmp = doseTarget;
 								} else {
-									if(relExp >= 2.5 || relDose > 1.5){
+									doseTargetTmp = 1.5;
+								}
+								if(AHflag == 2) {
 										rivecOn = 1;
+								} else if(doseTargetTmp >= 1.5) {
+									if(relExp >= 2.5 || relDose > doseTargetTmp) {
+										rivecOn = 1; 
 									} else {
 										rivecOn = 0;
 									}
-								}
-							}
-						}
-
-				  //    	if(HumContType == 9){  	//Fixed control + Monthly Seasonal Control.		   				
-						////Indoor and Outdoor sensor based control. 
-
-						//	if(weather_file == "Orlando"){
-						//		FirstCut = 4; 
-						//		SecondCut = 11;
-						//		doseTarget = 0.46;
-						//	} if(weather_file == "Charleston"){
-						//		FirstCut = 5; 
-						//		SecondCut = 10;
-						//		doseTarget = 0.72;
-						//	} if(weather_file == "07"){ //Baltimore
-						//		FirstCut = 6; 
-						//		SecondCut = 9;
-						//		doseTarget = 0.876;
-						//	} if(weather_file == "01"){ //Miami
-						//		FirstCut = 4; 
-						//		SecondCut = 11;
-						//		doseTarget = 0.46;
-						//	} if(weather_file == "02"){ //Houston
-						//		FirstCut = 4; 
-						//		SecondCut = 10;
-						//		doseTarget = 0.61;
-						//	} if(weather_file == "04"){ //Memphis
-						//		FirstCut = 5; 
-						//		SecondCut = 10;
-						//		doseTarget = 0.72;
-						//	}
-
-						//	if(month <= FirstCut || month >= SecondCut){
-						//		doseTarget = doseTarget;
-						//	} else {
-						//		doseTarget = 1.5;
-						//	}
-
-						//	if(RHhouse >= 55){ //Engage increased or decreased ventilation only if house RH is >60 (or 55% maybe?).
-
-						//		if(HROUT > HR[3]){ //do not want to vent. Add some "by what amount" deadband value. 
-						//			if(relExp >= 2.5 || relDose > doseTarget){ //have to with high exp 0.61
-						//				rivecOn = 1;
-						//			} else { //otherwise off
-						//				rivecOn = 0;
-						//			}
-						//		} else { //want to vent due to high indoor humidity, so maybe we just let it run, without relExp control?
-						//			if(relExp >= 0.50 || relDose > doseTarget){ //control to exp = 0.5. Need to change this value based on weighted avg results.
-						//				rivecOn = 1; //OR we can change the does calculation based on expected periods of contol function (i.e., 1-week,1-month, etc.)
-						//			} else {
-						//				rivecOn = 0;
-						//			}
-						//		}
-						//	} else {
-						//		if(relExp >= 0.95 || relDose > doseTarget){
-						//			rivecOn = 1;
-						//		} else {
-						//			rivecOn = 0;
-						//		}
-						//	}
-						//}
-
-				      	if(HumContType == 9){  	//Fixed control + Monthly Seasonal Control.		   				
-						//Indoor and Outdoor sensor based control. 
-
-							//if(weather_file == "Orlando"){
-							//	doseTarget = 0.46;
-							//} if(weather_file == "Charleston"){
-							//	doseTarget = 0.72;
-							//} if(weather_file == "07"){ //Baltimore
-							//	doseTarget = 0.876;
-							//} if(weather_file == "01"){ //Miami
-							//	doseTarget = 0.46;
-							//} if(weather_file == "02"){ //Houston
-							//	doseTarget = 0.61;
-							//} if(weather_file == "04"){ //Memphis
-							//	doseTarget = 0.72;
-							//}
-
-							//if(weather_file == "Orlando"){
-							//	HiDose = 1.2;
-							//	doseTarget = 0.51; //1.3 and 0.38
-							//} if(weather_file == "Charleston"){
-							//	HiDose = 1.3; //try 1.4
-							//	doseTarget = 0.47;
-							//} if(weather_file == "07"){ //Baltimore
-							//	HiDose = 1.4;
-							//	doseTarget = 0.66; //1.3 and 0.75
-							//} if(weather_file == "01"){ //Miami
-							//	HiDose = 1.1;
-							//	doseTarget = 0.59; //Consider trying 1.2 and 0.38
-							//} if(weather_file == "02"){ //Houston
-							//	HiDose = 1.3; //try 1.4
-							//	doseTarget = 0.36;
-							//} if(weather_file == "04"){ //Memphis
-							//	HiDose = 1.3;
-							//	doseTarget = 0.64; //1.4 and 0.52
-							//}
-
-							//if(weather_file == "Orlando"){
-							//	HiDose = 1.2; //1.1
-							//	doseTarget = 0.38; 
-							//} if(weather_file == "Charleston"){
-							//	HiDose = 1.2; //1.15
-							//	doseTarget = 0.47;
-							//} if(weather_file == "07"){ //Baltimore
-							//	HiDose = 1.3; //1.25
-							//	doseTarget = 0.66;
-							//} if(weather_file == "01"){ //Miami
-							//	HiDose = 1.1; //1.05
-							//	doseTarget = 0.38; 
-							//} if(weather_file == "02"){ //Houston
-							//	HiDose = 1.2; //1.15
-							//	doseTarget = 0.36;
-							//} if(weather_file == "04"){ //Memphis
-							//	HiDose = 1.2;
-							//	doseTarget = 0.64; 
-							//}
-
-							if(weather_file == "Orlando"){
-								HiDose = 1.1; //1.1
-								doseTarget = 0.38; 
-							} if(weather_file == "Charleston"){
-								HiDose = 1.15; //1.15
-								doseTarget = 0.47;
-							} if(weather_file == "07"){ //Baltimore
-								HiDose = 1.25; //1.25
-								doseTarget = 0.66;
-							} if(weather_file == "01"){ //Miami
-								HiDose = 1.05; //1.05
-								doseTarget = 0.38; 
-							} if(weather_file == "02"){ //Houston
-								HiDose = 1.15; //1.15
-								doseTarget = 0.36;
-							} if(weather_file == "04"){ //Memphis
-								HiDose = 1.2;
-								doseTarget = 0.64; 
-							}
-
-
-							if(HROUT > HR[3]){ //do not want to vent. Add some "by what amount" deadband value. 
-								if(relExp >= 2.5 || relDose > HiDose){ //have to with high exp 0.61
-									rivecOn = 1;
-								} else { //otherwise off
-									rivecOn = 0;
-								}
-							} else { //want to vent due to high indoor humidity, so maybe we just let it run, without relExp control?
-								if(relDose > doseTarget){ //control to exp = 0.5. Need to change this value based on weighted avg results.
-									rivecOn = 1; //OR we can change the does calculation based on expected periods of contol function (i.e., 1-week,1-month, etc.)
 								} else {
-									rivecOn = 0;
+									if(relDose > doseTargetTmp) {
+										rivecOn = 1;
+									} else {						
+										rivecOn = 0;
+									} 
 								}
 							}
-						}
 
-
-
-						if(HumContType == 10){ //The real opportunities for control based on outside are when the outside value is changing rapidly. Sharp increases, decrease ventilation. Sharp decreases, increase ventilation. 
-						//Need to undervent at above the 75th percentile and overvent below the 25th percentile based on a per month basis. 
-							
-							//Outdoor-only sensor based control
-
-
-							if(HROUT > 0.012){ //If humid outside, reduce ventilation. 
-
-								if(relExp >= 2.5 || relDose > 1){
-									rivecOn = 1; 
-								} else {
-									rivecOn = 0;
-								}
-
-							} else { //If dry outside, increase vnetilation.
-								if(relExp >= 0.95 || relDose > 1){ //but we do if exp is high
-									rivecOn = 1;
-								} else {
-									rivecOn = 0; //otherwise don't vent under high humidity condition.
-								}
-							}
-						}
-
-
-						if(HumContType == 11){ //Monthly Advanced Seasonal Control
-						//Monthly timer-based control, based on mean HRdiff by month. doseTargets are based on weighted average targeting dose = 1.5 during low-ventilation months, targeting annual dose of 0.98. 
-
-							if(weather_file == "Orlando"){
-								FirstCut = 4; 
-								SecondCut = 11;
-								doseTarget = 0.46;
-
-								HiMonths[0] = 2;
-								HiMonths[1] = 11;
-								HiMonths[2] = 12;
-								HiMonthDose = 0.38;
-
-								LowMonths[0] = 10;
-								LowMonths[1] = 0;
-								LowMonths[2] = 0;
-								LowMonthDose = 1.74;
-
-							} if(weather_file == "Charleston"){
-								FirstCut = 5; 
-								SecondCut = 10;
-								doseTarget = 0.72;
-
-								HiMonths[0] = 10;
-								HiMonths[1] = 11;
-								HiMonths[2] = 0;
-								HiMonthDose = 0.47;
-
-								LowMonths[0] = 8;
-								LowMonths[1] = 9;
-								LowMonths[2] = 0;
-								LowMonthDose = 1.75;
-
-							} if(weather_file == "07"){ //Baltimore
-								FirstCut = 6; 
-								SecondCut = 9;
-								doseTarget = 0.876;
-
-								HiMonths[0] = 10;
-								HiMonths[1] = 0;
-								HiMonths[2] = 0;
-								HiMonthDose = 0.626;
-
-								LowMonths[0] = 7;
-								LowMonths[1] = 8;
-								LowMonths[2] = 0;
-								LowMonthDose = 1.625;
-
-							} if(weather_file == "01"){ //Miami
-								FirstCut = 4; 
-								SecondCut = 11;
-								doseTarget = 0.46;
-
-								HiMonths[0] = 1;
-								HiMonths[1] = 2;
-								HiMonths[2] = 12;
-								HiMonthDose = 0.38;
-
-								LowMonths[0] = 10;
-								LowMonths[1] = 0;
-								LowMonths[2] = 0;
-								LowMonthDose = 1.74;
-
-							} if(weather_file == "02"){ //Houston
-								FirstCut = 4; 
-								SecondCut = 10;
-								doseTarget = 0.61;
-
-								HiMonths[0] = 4;
-								HiMonths[1] = 10;
-								HiMonths[2] = 11;
-								HiMonthDose = 0.38;
-
-								LowMonths[0] = 5;
-								LowMonths[1] = 0;
-								LowMonths[2] = 0;
-								LowMonthDose = 2.184;
-
-							} if(weather_file == "04"){ //Memphis
-								FirstCut = 5; 
-								SecondCut = 10;
-								doseTarget = 0.72;
-
-								HiMonths[0] = 4;
-								HiMonths[1] = 10;
-								HiMonths[2] = 11;
-								HiMonthDose = 0.492;
-
-								LowMonths[0] = 9;
-								LowMonths[1] = 0;
-								LowMonths[2] = 0;
-								LowMonthDose = 2.184;
-							}
-
-							//Setting the appropriate Dose Target based on the month
-							if(month == HiMonths[0] || month == HiMonths[1]  || month == HiMonths[2]){
-								doseTarget = HiMonthDose;
-							} else if(month == LowMonths[0] || month == LowMonths[1]  || month == LowMonths[2]){
-								doseTarget = LowMonthDose;
-							} else if(month > FirstCut && month < SecondCut){
-								doseTarget = 1.5;
-							} else {
-								doseTarget = doseTarget;
-							}
-							
-							if(doseTarget >= 1.5){
-								if(relExp >= 2.5 || relDose > doseTarget){
-									rivecOn = 1; 
-								} else {
-									rivecOn = 0;
-								}
-							}
-							else {
-								if(relDose > doseTarget){
-									rivecOn = 1;
-								} else {						
-									rivecOn = 0;
-								} 
-							}
-						}
-
-
-				      	if(HumContType == 12){  	//Monthly Seasonal Control + Cooling system tie-in.		   				
-						//Indoor and Outdoor sensor based control. 
-
-							if(weather_file == "Orlando"){
-								FirstCut = 4; 
-								SecondCut = 11;
-								doseTarget = 0.46;
-							} if(weather_file == "Charleston"){
-								FirstCut = 5; 
-								SecondCut = 10;
-								doseTarget = 0.72;
-							} if(weather_file == "07"){ //Baltimore
-								FirstCut = 6; 
-								SecondCut = 9;
-								doseTarget = 0.876;
-							} if(weather_file == "01"){ //Miami
-								FirstCut = 4; 
-								SecondCut = 11;
-								doseTarget = 0.46;
-							} if(weather_file == "02"){ //Houston
-								FirstCut = 4; 
-								SecondCut = 10;
-								doseTarget = 0.61;
-							} if(weather_file == "04"){ //Memphis
-								FirstCut = 5; 
-								SecondCut = 10;
-								doseTarget = 0.72;
-							}
-
-							if(month <= FirstCut || month >= SecondCut){
-								doseTarget = doseTarget;
-							} else {
-								doseTarget = 1.5;
-							}
-
-							if(AHflag == 2){
-									rivecOn = 1;
-							} else if(doseTarget >= 1.5){
-								if(relExp >= 2.5 || relDose > doseTarget){
-									rivecOn = 1; 
-								} else {
-									rivecOn = 0;
-								}
-							} else {
-								if(relDose > doseTarget){
-									rivecOn = 1;
-								} else {						
-									rivecOn = 0;
-								} 
-							}
-						}
-
-
-						if(HumContType == 13){ 
 							//Outdoor-only sensor based control, with variable dose targets
-
-							if(weather_file == "Orlando"){
-								wCutoff = 0.012;
-							} if(weather_file == "Charleston"){
-								wCutoff = 0.011;
-							} if(weather_file == "07"){ //Baltimore
-								wCutoff = 0.006;
-							} if(weather_file == "01"){ //Miami
-								wCutoff = 0.016;
-							} if(weather_file == "02"){ //Houston
-								wCutoff = 0.012;
-							} if(weather_file == "04"){ //Memphis
-								wCutoff = 0.009;
-							}
-
-							if(HROUT >= wCutoff){ //If humid outside, reduce ventilation. 
-								if(relExp >= 2.5 || relDose > 1.5){
-									rivecOn = 1; 
-								} else {
-									rivecOn = 0;
-								}
-							} else { //If dry outside, increase vnetilation.
-								if(relDose > 0.5){ //but we do if exp is high
-									rivecOn = 1;
-								} else {
-									rivecOn = 0; //otherwise don't vent under high humidity condition.
-								}
-							}
-						}
-
-
-						if(HumContType == 14){ 
-						//Outdoor-only sensor based control, control based on 25th and 75th percentile monthly values for each month and climate zone.
-							if(HROUT >= W75[month-1]){ //If humid outside, reduce ventilation. 
-								if(relExp >= 2.5 || relDose > 1.5){
-									rivecOn = 1; 
-								} else {
-									rivecOn = 0;
-								}
-							} else if (HROUT <= W25[month-1]){ //If dry outside, increase vnetilation.
-								if(relDose > 0.5){ //but we do if exp is high
-									rivecOn = 1;
-								} else {
-									rivecOn = 0; //otherwise don't vent under high humidity condition.
-								}
-							} else {
-								if(relExp >= 0.95 || relDose > 1.0){ //Need to reduce this target to make equivalence work out...
-									rivecOn = 1;
-								} else {
-									rivecOn = 0;
-								}
-							}
-						}
-
-
-					if(HumContType == 15){ //Monthly Advanced Seasonal Control + Fixed Control + Cooling System Tie_in
-						//Monthly timer-based control, based on mean HRdiff by month. doseTargets are based on weighted average targeting dose = 1.5 during low-ventilation months, targeting annual dose of 0.98. 
-
-							if(weather_file == "Orlando"){
-								FirstCut = 4; 
-								SecondCut = 11;
-								doseTarget = 0.46;
-
-								HiMonths[0] = 2;
-								HiMonths[1] = 11;
-								HiMonths[2] = 12;
-								HiMonthDose = 0.38;
-
-								LowMonths[0] = 10;
-								LowMonths[1] = 0;
-								LowMonths[2] = 0;
-								LowMonthDose = 1.74;
-
-							} if(weather_file == "Charleston"){
-								FirstCut = 5; 
-								SecondCut = 10;
-								doseTarget = 0.72;
-
-								HiMonths[0] = 10;
-								HiMonths[1] = 11;
-								HiMonths[2] = 0;
-								HiMonthDose = 0.47;
-
-								LowMonths[0] = 8;
-								LowMonths[1] = 9;
-								LowMonths[2] = 0;
-								LowMonthDose = 1.75;
-
-							} if(weather_file == "07"){ //Baltimore
-								FirstCut = 6; 
-								SecondCut = 9;
-								doseTarget = 0.876;
-
-								HiMonths[0] = 10;
-								HiMonths[1] = 0;
-								HiMonths[2] = 0;
-								HiMonthDose = 0.626;
-
-								LowMonths[0] = 7;
-								LowMonths[1] = 8;
-								LowMonths[2] = 0;
-								LowMonthDose = 1.625;
-
-							} if(weather_file == "01"){ //Miami
-								FirstCut = 4; 
-								SecondCut = 11;
-								doseTarget = 0.46;
-
-								HiMonths[0] = 1;
-								HiMonths[1] = 2;
-								HiMonths[2] = 12;
-								HiMonthDose = 0.38;
-
-								LowMonths[0] = 10;
-								LowMonths[1] = 0;
-								LowMonths[2] = 0;
-								LowMonthDose = 1.74;
-
-							} if(weather_file == "02"){ //Houston
-								FirstCut = 4; 
-								SecondCut = 10;
-								doseTarget = 0.61;
-
-								HiMonths[0] = 4;
-								HiMonths[1] = 10;
-								HiMonths[2] = 11;
-								HiMonthDose = 0.38;
-
-								LowMonths[0] = 5;
-								LowMonths[1] = 0;
-								LowMonths[2] = 0;
-								LowMonthDose = 2.184;
-
-							} if(weather_file == "04"){ //Memphis
-								FirstCut = 5; 
-								SecondCut = 10;
-								doseTarget = 0.72;
-
-								HiMonths[0] = 4;
-								HiMonths[1] = 10;
-								HiMonths[2] = 11;
-								HiMonthDose = 0.492;
-
-								LowMonths[0] = 9;
-								LowMonths[1] = 0;
-								LowMonths[2] = 0;
-								LowMonthDose = 2.184;
-							}
-
-							//Setting the appropriate Dose Target based on the month
-							if(month == HiMonths[0] || month == HiMonths[1]  || month == HiMonths[2] || month == LowMonths[0] || month == LowMonths[1]  || month == LowMonths[2]){
-								//doseTarget = HiMonthDose;
-								if(HROUT > HR[3]){ //do not want to vent. Add some "by what amount" deadband value. 
-									if(AHflag == 2){
+							if(HumContType == 13) { 
+								if(HROUT >= wCutoff) { //If humid outside, reduce ventilation. 
+									if(relExp >= 2.5 || relDose > 1.5) {
+										rivecOn = 1; 
+									} else {
+										rivecOn = 0;
+									}
+								} else { //If dry outside, increase vnetilation.
+									if(relDose > 0.5) { //but we do if exp is high
 										rivecOn = 1;
-									} else
-										if(relExp >= 2.5 || relDose > LowMonthDose){ //have to with high exp
-											rivecOn = 1;
-										} else { //otherwise off
-											rivecOn = 0;
-										}
-								} else { //want to vent due to high indoor humidity, so maybe we just let it run, without relExp control?
-									if(relDose > HiMonthDose){ //control to exp = 0.5. Need to change this value based on weighted avg results.
-										rivecOn = 1; //OR we can change the does calculation based on expected periods of contol function (i.e., 1-week,1-month, etc.)
+									} else {
+										rivecOn = 0; //otherwise don't vent under high humidity condition.
+									}
+								}
+							}
+
+							//Outdoor-only sensor based control, control based on 25th and 75th percentile monthly values for each month and climate zone.
+							if(HumContType == 14) { 
+								if(HROUT >= W75[month-1]) { //If humid outside, reduce ventilation. 
+									if(relExp >= 2.5 || relDose > 1.5) {
+										rivecOn = 1; 
 									} else {
 										rivecOn = 0;
 									}
-								}
-
-							} else {
-								if(HROUT > HR[3]){ //do not want to vent. Add some "by what amount" deadband value. 
-									if(AHflag == 2){
+								} else if (HROUT <= W25[month-1]) { //If dry outside, increase vnetilation.
+									if(relDose > 0.5) { //but we do if exp is high
 										rivecOn = 1;
-									} else
-										if(relExp >= 2.5 || relDose > 1.5){ //have to with high exp
-											rivecOn = 1;
-										} else { //otherwise off
-											rivecOn = 0;
-										}
-								} else { //want to vent due to high indoor humidity, so maybe we just let it run, without relExp control?
-									if(relDose > doseTarget){ //control to exp = 0.5. Need to change this value based on weighted avg results.
-										rivecOn = 1; //OR we can change the does calculation based on expected periods of contol function (i.e., 1-week,1-month, etc.)
+									} else {
+										rivecOn = 0; //otherwise don't vent under high humidity condition.
+									}
+								} else {
+									if(relExp >= 0.95 || relDose > 1.0){ //Need to reduce this target to make equivalence work out...
+										rivecOn = 1;
 									} else {
 										rivecOn = 0;
 									}
 								}
 							}
-						}
 
-
-
-					if(HumContType == 16){ //Monthly Advanced Seasonal Control + Fixed Control
-						//Monthly timer-based control, based on mean HRdiff by month. doseTargets are based on weighted average targeting dose = 1.5 during low-ventilation months, targeting annual dose of 0.98. 
-
-							if(weather_file == "Orlando"){
-								FirstCut = 4; 
-								SecondCut = 11;
-								doseTarget = 0.46;
-
-								HiMonths[0] = 2;
-								HiMonths[1] = 11;
-								HiMonths[2] = 12;
-								HiMonthDose = 0.38;
-
-								LowMonths[0] = 10;
-								LowMonths[1] = 0;
-								LowMonths[2] = 0;
-								LowMonthDose = 1.74;
-
-							} if(weather_file == "Charleston"){
-								FirstCut = 5; 
-								SecondCut = 10;
-								doseTarget = 0.72;
-
-								HiMonths[0] = 10;
-								HiMonths[1] = 11;
-								HiMonths[2] = 0;
-								HiMonthDose = 0.47;
-
-								LowMonths[0] = 8;
-								LowMonths[1] = 9;
-								LowMonths[2] = 0;
-								LowMonthDose = 1.75;
-
-							} if(weather_file == "07"){ //Baltimore
-								FirstCut = 6; 
-								SecondCut = 9;
-								doseTarget = 0.876;
-
-								HiMonths[0] = 10;
-								HiMonths[1] = 0;
-								HiMonths[2] = 0;
-								HiMonthDose = 0.626;
-
-								LowMonths[0] = 7;
-								LowMonths[1] = 8;
-								LowMonths[2] = 0;
-								LowMonthDose = 1.625;
-
-							} if(weather_file == "01"){ //Miami
-								FirstCut = 4; 
-								SecondCut = 11;
-								doseTarget = 0.46;
-
-								HiMonths[0] = 1;
-								HiMonths[1] = 2;
-								HiMonths[2] = 12;
-								HiMonthDose = 0.38;
-
-								LowMonths[0] = 10;
-								LowMonths[1] = 0;
-								LowMonths[2] = 0;
-								LowMonthDose = 1.74;
-
-							} if(weather_file == "02"){ //Houston
-								FirstCut = 4; 
-								SecondCut = 10;
-								doseTarget = 0.61;
-
-								HiMonths[0] = 4;
-								HiMonths[1] = 10;
-								HiMonths[2] = 11;
-								HiMonthDose = 0.38;
-
-								LowMonths[0] = 5;
-								LowMonths[1] = 0;
-								LowMonths[2] = 0;
-								LowMonthDose = 2.184;
-
-							} if(weather_file == "04"){ //Memphis
-								FirstCut = 5; 
-								SecondCut = 10;
-								doseTarget = 0.72;
-
-								HiMonths[0] = 4;
-								HiMonths[1] = 10;
-								HiMonths[2] = 11;
-								HiMonthDose = 0.492;
-
-								LowMonths[0] = 9;
-								LowMonths[1] = 0;
-								LowMonths[2] = 0;
-								LowMonthDose = 2.184;
-							}
-
+							//Monthly Advanced Seasonal Control + Fixed Control + Cooling System Tie_in
+							//Monthly timer-based control, based on mean HRdiff by month. doseTargets are based on weighted average targeting dose = 1.5 during low-ventilation months, targeting annual dose of 0.98. 
 							//Setting the appropriate Dose Target based on the month
-							if(month == HiMonths[0] || month == HiMonths[1]  || month == HiMonths[2] || month == LowMonths[0] || month == LowMonths[1]  || month == LowMonths[2]){
-								//doseTarget = HiMonthDose;
-								if(HROUT > HR[3]){ //do not want to vent. Add some "by what amount" deadband value. 
-									if(relExp >= 2.5 || relDose > LowMonthDose){ //have to with high exp
+							if(HumContType == 15) {
+								if(month == HiMonths[0] || month == HiMonths[1]  || month == HiMonths[2] ||
+									month == LowMonths[0] || month == LowMonths[1]  || month == LowMonths[2]) {
+									//doseTargetTmp = HiMonthDose;
+									if(HROUT > HR[3]) { //do not want to vent. Add some "by what amount" deadband value. 
+										if(AHflag == 2) {
+											rivecOn = 1;
+										} else if(relExp >= 2.5 || relDose > LowMonthDose) { //have to with high exp
 											rivecOn = 1;
 										} else { //otherwise off
 											rivecOn = 0;
 										}
-								} else { //want to vent due to high indoor humidity, so maybe we just let it run, without relExp control?
-									if(relDose > HiMonthDose){ //control to exp = 0.5. Need to change this value based on weighted avg results.
-										rivecOn = 1; //OR we can change the does calculation based on expected periods of contol function (i.e., 1-week,1-month, etc.)
-									} else {
-										rivecOn = 0;
+									} else { //want to vent due to high indoor humidity, so maybe we just let it run, without relExp control?
+										if(relDose > HiMonthDose) { //control to exp = 0.5. Need to change this value based on weighted avg results.
+											rivecOn = 1; //OR we can change the does calculation based on expected periods of contol function (i.e., 1-week,1-month, etc.)
+										} else {
+											rivecOn = 0;
+										}
 									}
-								}
-
-							} else {
-								if(HROUT > HR[3]){ //do not want to vent. Add some "by what amount" deadband value. 
-									if(relExp >= 2.5 || relDose > 1.5){ //have to with high exp
+								} else {
+									if(HROUT > HR[3]) { //do not want to vent. Add some "by what amount" deadband value. 
+										if(AHflag == 2) {
+											rivecOn = 1;
+										} else if(relExp >= 2.5 || relDose > 1.5) { //have to with high exp
 											rivecOn = 1;
 										} else { //otherwise off
 											rivecOn = 0;
 										}
-								} else { //want to vent due to high indoor humidity, so maybe we just let it run, without relExp control?
-									if(relDose > doseTarget){ //control to exp = 0.5. Need to change this value based on weighted avg results.
-										rivecOn = 1; //OR we can change the does calculation based on expected periods of contol function (i.e., 1-week,1-month, etc.)
-									} else {
-										rivecOn = 0;
+									} else { //want to vent due to high indoor humidity, so maybe we just let it run, without relExp control?
+										if(relDose > doseTarget) { //control to exp = 0.5. Need to change this value based on weighted avg results.
+											rivecOn = 1; //OR we can change the does calculation based on expected periods of contol function (i.e., 1-week,1-month, etc.)
+										} else {
+											rivecOn = 0;
+										}
 									}
 								}
 							}
-						}
 
-
-
-				  //    	if(HumContType == 4){  				   				
-						////Indoor and Outdoor sensor based control. It really seems we will need some sense of the relative parts of the year when these are true...We may need to toy with these relExp thresholds
-
-						//	if(RHhouse >= 55){
-
-						//		if(AHflag == 2){
-						//			rivecOn = 1;
-
-						//		} else if((abs(airDensityOUT * fan[i].q * HROUT)) > (abs(airDensityIN * fan[i].q * HR[3]) + latentLoad)){ //TRUE when net-humidity transport is from outside to inside. Reduce ventilation.
-						//			relExpTarget = 1 + (2.5-1) * abs((HR[3]-HROUT) / (wDiffMaxNeg)); //wDiffMax has to be an avergaed value, because in a real-world controller you would not know this. 
-						//			if(relExpTarget > 2.5){
-						//				relExpTarget = 2.5;
-						//			}
-						//			if(relExp >= relExpTarget || relDose > 1.5){ //relDose may be over a 1-week or 2-week time span...Need to establish an alternate dose target to allow more under-venting during summmer.
-						//				rivecOn = 1;
-						//			} else { //otherwise off
-						//				rivecOn = 0;
-						//			}
-
-						//		} else { //TRUE when net-humidity transport is from inside to outside. Increase ventilation. 
-						//			relExpTarget = 1 - abs((HR[3]- HROUT) / (wDiffMaxPos));
-						//			if(relExpTarget < 0){
-						//				relExpTarget = 0;
-						//			}
-						//			if(relExp >= relExpTarget){ //|| relDose > 1 Brennan removed, because we don't want to limit over-venting to control humidity.
-						//				rivecOn = 1; //OR we can change the does calculation based on expected periods of contol function (i.e., 1-week,1-month, etc.)
-						//			} else {
-						//				rivecOn = 0;
-						//			}
-						//		}
-
-						//	} else {//I only want this to over-vent during summer. Lock this part of the control out based on cooling thermostat months, maybe? Or remove this entirely. 
-						//		if(relExp >= 0.95 || relDose > 1.0){ //Need to reduce this target to make equivalence work out...
-						//			rivecOn = 1;
-						//		} else {
-						//			rivecOn = 0;
-
-						//		}
-						//	}
-						//}
-
-				  //    	if(HumContType == 4){  				   				
-						////Indoor and Outdoor sensor based control. It really seems we will need some sense of the relative parts of the year when these are true...We may need to toy with these relExp thresholds
-
-						//	//if(RHhouse >= 55){
-						//	if(weather_file == "Orlando"){
-						//		doseTarget = 0.6; //Was 0.7 based on weighted avg calcs
-						//	} if(weather_file == "Charleston"){
-						//		doseTarget = 0.73; //Was 0.83 based on weighted avg calcs.
-						//	} if(weather_file == "07"){
-						//		doseTarget = 0.97;
-						//	}
-
-						//	//doseTarget = 1;
-						//		
-						//	//}
-						//		 if((abs(airDensityOUT * fan[i].q * HROUT)) > (abs(airDensityIN * fan[i].q * HR[3]) + latentLoad)){ //TRUE when net-humidity transport is from outside to inside. Reduce ventilation.
-						//			relExpTarget = 1 + (2.5-1) * abs((HR[3]-HROUT) / (wDiffMaxNeg)); //wDiffMax has to be an avergaed value, because in a real-world controller you would not know this. 
-						//			if(relExpTarget > 2.5){
-						//				relExpTarget = 2.5;
-						//			//} if(AHflag == 2){ //Add some only first 20 minutes of cycle code. 
-						//			//	rivecOn = 1;
-						//			} if(relExp >= relExpTarget || relDose > 1.5){ //relDose may be over a 1-week or 2-week time span...Need to establish an alternate dose target to allow more under-venting during summmer.
-						//				rivecOn = 1;
-						//			} else { //otherwise off
-						//				rivecOn = 0;
-						//			}
-
-						//		} else { //TRUE when net-humidity transport is from inside to outside. Increase ventilation. 
-						//			relExpTarget = 1 - abs((HR[3]- HROUT) / (wDiffMaxPos));
-						//			if(relExpTarget < 0){
-						//				relExpTarget = 0;
-						//			} if(relExp >= relExpTarget || relDose > doseTarget){ //|| relDose > 1 Brennan removed, because we don't want to limit over-venting to control humidity. 0.7 for Orlando. 0.83 for Charleston. 0.97 for Baltimore. 
-						//				rivecOn = 1; //OR we can change the does calculation based on expected periods of contol function (i.e., 1-week,1-month, etc.)
-						//			} else {
-						//				rivecOn = 0;
-						//			}
-						//		}
-						//	}
-
-							//} else {//I only want this to over-vent during summer. Lock this part of the control out based on cooling thermostat months, maybe? Or remove this entirely. 
-							//	if(relExp >= 0.95 || relDose > 1.0){ //Need to reduce this target to make equivalence work out...
-							//		rivecOn = 1;
-							//	} else {
-							//		rivecOn = 0;
-
-							/*	}
-							}
-						}*/
-
-
-						//if(HumContType == 5){ //Marginal improvements, ~2-3% reductions in RH60 and RH70 exceedances.
-						////Monthly timer-based control. Can control to exp=2.5 and target ~0.28, or exp=2.0 and target ~0.5
-
-						//	if(month <= 4 || month > 8){ //Jan-April and Sept-Dec, over ventilate. Can experiment with this at 5 and 9, as well. 
-						//		if(relExp >= 0.5 || relDose > 0.5){
-						//			rivecOn = 1;
-						//		} else {						
-						//			rivecOn = 0;
-						//		} 
-						//	} else { //May-Aug, underventilate.
-						//		if(relExp >= 2.0 || relDose > 2.0){
-						//			rivecOn = 1;
-						//		} else {
-						//			rivecOn = 0;
-						//		}
-						//	}
-						//}
-
-						//if(HumContType == 5){ //Marginal improvements, ~2-3% reductions in RH60 and RH70 exceedances.
-						////Monthly timer-based control. Can control to exp=2.5 and target ~0.28, or exp=2.0 and target ~0.5
-
-						//	if(weather_file == "Orlando"){
-						//		FirstCut = 4; 
-						//		SecondCut = 10;
-						//	} if(weather_file == "Charleston"){
-						//		FirstCut = 4; 
-						//		SecondCut = 9;
-						//	} if(weather_file == "07"){ //Baltimore
-						//		FirstCut = 5; 
-						//		SecondCut = 8;
-						//	} if(weather_file == "01"){ //Miami
-						//		FirstCut = 3; 
-						//		SecondCut = 11;
-						//	} if(weather_file == "02"){ //Houston
-						//		FirstCut = 4; 
-						//		SecondCut = 9;
-						//	} if(weather_file == "04"){ //Memphis
-						//		FirstCut = 5; 
-						//		SecondCut = 9;
-						//	}
-
-						//	if(month <= FirstCut || month > SecondCut){ //Jan-April and Sept-Dec, over ventilate. Can experiment with this at 5 and 9, as well. 
-						//		if(relExp >= 0.5 || relDose > 0.5){
-						//			rivecOn = 1;
-						//		} else {						
-						//			rivecOn = 0;
-						//		} 
-						//	} else { //May-Aug, underventilate.
-						//		if(relExp >= 2.0 || relDose > 2.0){
-						//			rivecOn = 1;
-						//		} else {
-						//			rivecOn = 0;
-						//		}
-						//	}
-						//}
-
-
-						//if(HumContType == 6){ //Marginal improvements, ~2-3% reductions in RH60 and RH70 exceedances.
-						////4am to 10am fan control, reduce ventilation between 4 and 10 am. 6-hour control.
-						//	if(month < 4 || month > 11){ //control normally Jan-March and Dec.
-						//		if(relExp >= 0.95 || relDose > 1){ 
-						//			rivecOn = 1;
-						//		} else {
-						//			rivecOn = 0;
-						//		}
-						//	} else {						
-						//		if(HOUR < 4 || HOUR > 9){ //before 4am or after 10am operate fan controlled to exp < 1
-						//			if(relExp >= 0.95 || relDose > 1){
-						//				rivecOn = 1;
-						//			} else {
-						//				rivecOn = 0;
-						//			}
-						//		} else { //Between 4 and 10 am, only ventilate if exp >2.5
-						//			if(relExp >= 2.5){
-						//				rivecOn = 1;
-						//			} else {
-						//				rivecOn = 0;
-						//			}
-						//		}
-						//	}
-						//}
-
-						//if(HumContType == 7){ //So far, this control makes humidity slightly worse in Med Med home sizes/occ densities.
-						////4am to 10am fan control, increase ventilation between 4 and 10am. 6-hour control.
-						//	if(month < 4 || month > 11){ //control normally Jan-March and Dec.
-						//		if(relExp >= 0.95 || relDose > 1){ 
-						//			rivecOn = 1;
-						//		} else {
-						//			rivecOn = 0;
-						//		}
-						//	} else {
-						//		if(HOUR < 4 || HOUR > 9){ //before 4am or after 10am, under-vent to 1.2
-						//			if(relExp >= 1.2){
-						//				rivecOn = 1;
-						//			} else {
-						//				rivecOn = 0;
-						//			}
-						//		} else { //Between 4 and 10 am, over-vent down to exp 1
-						//			if(relExp >= 0.95 || relDose > 1){ 
-						//				rivecOn = 1;
-						//			} else {
-						//				rivecOn = 0;
-						//			}
-						//		}
-						//	}
-						//}
-
-						//if(HumContType == 8){ //So far, this control makes humidity slightly worse in Med Med home sizes/occ densities.
-						////12pm to 6pm fan control, reduce ventilation between 12 and 6. 6-hour control.
-						//	if(month < 4 || month > 11){ //control normally Jan-March and Dec.
-						//		if(relExp >= 0.95 || relDose > 1){ 
-						//			rivecOn = 1;
-						//		} else {
-						//			rivecOn = 0;
-						//		}
-						//	} else {
-						//		if(HOUR < 12 || HOUR > 17){ //before 12pm or after 6pm operate fan controlled to exp < 1
-						//			if(relExp >= 0.95 || relDose > 1){
-						//				rivecOn = 1;
-						//			} else {
-						//				rivecOn = 0;
-						//			}
-						//		} else { //Between 12 and 6pm, only ventilate if exp >2.5
-						//			if(relExp >= 2.5){
-						//				rivecOn = 1;
-						//			} else {
-						//				rivecOn = 0;
-						//			}
-						//		}
-						//	}
-						//}
-
-						//if(HumContType == 9){ //Marginal improvements, ~2-3% reductions in RH60 and RH70 exceedances.
-						////12pm to 6pm fan control, increase ventilation between 12 and 6. 6-hour control.
-						//	if(month < 4 || month > 11){ //control normally Jan-March and Dec.
-						//		if(relExp >= 0.95 || relDose > 1){ 
-						//			rivecOn = 1;
-						//		} else {
-						//			rivecOn = 0;
-						//		}
-						//	} else { //All other months, use hourly controls. 
-						//		if(HOUR < 12 || HOUR > 17){ //before 12pm or after 6pm, under-vent to exp 1.2
-						//			if(relExp >= 1.2){
-						//				rivecOn = 1;
-						//			} else {
-						//				rivecOn = 0;
-						//			}
-						//		} else { //Between 12 and 6pm, over-vent down to dose 1
-						//			if(relExp >= 0.95 || relDose > 1){
-						//				rivecOn = 1;
-						//			} else {
-						//				rivecOn = 0;
-						//			}
-						//		}
-						//	}
-						//}
-
-						if(HumContType == 0){
-						//Rivec control of number 50 fan type, algorithm v6					     
-					
-							if(occupied[weekend][HOUR]) {				            	// Base occupied
-								if(relExp >= 0.95 || relDose >= 1.0)
-									rivecOn = 1;
-
-							} else {						                	// Base unoccupied
-								if(relExp >= expLimit)
-									rivecOn = 1;
+ 							//Monthly Advanced Seasonal Control + Fixed Control
+							//Monthly timer-based control, based on mean HRdiff by month. doseTargets are based on weighted average targeting dose = 1.5 during low-ventilation months, targeting annual dose of 0.98. 
+							//Setting the appropriate Dose Target based on the month
+							if(HumContType == 16) {
+								if(month == HiMonths[0] || month == HiMonths[1]  || month == HiMonths[2] || 
+									month == LowMonths[0] || month == LowMonths[1]  || month == LowMonths[2]) {
+									//doseTargetTmp = HiMonthDose;
+									if(HROUT > HR[3]) { //do not want to vent. Add some "by what amount" deadband value. 
+										if(relExp >= 2.5 || relDose > LowMonthDose) { //have to with high exp
+											rivecOn = 1;
+										} else { //otherwise off
+											rivecOn = 0;
+										}
+									} else { //want to vent due to high indoor humidity, so maybe we just let it run, without relExp control?
+										if(relDose > HiMonthDose) { //control to exp = 0.5. Need to change this value based on weighted avg results.
+											rivecOn = 1; //OR we can change the does calculation based on expected periods of contol function (i.e., 1-week,1-month, etc.)
+										} else {
+											rivecOn = 0;
+										}
+									}
+								} else {
+									if(HROUT > HR[3]) { //do not want to vent. Add some "by what amount" deadband value. 
+										if(relExp >= 2.5 || relDose > 1.5) { //have to with high exp
+											rivecOn = 1;
+										} else { //otherwise off
+											rivecOn = 0;
+										}
+									} else { //want to vent due to high indoor humidity, so maybe we just let it run, without relExp control?
+										if(relDose > doseTarget) { //control to exp = 0.5. Need to change this value based on weighted avg results.
+											rivecOn = 1; //OR we can change the does calculation based on expected periods of contol function (i.e., 1-week,1-month, etc.)
+										} else {
+											rivecOn = 0;
+										}
+									}
+								}
 							}
 
-							if(HOUR >= peakStart && HOUR < peakEnd && peakFlag == 0) {		// PEAK Time Period
-								rivecOn = 0;												// Always off
-								if(relExp >= expLimit)
-									rivecOn = 1;
+							//Rivec control of number 50 fan type, algorithm v6					     
+							if(HumContType == 0) {
+								if(occupied[weekend][HOUR]) {				            	// Base occupied
+									if(relExp >= 0.95 || relDose >= 1.0)
+										rivecOn = 1;
+								} else {						                	// Base unoccupied
+									if(relExp >= expLimit)
+										rivecOn = 1;
+								}
+								if(HOUR >= peakStart && HOUR < peakEnd && peakFlag == 0) {		// PEAK Time Period
+									rivecOn = 0;												// Always off
+									if(relExp >= expLimit)
+										rivecOn = 1;
+								}
 							}
-						}
 					
 
 					//// RIVEC fan operation after algorithm decision
