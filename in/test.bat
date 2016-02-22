@@ -1,4 +1,5 @@
 regcap.cfg
+test01_0
 test01_1
 test01_2
 test01_3
@@ -12,3 +13,6 @@ test01_10
 test01_11
 test01_12
 test01_13
+test01_14
+test01_15
+test01_16
