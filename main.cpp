@@ -7,6 +7,7 @@
    #include <cmath>        // needed for mac g++
 #endif
 #include "functions.h"
+#include "config/config.h"
 
 using namespace std;
 
@@ -38,98 +39,69 @@ New inputs:
 	Addendum N weather factors (weatherFactor)
 */
 
+// ============================== CONSTANTS ===============================================
+const double airDensityRef = 1.20411;	// Reference air density at 20 deg C at sea level [kg/m3]
+const double airTempRef = 293.15;		// Reference room temp [K] = 20 deg C
+
 // ============================= FUNCTIONS ==============================================================
-void _pause();
 
 // ============================= FUNCTION DEFINITIONS ==============================================================
-/* _pause function for DOS version
-   could call 'read -p ""' for linux, but do nothing for now
-*/
-void _pause() {
-#ifdef _WIN32
-   system("pause");
-#endif
-   }
+
 
 // Main function
-int main(int argc, char *argv[])
+int main(int argc, char *argv[], char* envp[])
 { 	
+	// Read in batch file name from command line
+	string batchFileName = "";
+	string configFileName = "";
+	if ( (argc <= 1) || (argv[argc-1] == NULL) || (argv[argc-1][0] == '-') ) {
+		cerr << "usage: " << argv[0] << " batch_file" << endl;
+      return(1);
+   }
+   else {
+      batchFileName = argv[argc-1];
+   }
+
+	// Open batch File ============================================================================================
+	ifstream batchFile(batchFileName); 
+	if(!batchFile) { 
+		cout << "Cannot open batch file: " << batchFileName << endl;
+		return 1; 
+	} 
+
+	// read in config file
+	batchFile >> configFileName;
+	Config config(configFileName, envp);
+	
+	// File paths
+	string inPath = config.pString("inPath");
+	string outPath = config.pString("outPath");
+	string weatherPath = config.pString("weatherPath");
+	string shelterFile_name = config.pString("shelterFile_name");
+	
+	// output file control
+	bool printMoistureFile = config.pBool("printMoistureFile");
+	bool printFilterFile = config.pBool("printFilterFile");
+	bool printOutputFile = config.pBool("printOutputFile");
+
 	// Simulation Batch Timing
 	time_t startTime, endTime;
 	time(&startTime);
 	string runStartTime = ctime(&startTime);
-
-#ifdef _WIN32
-	// [DOS File Paths] Paths for input and output file locations
-	string inPath = "Z:\\humidity_bdless\\newRHfix\\50%FlowRateFix\\";				// Location of input files. Brennan. 
-	string outPath = "Z:\\humidity_bdless\\out_RHfix\\50%FlowRateFix\\";				// Location to write output files. Brennan.
 	
-	string batchFile_name = inPath + "bat_50cfis_AllCases_b.txt";	// Name of batch input file (assumed to be in the same folder as the input files). Brennan. Originally .csv file. 
-	
-	string weatherPath = "C:\\RC++\\weather\\IECC\\";			// Location of IECC weather files (DOE, All of US). \\ "adjusted\\" contains files w/median values appended
-	//string weatherPath = "C:\\RC++\\weather\\CEC\\";			// Location of CEC weather files (California)
-	
-	string shelterFile_name = "C:\\RC++\\shelter\\bshelter.dat";	// Location of shelter file
+	int simNum = 0;
+	string simName = "";
 
-	// Set to a, b or c to avoid potential conflicts while running more than one simulation
-	// at the same time using a common dynamic fan schedule input file
-	string SCHEDNUM = "a";
-	string fanSchedulefile_name1 = "C:\\RC++\\schedules\\sched1" + SCHEDNUM;
-	string fanSchedulefile_name2 = "C:\\RC++\\schedules\\sched2" + SCHEDNUM;
-	string fanSchedulefile_name3 = "C:\\RC++\\schedules\\sched3" + SCHEDNUM;
-#elif __APPLE__
-	// [Unix File Paths] Paths for input and output file locations
-	string inPath = "in/";				            // Location of input files.
-	string outPath = "out/";				         // Location to write output files.
-	string weatherPath = "weather/IECC/";			// Location of IECC weather files (DOE, All of US). "adjusted" contains files w/median values appended
-	//string weatherPath = "weather/CEC/";			// Location of CEC weather files (California)
-	
-	string batchFile_name = inPath + "input_bat_mac.csv";	// Name of batch input file (assumed to be in the same folder as the input files). 
-	string shelterFile_name = "shelter/bshelter.dat";	   // Location of shelter file
+	cout << "REGCAP++ Building Simulation Tool LBNL" << endl;
 
-	// Set to a, b or c to avoid potential conflicts while running more than one simulation
-	// at the same time using a common dynamic fan schedule input file
-	string SCHEDNUM = "a";
-	string fanSchedulefile_name1 = "schedules/sched1" + SCHEDNUM;
-	string fanSchedulefile_name2 = "schedules/sched2" + SCHEDNUM;
-	string fanSchedulefile_name3 = "schedules/sched3" + SCHEDNUM;
-#endif
-	
-	// total days to run the simulation for:
-	int totaldays = 365;
-
-	char reading[255];
-	int numSims;			// Number of simulations to run in the batch
-	string simFile[255], climateZone[255], outName[255];
-
-	cout << "\nRC++ [begin]" << endl << endl;
-
-	// [start] Reading Batch File ============================================================================================
-	ifstream batchFile(batchFile_name); 
-	if(!batchFile) { 
-		cout << "Cannot open: " << batchFile_name << endl;
-		_pause();
-		return 1; 
-	} 
-
-	batchFile.getline(reading, 255);
-	numSims = atoi(reading);
-
-	cout << "Batch file info:" << endl;
-	for(int i=0; i < numSims; i++) {
-		getline(batchFile, simFile[i]);
-		getline(batchFile, climateZone[i]);
-		getline(batchFile, outName[i]);
-
-		cout << "simFile[" << i << "]: " << simFile[i] << endl;
-		cout << "climateZone[" << i << "]: " << climateZone[i] << endl;
-		cout << "outName[" << i << "]: " << outName[i] << endl << endl;		
-	}
-
-	batchFile.close();
-	// [END] Reading Batch File ============================================================================================
-
-	for(int sim=0; sim < numSims; sim++) {		
+	// Main loop on each input file =======================================================
+	while(batchFile >> simName)  {		
+		simNum++;
+		string inputFileName = inPath + simName + ".csv";
+		string outputFileName = outPath + simName + ".rco";
+		string moistureFileName = outPath + simName + ".hum";
+		string filterFileName = outPath + simName + ".fil";
+		string summaryFileName = outPath + simName + ".rc2";
 
 		// Declare structures
 		winDoor_struct winDoor[10] = {0};
@@ -142,8 +114,8 @@ int main(int argc, char *argv[])
 
 		//Declare arrays
 		double Sw[4];
-		double floorFraction[4];
-		double wallFraction[4];
+		double floorFraction[4]; 		// Fraction of leak in floor below wall 1, 2, 3 and 4
+		double wallFraction[4]; 		// Fraction of leak in wall 1, 2, 3 and 4
 		double Swinit[4][361];		
 		double mFloor[4] = {0,0,0,0};
 		double soffitFraction[5];
@@ -155,7 +127,109 @@ int main(int argc, char *argv[])
 		double HR[5];		
 		double heatThermostat[24];
 		double coolThermostat[24];
+		int occupied[2][24];	    // Used for setting which hours of the weekday/weekend the house is occupied (1) or vacant (0)
 
+		// Input file variables
+		string weather_file;
+		string fanScheduleFileName;
+		string tstatFileName;
+		string occupancyFileName;
+		double C;
+		double n;		// Envelope Pressure Exponent
+		double h;		// Eaves Height [m]
+		double R;		// Ceiling Floor Leakage Sum
+		double X;		// Ceiling Floor Leakage Difference
+		int numFlues;			// Number of flues/chimneys/passive stacks
+		double flueShelterFactor;	// Shelter factor at the top of the flue (1 if the flue is higher than surrounding obstacles
+		int numPipes;				// Number of passive vents but appears to do much the same as flues
+		double Hfloor;
+		string rowOrIsolated;			// House in a row (R) or isolated (any string other than R)
+		double houseVolume;		// Conditioned volume of house (m3)
+		double floorArea;		// Conditioned floor area (m2)
+		double planArea;		// Footprint of house (m2)
+		double storyHeight = 2.5;				// Story height (m)
+		double houseLength;		// Long side of house (m) NOT USED IN CODE
+		double houseWidth;		// Short side of house (m) NOT USED IN CODE
+		double UAh;				// Heating U-Value (Thermal Conductance)
+		double UAc;				// Cooling U-Value (Thermal Conductance)
+		int numWinDoor;
+		int numFans;
+		double windowWE;
+		double windowN;
+		double windowS;
+		double winShadingCoef;
+		double ceilRval_heat;
+		double ceilRval_cool;
+		double latentLoad;
+		double internalGains1;
+		double atticVolume;
+		double atticC;
+		double atticPressureExp;
+		int numAtticVents;
+		double roofPitch;
+		string roofPeakOrient;		// Roof peak orientation, D = perpendicular to front of house (Wall 1), P = parrallel to front of house
+		double roofPeakHeight;
+		int numAtticFans;
+		double roofRval;
+		int roofType;
+		double ductLocation;			
+		double supThickness;
+		double retThickness;
+		double supRval;
+		double retRval;
+		double supLF0;						//Supply duct leakage fraction (e.g., 0.01 = 1% leakage).					
+		double retLF0;						//Return duct leakage fraction (e.g., 0.01 = 1% leakage)
+		double supLength;
+		double retLength;
+		double supDiameter;
+		double retDiameter;
+		double qAH_cool0;				// Cooling Air Handler air flow (m^3/s)
+		double qAH_heat0;				// Heating Air Handler air flow (m^3/s)
+		double supn;
+		double retn;
+		double supC;					// Supply leak flow coefficient
+		double retC;					// Return leak flow coefficient
+		double buried;
+		double capacityraw;
+		double capacityari;
+		double EERari;
+		double hcapacity;		// Heating capacity [kBtu/h]
+		double fanPower_heating0;		// Heating fan power [W]
+		double fanPower_cooling0;		// Cooling fan power [W]
+		double charge;
+		double AFUE;				// Annual Fuel Utilization Efficiency for the furnace
+		int bathroomSchedule;	// Bathroom schedule file to use (1, 2 or 3)
+		int numBedrooms;			// Number of bedrooms (for 62.2 target ventilation calculation)
+		int numStories;			// Number of stories in the building (for Nomalized Leakage calculation)
+		double weatherFactor;	// Weather Factor (w) (for infiltration calculation from ASHRAE 136)
+		int terrain;				// 1 = large city centres, 2 = urban and suburban, 3 = open terrain, 4 = open sea
+		int Crawl;					// Is there a crawlspace - 1=crawlspace (use first floorFraction), 0=not a crawlspace (use all floorFractions)
+		double HRV_ASE;			// Apparent Sensible Effectiveness of HRV unit
+		double ERV_SRE;			// Sensible Recovery Efficiency of ERV unit. SRE and TRE based upon averages from ERV units in HVI directory, as of 5/2015.
+		double ERV_TRE;			// Total Recovery Efficiency of ERV unit, includes humidity transfer for moisture subroutine		
+		int AeqCalcs;				// 1=62.2-2013, 2 and 3 are for 62.2-2010, 4=62.2-2013 with no infiltration credit
+		// Inputs to set filter type and loading rate
+		int filterLoadingFlag;	// Filter loading flag = 0 (OFF) or 1 (ON)
+		int MERV;					// MERV rating of filter (may currently be set to 5, 8, 11 or 16)
+		int loadingRate;			// loading rate of filter, f (0,1,2) = (low,med,high)
+		int AHMotorType;				// BPM (1) or PSC (0) air handler motor
+		// Inputs to set humidity control
+		double rivecFlagInd;		// Indicator variable that instructs a fan code 13 or 17 to be run by RIVEC controls. 1= yes, 0=no. Brennan.
+		double HumContType;		// Type of humidity control to be used in the RIVEC calculations. 1,2,...n Brennan.
+		double wCutoff;			// Humidity Ratio cut-off calculated as some percentile value for the climate zone. Brennan.
+		double wDiffMaxNeg;		// Maximum average indoor-outdoor humidity differene, when wIn < wOut. Climate zone average.
+		double wDiffMaxPos;		// Maximum average indoor-outdoor humidity differene, when wIn > wOut. Climate zone average.
+		double W25[12]; 			// 25th percentiles for each month of the year, per TMY3
+		double W75[12]; 			// 75th percentiles for each month of the year, per TMY3
+		int FirstCut;				// Monthly Indexes assigned based on climate zone
+		int SecondCut; 			// Monthly Indexes assigned based on climate zone
+		double doseTarget;		// Targeted dose value
+		double HiDose;				// Variable high dose value for real-time humidity control, based on worst-case large, low-occupancy home. 
+		int HiMonths[3];
+		int LowMonths[3];
+		double HiMonthDose;
+		double LowMonthDose;
+		
 		// Zeroing the variables to create the sums for the .ou2 file
 		long int MINUTE = 1;
 		int endrunon = 0;
@@ -196,775 +270,246 @@ int main(int argc, char *argv[])
 		double RHind70 = 0; //index value (0 or 1) if RHhouse > 70 
 		double RHtot70 = 0; //cumulative sum of index value (0 or 1) if RHhouse > 70
 		double RHexcAnnual70 = 0; //annual fraction of the year where RHhouse > 70
-
-		// "constants":
-		double airDensityRef = 1.20411;	// Reference air density at 20 deg C at sea level [kg/m3]
-		double airTempRef = 293.15;		// Reference room temp [K] = 20 deg C
-		double pi = 3.1415926;
-
 		double hret = 28;				// Initial number for hret in Btu/lb
 
-		// [START] Thermostat settings (RIVEC 2012) ========================================================================================
+		// Open moisture output file
+		ofstream moistureFile;
+		if(printMoistureFile) {
+			moistureFile.open(moistureFileName);
+			if(!moistureFile) { 
+				cout << "Cannot open moisture file: " << moistureFileName << endl;
+				return 1; 
+			}
 
-		// Heating. Building America Simulation Protocols
-		heatThermostat[0] = 273.15 + (71 - 32) * 5.0 / 9.0;
-		heatThermostat[1] = 273.15 + (71 - 32) * 5.0 / 9.0;
-		heatThermostat[2] = 273.15 + (71 - 32) * 5.0 / 9.0;
-		heatThermostat[3] = 273.15 + (71 - 32) * 5.0 / 9.0;
-		heatThermostat[4] = 273.15 + (71 - 32) * 5.0 / 9.0;
-		heatThermostat[5] = 273.15 + (71 - 32) * 5.0 / 9.0;
-		heatThermostat[6] = 273.15 + (71 - 32) * 5.0 / 9.0;
-		heatThermostat[7] = 273.15 + (71 - 32) * 5.0 / 9.0;
-		heatThermostat[8] = 273.15 + (71 - 32) * 5.0 / 9.0;
-		heatThermostat[9] = 273.15 + (71 - 32) * 5.0 / 9.0;
-		heatThermostat[10] = 273.15 + (71 - 32) * 5.0 / 9.0;
-		heatThermostat[11] = 273.15 + (71 - 32) * 5.0 / 9.0;
-		heatThermostat[12] = 273.15 + (71 - 32) * 5.0 / 9.0;
-		heatThermostat[13] = 273.15 + (71 - 32) * 5.0 / 9.0;
-		heatThermostat[14] = 273.15 + (71 - 32) * 5.0 / 9.0;
-		heatThermostat[15] = 273.15 + (71 - 32) * 5.0 / 9.0;
-		heatThermostat[16] = 273.15 + (71 - 32) * 5.0 / 9.0;
-		heatThermostat[17] = 273.15 + (71 - 32) * 5.0 / 9.0;
-		heatThermostat[18] = 273.15 + (71 - 32) * 5.0 / 9.0;
-		heatThermostat[19] = 273.15 + (71 - 32) * 5.0 / 9.0;
-		heatThermostat[20] = 273.15 + (71 - 32) * 5.0 / 9.0;
-		heatThermostat[21] = 273.15 + (71 - 32) * 5.0 / 9.0;
-		heatThermostat[22] = 273.15 + (71 - 32) * 5.0 / 9.0;
-		heatThermostat[23] = 273.15 + (71 - 32) * 5.0 / 9.0;
-
-		// Cooling. Building America Simulation Protocols
-		coolThermostat[0] = 273.15 + (76 - 32) * 5.0 / 9.0;			// 00:00 -> 01:00
-		coolThermostat[1] = 273.15 + (76 - 32) * 5.0 / 9.0;			// 01:00 -> 02:00
-		coolThermostat[2] = 273.15 + (76 - 32) * 5.0 / 9.0;			// 02:00 -> 03:00
-		coolThermostat[3] = 273.15 + (76 - 32) * 5.0 / 9.0;			// 03:00 -> 04:00
-		coolThermostat[4] = 273.15 + (76 - 32) * 5.0 / 9.0;			// 04:00 -> 05:00
-		coolThermostat[5] = 273.15 + (76 - 32) * 5.0 / 9.0;			// 05:00 -> 06:00
-		coolThermostat[6] = 273.15 + (76 - 32) * 5.0 / 9.0;			// 06:00 -> 07:00
-		coolThermostat[7] = 273.15 + (76 - 32) * 5.0 / 9.0;			// 07:00 -> 08:00
-		coolThermostat[8] = 273.15 + (76 - 32) * 5.0 / 9.0;			// 08:00 -> 09:00	
-		coolThermostat[9] = 273.15 + (76 - 32) * 5.0 / 9.0;			// 09:00 -> 10:00
-		coolThermostat[10] = 273.15 + (76 - 32) * 5.0 / 9.0;		// 10:00 -> 11:00
-		coolThermostat[11] = 273.15 + (76 - 32) * 5.0 / 9.0;		// 11:00 -> 12:00
-		coolThermostat[12] = 273.15 + (76 - 32) * 5.0 / 9.0;		// 12:00 -> 13:00
-		coolThermostat[13] = 273.15 + (76 - 32) * 5.0 / 9.0;		// 13:00 -> 14:00
-		coolThermostat[14] = 273.15 + (76 - 32) * 5.0 / 9.0;		// 14:00 -> 15:00
-		coolThermostat[15] = 273.15 + (76 - 32) * 5.0 / 9.0;		// 15:00 -> 16:00
-		coolThermostat[16] = 273.15 + (76 - 32) * 5.0 / 9.0;		// 16:00 -> 17:00	
-		coolThermostat[17] = 273.15 + (76 - 32) * 5.0 / 9.0;		// 17:00 -> 18:00
-		coolThermostat[18] = 273.15 + (76 - 32) * 5.0 / 9.0;		// 18:00 -> 19:00
-		coolThermostat[19] = 273.15 + (76 - 32) * 5.0 / 9.0;		// 19:00 -> 20:00
-		coolThermostat[20] = 273.15 + (76 - 32) * 5.0 / 9.0;		// 20:00 -> 21:00
-		coolThermostat[21] = 273.15 + (76 - 32) * 5.0 / 9.0;		// 21:00 -> 22:00
-		coolThermostat[22] = 273.15 + (76 - 32) * 5.0 / 9.0;		// 22:00 -> 23:00
-		coolThermostat[23] = 273.15 + (76 - 32) * 5.0 / 9.0;		// 23:00 -> 24:00
-
-		//coolThermostat[0] = 273.15 + (73 - 32) * 5.0 / 9.0;			// 00:00 -> 01:00
-		//coolThermostat[1] = 273.15 + (73 - 32) * 5.0 / 9.0;			// 01:00 -> 02:00
-		//coolThermostat[2] = 273.15 + (73 - 32) * 5.0 / 9.0;			// 02:00 -> 03:00
-		//coolThermostat[3] = 273.15 + (73 - 32) * 5.0 / 9.0;			// 03:00 -> 04:00
-		//coolThermostat[4] = 273.15 + (73 - 32) * 5.0 / 9.0;			// 04:00 -> 05:00
-		//coolThermostat[5] = 273.15 + (73 - 32) * 5.0 / 9.0;			// 05:00 -> 06:00
-		//coolThermostat[6] = 273.15 + (73 - 32) * 5.0 / 9.0;			// 06:00 -> 07:00
-		//coolThermostat[7] = 273.15 + (73 - 32) * 5.0 / 9.0;			// 07:00 -> 08:00
-		//coolThermostat[8] = 273.15 + (73 - 32) * 5.0 / 9.0;			// 08:00 -> 09:00	
-		//coolThermostat[9] = 273.15 + (73 - 32) * 5.0 / 9.0;			// 09:00 -> 10:00
-		//coolThermostat[10] = 273.15 + (73 - 32) * 5.0 / 9.0;		// 10:00 -> 11:00
-		//coolThermostat[11] = 273.15 + (73 - 32) * 5.0 / 9.0;		// 11:00 -> 12:00
-		//coolThermostat[12] = 273.15 + (73 - 32) * 5.0 / 9.0;		// 12:00 -> 13:00
-		//coolThermostat[13] = 273.15 + (73 - 32) * 5.0 / 9.0;		// 13:00 -> 14:00
-		//coolThermostat[14] = 273.15 + (73 - 32) * 5.0 / 9.0;		// 14:00 -> 15:00
-		//coolThermostat[15] = 273.15 + (73 - 32) * 5.0 / 9.0;		// 15:00 -> 16:00
-		//coolThermostat[16] = 273.15 + (73 - 32) * 5.0 / 9.0;		// 16:00 -> 17:00	
-		//coolThermostat[17] = 273.15 + (73 - 32) * 5.0 / 9.0;		// 17:00 -> 18:00
-		//coolThermostat[18] = 273.15 + (73 - 32) * 5.0 / 9.0;		// 18:00 -> 19:00
-		//coolThermostat[19] = 273.15 + (73 - 32) * 5.0 / 9.0;		// 19:00 -> 20:00
-		//coolThermostat[20] = 273.15 + (73 - 32) * 5.0 / 9.0;		// 20:00 -> 21:00
-		//coolThermostat[21] = 273.15 + (73 - 32) * 5.0 / 9.0;		// 21:00 -> 22:00
-		//coolThermostat[22] = 273.15 + (73 - 32) * 5.0 / 9.0;		// 22:00 -> 23:00
-		//coolThermostat[23] = 273.15 + (73 - 32) * 5.0 / 9.0;		// 23:00 -> 24:00
-
-		//// Heating
-		//heatThermostat[0] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[1] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[2] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[3] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[4] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[5] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[6] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[7] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[8] = 273.15 + (70 - 32) * 5.0 / 9.0;
-		//heatThermostat[9] = 273.15 + (70 - 32) * 5.0 / 9.0;
-		//heatThermostat[10] = 273.15 + (70 - 32) * 5.0 / 9.0;
-		//heatThermostat[11] = 273.15 + (70 - 32) * 5.0 / 9.0;
-		//heatThermostat[12] = 273.15 + (70 - 32) * 5.0 / 9.0;
-		//heatThermostat[13] = 273.15 + (70 - 32) * 5.0 / 9.0;
-		//heatThermostat[14] = 273.15 + (70 - 32) * 5.0 / 9.0;
-		//heatThermostat[15] = 273.15 + (70 - 32) * 5.0 / 9.0;
-		//heatThermostat[16] = 273.15 + (70 - 32) * 5.0 / 9.0;
-		//heatThermostat[17] = 273.15 + (70 - 32) * 5.0 / 9.0;
-		//heatThermostat[18] = 273.15 + (70 - 32) * 5.0 / 9.0;
-		//heatThermostat[19] = 273.15 + (70 - 32) * 5.0 / 9.0;
-		//heatThermostat[20] = 273.15 + (70 - 32) * 5.0 / 9.0;
-		//heatThermostat[21] = 273.15 + (70 - 32) * 5.0 / 9.0;
-		//heatThermostat[22] = 273.15 + (70 - 32) * 5.0 / 9.0;
-		//heatThermostat[23] = 273.15 + (70 - 32) * 5.0 / 9.0;
-
-		//// Cooling
-		//coolThermostat[0] = 273.15 + (74 - 32) * 5.0 / 9.0;			// 00:00 -> 01:00
-		//coolThermostat[1] = 273.15 + (74 - 32) * 5.0 / 9.0;			// 01:00 -> 02:00
-		//coolThermostat[2] = 273.15 + (74 - 32) * 5.0 / 9.0;			// 02:00 -> 03:00
-		//coolThermostat[3] = 273.15 + (74 - 32) * 5.0 / 9.0;			// 03:00 -> 04:00
-		//coolThermostat[4] = 273.15 + (74 - 32) * 5.0 / 9.0;			// 04:00 -> 05:00
-		//coolThermostat[5] = 273.15 + (74 - 32) * 5.0 / 9.0;			// 05:00 -> 06:00
-		//coolThermostat[6] = 273.15 + (74 - 32) * 5.0 / 9.0;			// 06:00 -> 07:00
-		//coolThermostat[7] = 273.15 + (74 - 32) * 5.0 / 9.0;			// 07:00 -> 08:00
-		//coolThermostat[8] = 273.15 + (80 - 32) * 5.0 / 9.0;			// 08:00 -> 09:00	// 80 normal
-		//coolThermostat[9] = 273.15 + (80 - 32) * 5.0 / 9.0;			// 09:00 -> 10:00
-		//coolThermostat[10] = 273.15 + (80 - 32) * 5.0 / 9.0;		// 10:00 -> 11:00
-		//coolThermostat[11] = 273.15 + (80 - 32) * 5.0 / 9.0;		// 11:00 -> 12:00
-		//coolThermostat[12] = 273.15 + (80 - 32) * 5.0 / 9.0;		// 12:00 -> 13:00
-		//coolThermostat[13] = 273.15 + (80 - 32) * 5.0 / 9.0;		// 13:00 -> 14:00
-		//coolThermostat[14] = 273.15 + (80 - 32) * 5.0 / 9.0;		// 14:00 -> 15:00
-		//coolThermostat[15] = 273.15 + (80 - 32) * 5.0 / 9.0;		// 15:00 -> 16:00
-		//coolThermostat[16] = 273.15 + (80 - 32) * 5.0 / 9.0;		// 16:00 -> 17:00	// 74 in pre-cooling 80 normally
-		//coolThermostat[17] = 273.15 + (74 - 32) * 5.0 / 9.0;		// 17:00 -> 18:00
-		//coolThermostat[18] = 273.15 + (74 - 32) * 5.0 / 9.0;		// 18:00 -> 19:00
-		//coolThermostat[19] = 273.15 + (74 - 32) * 5.0 / 9.0;		// 19:00 -> 20:00
-		//coolThermostat[20] = 273.15 + (74 - 32) * 5.0 / 9.0;		// 20:00 -> 21:00
-		//coolThermostat[21] = 273.15 + (74 - 32) * 5.0 / 9.0;		// 21:00 -> 22:00
-		//coolThermostat[22] = 273.15 + (74 - 32) * 5.0 / 9.0;		// 22:00 -> 23:00
-		//coolThermostat[23] = 273.15 + (74 - 32) * 5.0 / 9.0;		// 23:00 -> 24:00
-
-		// Heating - HOME ENERGY SAVER 2013 http://www.hes.lbl.gov/consumer/faqs#h8
-		//heatThermostat[0] = 273.15 + (60 - 32) * 5.0 / 9.0;
-		//heatThermostat[1] = 273.15 + (60 - 32) * 5.0 / 9.0;
-		//heatThermostat[2] = 273.15 + (60 - 32) * 5.0 / 9.0;
-		//heatThermostat[3] = 273.15 + (60 - 32) * 5.0 / 9.0;
-		//heatThermostat[4] = 273.15 + (60 - 32) * 5.0 / 9.0;
-		//heatThermostat[5] = 273.15 + (60 - 32) * 5.0 / 9.0;
-		//heatThermostat[6] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[7] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[8] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[9] = 273.15 + (60 - 32) * 5.0 / 9.0;
-		//heatThermostat[10] = 273.15 + (60 - 32) * 5.0 / 9.0;
-		//heatThermostat[11] = 273.15 + (60 - 32) * 5.0 / 9.0;
-		//heatThermostat[12] = 273.15 + (60 - 32) * 5.0 / 9.0;
-		//heatThermostat[13] = 273.15 + (60 - 32) * 5.0 / 9.0;
-		//heatThermostat[14] = 273.15 + (60 - 32) * 5.0 / 9.0;
-		//heatThermostat[15] = 273.15 + (60 - 32) * 5.0 / 9.0;
-		//heatThermostat[16] = 273.15 + (60 - 32) * 5.0 / 9.0;
-		//heatThermostat[17] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[18] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[19] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[20] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[21] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[22] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[23] = 273.15 + (60 - 32) * 5.0 / 9.0;
-
-		////// Cooling - HOME ENERGY SAVER 2013 http://www.hes.lbl.gov/consumer/faqs#h8
-		//coolThermostat[0] = 273.15 + (78 - 32) * 5.0 / 9.0;			// 00:00 -> 01:00
-		//coolThermostat[1] = 273.15 + (78 - 32) * 5.0 / 9.0;			// 01:00 -> 02:00
-		//coolThermostat[2] = 273.15 + (78 - 32) * 5.0 / 9.0;			// 02:00 -> 03:00
-		//coolThermostat[3] = 273.15 + (78 - 32) * 5.0 / 9.0;			// 03:00 -> 04:00
-		//coolThermostat[4] = 273.15 + (78 - 32) * 5.0 / 9.0;			// 04:00 -> 05:00
-		//coolThermostat[5] = 273.15 + (78 - 32) * 5.0 / 9.0;			// 05:00 -> 06:00
-		//coolThermostat[6] = 273.15 + (75 - 32) * 5.0 / 9.0;			// 06:00 -> 07:00
-		//coolThermostat[7] = 273.15 + (75 - 32) * 5.0 / 9.0;			// 07:00 -> 08:00
-		//coolThermostat[8] = 273.15 + (75 - 32) * 5.0 / 9.0;			// 08:00 -> 09:00
-		//coolThermostat[9] = 273.15 + (80 - 32) * 5.0 / 9.0;			// 09:00 -> 10:00
-		//coolThermostat[10] = 273.15 + (80 - 32) * 5.0 / 9.0;		// 10:00 -> 11:00
-		//coolThermostat[11] = 273.15 + (80 - 32) * 5.0 / 9.0;		// 11:00 -> 12:00
-		//coolThermostat[12] = 273.15 + (80 - 32) * 5.0 / 9.0;		// 12:00 -> 13:00
-		//coolThermostat[13] = 273.15 + (80 - 32) * 5.0 / 9.0;		// 13:00 -> 14:00
-		//coolThermostat[14] = 273.15 + (80 - 32) * 5.0 / 9.0;		// 14:00 -> 15:00
-		//coolThermostat[15] = 273.15 + (80 - 32) * 5.0 / 9.0;		// 15:00 -> 16:00
-		//coolThermostat[16] = 273.15 + (80 - 32) * 5.0 / 9.0;		// 16:00 -> 17:00
-		//coolThermostat[17] = 273.15 + (75 - 32) * 5.0 / 9.0;		// 17:00 -> 18:00
-		//coolThermostat[18] = 273.15 + (75 - 32) * 5.0 / 9.0;		// 18:00 -> 19:00
-		//coolThermostat[19] = 273.15 + (75 - 32) * 5.0 / 9.0;		// 19:00 -> 20:00
-		//coolThermostat[20] = 273.15 + (75 - 32) * 5.0 / 9.0;		// 20:00 -> 21:00
-		//coolThermostat[21] = 273.15 + (75 - 32) * 5.0 / 9.0;		// 21:00 -> 22:00
-		//coolThermostat[22] = 273.15 + (75 - 32) * 5.0 / 9.0;		// 22:00 -> 23:00
-		//coolThermostat[23] = 273.15 + (78 - 32) * 5.0 / 9.0;		// 23:00 -> 24:00
-
-		// Cooling with Lower Setpoint for Humid CZs 1A and 2A
-		//coolThermostat[0] = 273.15 + (74 - 32) * 5.0 / 9.0;
-		//coolThermostat[1] = 273.15 + (74 - 32) * 5.0 / 9.0;
-		//coolThermostat[2] = 273.15 + (74 - 32) * 5.0 / 9.0;
-		//coolThermostat[3] = 273.15 + (74 - 32) * 5.0 / 9.0;
-		//coolThermostat[4] = 273.15 + (74 - 32) * 5.0 / 9.0;
-		//coolThermostat[5] = 273.15 + (74 - 32) * 5.0 / 9.0;
-		//coolThermostat[6] = 273.15 + (74 - 32) * 5.0 / 9.0;
-		//coolThermostat[7] = 273.15 + (74 - 32) * 5.0 / 9.0;
-		//coolThermostat[8] = 273.15 + (74 - 32) * 5.0 / 9.0;
-		//coolThermostat[9] = 273.15 + (74 - 32) * 5.0 / 9.0;
-		//coolThermostat[10] = 273.15 + (74 - 32) * 5.0 / 9.0;
-		//coolThermostat[11] = 273.15 + (74 - 32) * 5.0 / 9.0;
-		//coolThermostat[12] = 273.15 + (74 - 32) * 5.0 / 9.0;
-		//coolThermostat[13] = 273.15 + (74 - 32) * 5.0 / 9.0;
-		//coolThermostat[14] = 273.15 + (74 - 32) * 5.0 / 9.0;
-		//coolThermostat[15] = 273.15 + (74 - 32) * 5.0 / 9.0;
-		//coolThermostat[16] = 273.15 + (74 - 32) * 5.0 / 9.0;
-		//coolThermostat[17] = 273.15 + (74 - 32) * 5.0 / 9.0;
-		//coolThermostat[18] = 273.15 + (74 - 32) * 5.0 / 9.0;
-		//coolThermostat[19] = 273.15 + (74 - 32) * 5.0 / 9.0;
-		//coolThermostat[20] = 273.15 + (74 - 32) * 5.0 / 9.0;
-		//coolThermostat[21] = 273.15 + (74 - 32) * 5.0 / 9.0;
-		//coolThermostat[22] = 273.15 + (74 - 32) * 5.0 / 9.0;
-		//coolThermostat[23] = 273.15 + (74 - 32) * 5.0 / 9.0;
-
-		// Thermostat settings (RESAVE 2012 and T24, ACM 2008)
-		// Heating
-		//heatThermostat[0] = 273.15 + (65 - 32) * 5.0 / 9.0;
-		//heatThermostat[1] = 273.15 + (65 - 32) * 5.0 / 9.0;
-		//heatThermostat[2] = 273.15 + (65 - 32) * 5.0 / 9.0;
-		//heatThermostat[3] = 273.15 + (65 - 32) * 5.0 / 9.0;
-		//heatThermostat[4] = 273.15 + (65 - 32) * 5.0 / 9.0;
-		//heatThermostat[5] = 273.15 + (65 - 32) * 5.0 / 9.0;
-		//heatThermostat[6] = 273.15 + (65 - 32) * 5.0 / 9.0;
-		//heatThermostat[7] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[8] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[9] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[10] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[11] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[12] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[13] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[14] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[15] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[16] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[17] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[18] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[19] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[20] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[21] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[22] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[23] = 273.15 + (65 - 32) * 5.0 / 9.0;
-
-		//// Cooling
-		//coolThermostat[0] = 273.15 + (78 - 32) * 5.0 / 9.0;
-		//coolThermostat[1] = 273.15 + (78 - 32) * 5.0 / 9.0;
-		//coolThermostat[2] = 273.15 + (78 - 32) * 5.0 / 9.0;
-		//coolThermostat[3] = 273.15 + (78 - 32) * 5.0 / 9.0;
-		//coolThermostat[4] = 273.15 + (78 - 32) * 5.0 / 9.0;
-		//coolThermostat[5] = 273.15 + (78 - 32) * 5.0 / 9.0;
-		//coolThermostat[6] = 273.15 + (78 - 32) * 5.0 / 9.0;
-		//coolThermostat[7] = 273.15 + (83 - 32) * 5.0 / 9.0;
-		//coolThermostat[8] = 273.15 + (83 - 32) * 5.0 / 9.0;
-		//coolThermostat[9] = 273.15 + (83 - 32) * 5.0 / 9.0;
-		//coolThermostat[10] = 273.15 + (83 - 32) * 5.0 / 9.0;
-		//coolThermostat[11] = 273.15 + (83 - 32) * 5.0 / 9.0;
-		//coolThermostat[12] = 273.15 + (83 - 32) * 5.0 / 9.0;
-		//coolThermostat[13] = 273.15 + (82 - 32) * 5.0 / 9.0;
-		//coolThermostat[14] = 273.15 + (81 - 32) * 5.0 / 9.0;
-		//coolThermostat[15] = 273.15 + (80 - 32) * 5.0 / 9.0;
-		//coolThermostat[16] = 273.15 + (79 - 32) * 5.0 / 9.0;
-		//coolThermostat[17] = 273.15 + (78 - 32) * 5.0 / 9.0;
-		//coolThermostat[18] = 273.15 + (78 - 32) * 5.0 / 9.0;
-		//coolThermostat[19] = 273.15 + (78 - 32) * 5.0 / 9.0;
-		//coolThermostat[20] = 273.15 + (78 - 32) * 5.0 / 9.0;
-		//coolThermostat[21] = 273.15 + (78 - 32) * 5.0 / 9.0;
-		//coolThermostat[22] = 273.15 + (78 - 32) * 5.0 / 9.0;
-		//coolThermostat[23] = 273.15 + (78 - 32) * 5.0 / 9.0;
-
-		// Thermostat settings (RESAVE 2012 and T24, ACM 2008) PRECOOLING
-		//// Heating
-		//heatThermostat[0] = 273.15 + (65 - 32) * 5.0 / 9.0;
-		//heatThermostat[1] = 273.15 + (65 - 32) * 5.0 / 9.0;
-		//heatThermostat[2] = 273.15 + (65 - 32) * 5.0 / 9.0;
-		//heatThermostat[3] = 273.15 + (65 - 32) * 5.0 / 9.0;
-		//heatThermostat[4] = 273.15 + (65 - 32) * 5.0 / 9.0;
-		//heatThermostat[5] = 273.15 + (65 - 32) * 5.0 / 9.0;
-		//heatThermostat[6] = 273.15 + (65 - 32) * 5.0 / 9.0;
-		//heatThermostat[7] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[8] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[9] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[10] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[11] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[12] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[13] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[14] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[15] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[16] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[17] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[18] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[19] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[20] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[21] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[22] = 273.15 + (68 - 32) * 5.0 / 9.0;
-		//heatThermostat[23] = 273.15 + (65 - 32) * 5.0 / 9.0;
-
-		//// Cooling
-		//coolThermostat[0] = 273.15 + (78 - 32) * 5.0 / 9.0;
-		//coolThermostat[1] = 273.15 + (78 - 32) * 5.0 / 9.0;
-		//coolThermostat[2] = 273.15 + (78 - 32) * 5.0 / 9.0;
-		//coolThermostat[3] = 273.15 + (78 - 32) * 5.0 / 9.0;
-		//coolThermostat[4] = 273.15 + (78 - 32) * 5.0 / 9.0;
-		//coolThermostat[5] = 273.15 + (78 - 32) * 5.0 / 9.0;
-		//coolThermostat[6] = 273.15 + (78 - 32) * 5.0 / 9.0;
-		//coolThermostat[7] = 273.15 + (83 - 32) * 5.0 / 9.0;
-		//coolThermostat[8] = 273.15 + (83 - 32) * 5.0 / 9.0;
-		//coolThermostat[9] = 273.15 + (83 - 32) * 5.0 / 9.0;
-		//coolThermostat[10] = 273.15 + (83 - 32) * 5.0 / 9.0;
-		//coolThermostat[11] = 273.15 + (83 - 32) * 5.0 / 9.0;
-		//coolThermostat[12] = 273.15 + (83 - 32) * 5.0 / 9.0;
-		//coolThermostat[13] = 273.15 + (75 - 32) * 5.0 / 9.0;
-		//coolThermostat[14] = 273.15 + (75 - 32) * 5.0 / 9.0;
-		//coolThermostat[15] = 273.15 + (75 - 32) * 5.0 / 9.0;
-		//coolThermostat[16] = 273.15 + (79 - 32) * 5.0 / 9.0;
-		//coolThermostat[17] = 273.15 + (78 - 32) * 5.0 / 9.0;
-		//coolThermostat[18] = 273.15 + (78 - 32) * 5.0 / 9.0;
-		//coolThermostat[19] = 273.15 + (78 - 32) * 5.0 / 9.0;
-		//coolThermostat[20] = 273.15 + (78 - 32) * 5.0 / 9.0;
-		//coolThermostat[21] = 273.15 + (78 - 32) * 5.0 / 9.0;
-		//coolThermostat[22] = 273.15 + (78 - 32) * 5.0 / 9.0;
-		//coolThermostat[23] = 273.15 + (78 - 32) * 5.0 / 9.0;
-		//// [END] Thermostat settings (RESAVE 2012) ========================================================================================
-
-		// This reads in the filename and climate zone data from a file instead of input by user
-		string input_file = simFile[sim];
-		string weather_file = climateZone[sim];
-		string output_file = outName[sim];
-
-		// Opening moisture output file
-		ofstream moistureFile(outPath + output_file + ".hum");
-		if(!moistureFile) { 
-			cout << "Cannot open: " << outPath + output_file + ".hum" << endl;
-			_pause();
-			return 1; 
+			moistureFile << "HROUT\tHRattic\tHRreturn\tHRsupply\tHRhouse\tHRmaterials\tRH%house\tRHind60\tRHind70" << endl;
+			//moistureFile << "HR_Attic\tHR_Return\tHR_Supply\tHR_House\tHR_Materials" << endl; This is the old format.
 		}
-
-		moistureFile << "HROUT\tHRattic\tHRreturn\tHRsupply\tHRhouse\tHRmaterials\tRH%house\tRHind60\tRHind70" << endl;
-
-		//moistureFile << "HR_Attic\tHR_Return\tHR_Supply\tHR_House\tHR_Materials" << endl; This is the old format.
 
 		// [START] Read in Building Inputs =========================================================================================================================
-		ifstream buildingFile(inPath + input_file + ".csv"); 
+		ifstream buildingFile(inputFileName); 
 
 		if(!buildingFile) { 
-			cout << "Cannot open: " << input_file + ".csv" << endl;
-			_pause();
+			cout << "Cannot open input file: " << inputFileName << endl;
 			return 1; 
 		}
 
-		// 'atof' converts a string variable to a double variable
-		buildingFile.getline(reading, 255);
-		double C = atof(reading);		// Envelope Leakage Coefficient [m3/sPa^n]
+		buildingFile >> weather_file;
+		string weatherFileName = weatherPath + weather_file + ".WS3";  // for now until we move all weather file dependent inputs to input file
+		buildingFile >> fanScheduleFileName;
+		buildingFile >> tstatFileName;
+		buildingFile >> occupancyFileName;
 
-		buildingFile.getline(reading, 255);
-		double n = atof(reading);		// Envelope Pressure Exponent
-
-		buildingFile.getline(reading, 255);
-		double h = atof(reading);		// Eaves Height [m]
-
-		buildingFile.getline(reading, 255);
-		double R = atof(reading);		// Ceiling Floor Leakage Sum
-
-		buildingFile.getline(reading, 255);
-		double X = atof(reading);		// Ceiling Floor Leakage Difference
-
-		double lc = (R + X) * 50;		// Percentage of leakage in the ceiling
-		double lf = (R - X) * 50;		// Percentage of leakage in the floor
-		double lw = 100 - lf - lc;		// Percentage of leakage in the walls
-
-		buildingFile.getline(reading, 255);
-		int numFlues = atoi(reading);			// Number of flues/chimneys/passive stacks
-
+		buildingFile >> C;
+		buildingFile >> n;
+		buildingFile >> h;
+		buildingFile >> R;
+		buildingFile >> X;
+		buildingFile >> numFlues;
 		for(int i=0; i < numFlues; i++) {
-			buildingFile.getline(reading, 255);
-			flue[i].flueC = atof(reading);		// Flue leakage
-
-			buildingFile.getline(reading, 255);
-			flue[i].flueHeight = atof(reading);	// Flue height [m]
-
-			buildingFile.getline(reading, 255);
-			flue[i].flueTemp = atof(reading);	// Flue gas temperature (-99 means temperature in flue changes)
+			buildingFile >> flue[i].flueC;
+			buildingFile >> flue[i].flueHeight;
+			buildingFile >> flue[i].flueTemp;
 		}
 
 		// =========================== Leakage Inputs ==============================
 		for(int i=0; i < 4; i++) {
-			buildingFile.getline(reading, 255);
-			wallFraction[i] = atof(reading);		// Fraction of leakage in walls 1 (North) 2 (South) 3 (East) 4 (West)
+			buildingFile >> wallFraction[i];
 		}
-
 		for(int i=0; i < 4; i++) {
-			buildingFile.getline(reading, 255);		// Fraction of leake in floor below wall 1, 2, 3 and 4
-			floorFraction[i] = atof(reading);
+			buildingFile >> floorFraction[i];
 		}
 
-		buildingFile.getline(reading, 255);
-		double flueShelterFactor = atof(reading);	// Shelter factor at the top of the flue (1 if the flue is higher than surrounding obstacles
-
-		buildingFile.getline(reading, 255);
-		int numPipes = atoi(reading);				// Number of passive vents but appears to do much the same as flues
-
+		buildingFile >> flueShelterFactor;
+		buildingFile >> numPipes;
 		for(int i=0; i < numPipes; i++) {
-			buildingFile.getline(reading, 255);
-			Pipe[i].wall = atoi(reading);
-
-			buildingFile.getline(reading, 255);
-			Pipe[i].h = atof(reading);
-
-			buildingFile.getline(reading, 255);
-			Pipe[i].A = atof(reading);
-
-			buildingFile.getline(reading, 255);
-			Pipe[i].n = atof(reading);
-
-			buildingFile.getline(reading, 255);
-			Pipe[i].Swf = atof(reading);
-
-			buildingFile.getline(reading, 255);
-			Pipe[i].Swoff = atof(reading);
+			buildingFile >> Pipe[i].wall;
+			buildingFile >> Pipe[i].h;
+			buildingFile >> Pipe[i].A;
+			buildingFile >> Pipe[i].n;
+			buildingFile >> Pipe[i].Swf;
+			buildingFile >> Pipe[i].Swoff;
 		}
 
 		// =========================== Building Inputs =============================
-		buildingFile.getline(reading, 255);
-		double Hfloor = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		string rowOrIsolated = reading;			// House in a row (R) or isolated (any string other than R)
-
-		buildingFile.getline(reading, 255);
-		double houseVolume = atof(reading);		// Conditioned volume of house (m3)
-
-		buildingFile.getline(reading, 255);
-		double floorArea = atof(reading);		// Conditioned floor area (m2)
-
-		buildingFile.getline(reading, 255);
-		double planArea = atof(reading);		// Footprint of house (m2)
-
-		double storyHeight = 2.5;				// Story height (m)
-
-		buildingFile.getline(reading, 255);
-		double houseLength = atof(reading);		// Long side of house (m) NOT USED IN CODE
-
-		buildingFile.getline(reading, 255);
-		double houseWidth = atof(reading);		// Short side of house (m) NOT USED IN CODE
-
-		buildingFile.getline(reading, 255);
-		double UAh = atof(reading);				// Heating U-Value (Thermal Conductance)
-
-		buildingFile.getline(reading, 255);
-		double UAc = atof(reading);				// Cooling U-Value (Thermal Conductance)
+		buildingFile >> Hfloor;
+		buildingFile >> rowOrIsolated;
+		buildingFile >> houseVolume;
+		buildingFile >> floorArea;
+		buildingFile >> planArea;
+		// buildingFile >> storyHeight  // not currently in file
+		buildingFile >> houseLength;
+		buildingFile >> houseWidth;
+		buildingFile >> UAh;
+		buildingFile >> UAc;
 
 		// ====================== Venting Inputs (Windows/Doors)====================
-		buildingFile.getline(reading, 255);
-		int numWinDoor = atoi(reading);
-
+		buildingFile >> numWinDoor;
 		// These are not currently used in the Excel input generating spreadsheet
 		// Add them back in if needed
 		/*for(int i=0; i < numWinDoor; i++) {
-		buildingFile.getline(reading, 255);
-		winDoor[i].wall = atoi(reading);
-
-		buildingFile.getline(reading, 255);
-		winDoor[i].High = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		winDoor[i].Wide = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		winDoor[i].Top = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		winDoor[i].Bottom = atof(reading);
+			buildingFile >> winDoor[i].wall;
+			buildingFile >> winDoor[i].High;
+			buildingFile >> winDoor[i].Wide;
+			buildingFile >> winDoor[i].Top;
+			buildingFile >> winDoor[i].Bottom;
 		}*/
 
 		// ================== Mechanical Venting Inputs (Fans etc) =================
-		buildingFile.getline(reading, 255);
-		int numFans = atoi(reading);
-
+		buildingFile >> numFans;
 		for(int i=0;  i < numFans; i++) {
-			buildingFile.getline(reading, 255);
-			fan[i].power = atof(reading);
-
-			buildingFile.getline(reading, 255);
-			fan[i].q = atof(reading);
-
-			buildingFile.getline(reading, 255);
-			fan[i].oper = atof(reading);
-
+			buildingFile >> fan[i].power;
+			buildingFile >> fan[i].q;
+			buildingFile >> fan[i].oper;
 			fan[i].on = 0;
 		}
 
-		buildingFile.getline(reading, 255);
-		double windowWE = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		double windowN = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		double windowS = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		double winShadingCoef = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		double ceilRval_heat = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		double ceilRval_cool = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		double latentLoad = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		double internalGains1 = atof(reading);
+		buildingFile >> windowWE;
+		buildingFile >> windowN;
+		buildingFile >> windowS;
+		buildingFile >> winShadingCoef;
+		buildingFile >> ceilRval_heat;
+		buildingFile >> ceilRval_cool;
+		buildingFile >> latentLoad;
+		buildingFile >> internalGains1;
 
 		// =========================== Attic Inputs ================================
-		buildingFile.getline(reading, 255);
-		double atticVolume = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		double atticC = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		double atticPressureExp = atof(reading);
-
+		buildingFile >> atticVolume;
+		buildingFile >> atticC;
+		buildingFile >> atticPressureExp;
 		for(int i=0; i < 5; i++) {
-			buildingFile.getline(reading, 255);
-			soffitFraction[i] = atof(reading);			
+			buildingFile >> soffitFraction[i];
 		}
 		for(int i=0; i < 4; i++) {
-			buildingFile.getline(reading, 255);
-			soffit[i].h = atof(reading);			
+			buildingFile >> soffit[i].h;
 		}
 
 		// =========================== Attic Vent Inputs ===========================
-		buildingFile.getline(reading, 255);
-		int numAtticVents = atoi(reading);
-
+		buildingFile >> numAtticVents;
 		for(int i=0; i < numAtticVents; i++) {
-			buildingFile.getline(reading, 255);
-			atticVent[i].wall = atoi(reading);
-
-			buildingFile.getline(reading, 255);
-			atticVent[i].h = atof(reading);
-
-			buildingFile.getline(reading, 255);
-			atticVent[i].A = atof(reading);
-
-			buildingFile.getline(reading, 255);
-			atticVent[i].n = atof(reading);
+			buildingFile >> atticVent[i].wall;
+			buildingFile >> atticVent[i].h;
+			buildingFile >> atticVent[i].A;
+			buildingFile >> atticVent[i].n;
 		}
 
 		// =========================== Roof Inputs =================================
-		buildingFile.getline(reading, 255);
-		double roofPitch = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		string roofPeakOrient = reading;		// Roof peak orientation, D = perpendicular to front of house (Wall 1), P = parrallel to front of house
-
-		buildingFile.getline(reading, 255);
-		double roofPeakHeight = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		int numAtticFans = atoi(reading);
-
+		buildingFile >> roofPitch;
+		buildingFile >> roofPeakOrient;
+		buildingFile >> roofPeakHeight;
+		buildingFile >> numAtticFans;
 		for(int i = 0; i < numAtticFans; i++) {
-			buildingFile.getline(reading, 255);
-			atticFan[i].power = atof(reading);
-
-			buildingFile.getline(reading, 255);
-			atticFan[i].q = atof(reading);
-
-			buildingFile.getline(reading, 255);
-			atticFan[i].oper = atof(reading);
+			buildingFile >> atticFan[i].power;
+			buildingFile >> atticFan[i].q;
+			buildingFile >> atticFan[i].oper;
 		}
 
-		buildingFile.getline(reading, 255);
-		double roofRval = atoi(reading);
-
-		buildingFile.getline(reading, 255);
-		int roofType = atoi(reading);
+		buildingFile >> roofRval;
+		buildingFile >> roofType;
 
 		// =========================== Duct Inputs =================================
-		buildingFile.getline(reading, 255);
-		double ductLocation = atof(reading);			
-
-		buildingFile.getline(reading, 255);
-		double supThickness = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		double retThickness = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		double supRval = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		double retRval = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		double supLF0 = atof(reading);						//Supply duct leakage fraction (e.g., 0.01 = 1% leakage).					
-
-		buildingFile.getline(reading, 255);
-		double retLF0 = atof(reading);						//Return duct leakage fraction (e.g., 0.01 = 1% leakage)
-
-		buildingFile.getline(reading, 255);
-		double supLength = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		double retLength = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		double supDiameter = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		double retDiameter = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		double qAH_cool0 = atof(reading);				// Cooling Air Handler air flow (m^3/s)
-
-		buildingFile.getline(reading, 255);
-		double qAH_heat0 = atof(reading);				// Heating Air Handler air flow (m^3/s)
-
-		buildingFile.getline(reading, 255);
-		double supn = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		double retn = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		double supC = atof(reading);					//atof(reading); Supply leak flow coefficient
-
-		buildingFile.getline(reading, 255);
-		double retC = atof(reading);					//atof(reading); Return leak flow coefficient
-
-		// NOTE: The buried variable is not used but left in code to continue proper file navigation
-		buildingFile.getline(reading, 255);
-		double buried = atof(reading);
+		buildingFile >> ductLocation;
+		buildingFile >> supThickness;
+		buildingFile >> retThickness;
+		buildingFile >> supRval;
+		buildingFile >> retRval;
+		buildingFile >> supLF0;
+		buildingFile >> retLF0;
+		buildingFile >> supLength;
+		buildingFile >> retLength;
+		buildingFile >> supDiameter;
+		buildingFile >> retDiameter;
+		buildingFile >> qAH_cool0;
+		buildingFile >> qAH_heat0;
+		buildingFile >> supn;
+		buildingFile >> retn;
+		buildingFile >> supC;
+		buildingFile >> retC;
+		buildingFile >> buried; // NOTE: The buried variable is not used but left in code to continue proper file navigation
 
 		// =========================== Equipment Inputs ============================
-
-		buildingFile.getline(reading, 255);
-		double capacityraw = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		double capacityari = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		double EERari = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		double hcapacity = atof(reading);		// Heating capacity [kBtu/h]
-
-		buildingFile.getline(reading, 255);
-		double fanPower_heating0 = atof(reading);		// Heating fan power [W]
-
-		buildingFile.getline(reading, 255);
-		double fanPower_cooling0 = atof(reading);		// Cooling fan power [W]
-
-		buildingFile.getline(reading, 255);
-		double charge = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		double AFUE = atof(reading);			// Annual Fuel Utilization Efficiency for the furnace
-
-		buildingFile.getline(reading, 255);
-		int bathroomSchedule = atoi(reading);	// Bathroom schedule file to use (1, 2 or 3)
-
-		buildingFile.getline(reading, 255);
-		int numBedrooms = atoi(reading);		// Number of bedrooms (for 62.2 target ventilation calculation)
-
-		buildingFile.getline(reading, 255);
-		int numStories = atoi(reading);			// Number of stories in the building (for Nomalized Leakage calculation)
-
-		buildingFile.getline(reading, 255);
-		double weatherFactor = atof(reading);	// Weather Factor (w) (for infiltration calculation from ASHRAE 136)
-
-		buildingFile.getline(reading, 255);
-		double rivecFlagInd = atof(reading);	// Indicator variable that instructs a fan code 13 or 17 to be run by RIVEC controls. 1= yes, 0=no. Brennan.
-
-		//The variable from here down wree added by Brennan as part of the Smart Ventilation Humidity Control project
-
-		buildingFile.getline(reading, 255);
-		double HumContType = atof(reading);	// Type of humidity control to be used in the RIVEC calculations. 1,2,...n Brennan.
-
-		buildingFile.getline(reading, 255);
-		double wCutoff = atof(reading);	// Humidity Ratio cut-off calculated as some percentile value for the climate zone. Brennan.
-
-		buildingFile.getline(reading, 255);
-		double wDiffMaxNeg = atof(reading);	// Maximum average indoor-outdoor humidity differene, when wIn < wOut. Climate zone average.
-
-		buildingFile.getline(reading, 255);
-		double wDiffMaxPos = atof(reading);	// Maximum average indoor-outdoor humidity differene, when wIn > wOut. Climate zone average.
-
-		buildingFile.getline(reading, 255); //25th percentiles for each month of the year, per TMY3
-		double W25_1 = atof(reading);
-				
-		buildingFile.getline(reading, 255);
-		double W25_2 = atof(reading);
-				
-		buildingFile.getline(reading, 255);
-		double W25_3 = atof(reading);
-				
-		buildingFile.getline(reading, 255);
-		double W25_4 = atof(reading);
-				
-		buildingFile.getline(reading, 255);
-		double W25_5 = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		double W25_6 = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		double W25_7 = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		double W25_8 = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		double W25_9 = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		double W25_10 = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		double W25_11 = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		double W25_12 = atof(reading);
-				
-		buildingFile.getline(reading, 255); //75th percentiles for each month of the year, per TMY3
-		double W75_1 = atof(reading);
-				
-		buildingFile.getline(reading, 255);
-		double W75_2 = atof(reading);
-				
-		buildingFile.getline(reading, 255);
-		double W75_3 = atof(reading);
-				
-		buildingFile.getline(reading, 255);
-		double W75_4 = atof(reading);
-				
-		buildingFile.getline(reading, 255);
-		double W75_5 = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		double W75_6 = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		double W75_7 = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		double W75_8 = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		double W75_9 = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		double W75_10 = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		double W75_11 = atof(reading);
-
-		buildingFile.getline(reading, 255);
-		double W75_12 = atof(reading);
+		buildingFile >> capacityraw;
+		buildingFile >> capacityari;
+		buildingFile >> EERari;
+		buildingFile >> hcapacity;
+		buildingFile >> fanPower_heating0;
+		buildingFile >> fanPower_cooling0;
+		buildingFile >> charge;
+		buildingFile >> AFUE;
+		buildingFile >> bathroomSchedule;
+		buildingFile >> numBedrooms;
+		buildingFile >> numStories;
+		buildingFile >> weatherFactor;
+		buildingFile >> terrain;
+		buildingFile >> AeqCalcs;
+		buildingFile >> Crawl;
+		buildingFile >> HRV_ASE;
+		buildingFile >> ERV_SRE;
+		buildingFile >> ERV_TRE;
+		// =========================== Filter Inputs ============================
+		buildingFile >> filterLoadingFlag;
+		buildingFile >> MERV;
+		buildingFile >> loadingRate;
+		buildingFile >> AHMotorType;
+		buildingFile >> rivecFlagInd;
+		//The variable from here down were added by Brennan as part of the Smart Ventilation Humidity Control project
+		buildingFile >> HumContType;
+		if(HumContType > 0) {
+			buildingFile >> wCutoff;
+			buildingFile >> wDiffMaxNeg;
+			buildingFile >> wDiffMaxPos;
+			for(int i = 0; i < 12; i++) {
+				buildingFile >> W25[i];
+			}
+			for(int i = 0; i < 12; i++) {
+				buildingFile >> W75[i];
+			}
+			buildingFile >> FirstCut;
+			buildingFile >> SecondCut;
+			buildingFile >> doseTarget;
+			buildingFile >> HiDose;
+			buildingFile >> HiMonths[0] >> HiMonths[1] >> HiMonths[2];
+			buildingFile >> LowMonths[0] >> LowMonths[1] >> LowMonths[2];
+			buildingFile >> HiMonthDose;
+			buildingFile >> LowMonthDose;
+cout << "HumContType:" << HumContType << " LowMonths[1]" << LowMonths[1] << " LowMonthDose:" << LowMonthDose << endl;
+		}
 
 		buildingFile.close();
 
 		// [END] Read in Building Inputs ============================================================================================================================================
 
+		// Read in Thermostat Settings ==================================================================
+		ifstream tstatFile(tstatFileName); 
+		if(!tstatFile) { 
+			cout << "Cannot open thermostat file: " << tstatFileName << endl;
+			return 1; 
+		}
+		string header;
+		getline(tstatFile,header);
+		for(int h = 0; h < 24; h++) {
+			double heatT;
+			double coolT;
+			tstatFile >> heatT >> coolT;
+			heatThermostat[h] = 273.15 + (heatT - 32) * 5.0 / 9.0;
+			coolThermostat[h] = 273.15 + (coolT - 32) * 5.0 / 9.0;
+		}
+		tstatFile.close();
+
+		// Read in Occupancy Settings ==================================================================
+		ifstream occupancyFile(occupancyFileName); 
+		if(!occupancyFile) { 
+			cout << "Cannot open occupancy file: " << occupancyFileName << endl;
+			return 1; 
+		}
+		getline(occupancyFile,header);
+		for(int h = 0; h < 24; h++) {
+			occupancyFile >> occupied[0][h] >> occupied[1][h];
+		}
+		occupancyFile.close();
+
+		double lc = (R + X) * 50;		// Percentage of leakage in the ceiling
+		double lf = (R - X) * 50;		// Percentage of leakage in the floor
+		double lw = 100 - lf - lc;		// Percentage of leakage in the walls
 
 		// In case the user enters leakage fraction in % rather than as a fraction
 		if(supLF0 > 1)
@@ -976,20 +521,14 @@ int main(int argc, char *argv[])
 		double suprho = 16.018 * 2;									// Supply duct density. The factor of two represents the plastic and sprical [kg/m^3]
 		double retCp = 753.624;										// Specific heat capacity of steel [j/kg/K]
 		double retrho = 16.018 * 2;									// Return duct density [kg/m^3]
-		double supArea = (supDiameter + 2 * supThickness) * pi * supLength;		// Surface area of supply ducts [m2]
-		double retArea = (retDiameter + 2 * retThickness) * pi * retLength;		// Surface area of return ducts [m2]
-		double supVolume = (pow(supDiameter, 2) * pi / 4) * supLength;			// Volume of supply ducts [m3]
-		double retVolume = (pow(retDiameter, 2) * pi / 4) * retLength;			// Volume of return ducts [m3]
+		double supArea = (supDiameter + 2 * supThickness) * M_PI * supLength;		// Surface area of supply ducts [m2]
+		double retArea = (retDiameter + 2 * retThickness) * M_PI * retLength;		// Surface area of return ducts [m2]
+		double supVolume = (pow(supDiameter, 2) * M_PI / 4) * supLength;			// Volume of supply ducts [m3]
+		double retVolume = (pow(retDiameter, 2) * M_PI / 4) * retLength;			// Volume of return ducts [m3]
 		hcapacity = hcapacity * .29307107 * 1000 * AFUE;			// Heating capacity of furnace converted from kBtu/hr to Watts and with AFUE adjustment
 		double MWha = .5 * floorArea / 186;							// MWha is the moisture transport coefficient that scales with floor area (to scale with surface area of moisture)
 					
 		// [START] Filter Loading ==================================================================================
-		
-		// Inputs to set filter type and loading rate
-		int filterLoadingFlag = 0;		// Filter loading flag = 0 (OFF) or 1 (ON)
-		int MERV = 5;					// MERV rating of filter (may currently be set to 5, 8, 11 or 16)
-		int loadingRate = 0;			// loading rate of filter, f (0,1,2) = (low,med,high)
-		int BPMflag = 0;				// BPM (1) or PSC (0) air handler motor
 
 		int filterChanges = 0;			// Number of filters used throughout the year
 		double qAH_low = 0;				// Lowest speed of AH (set in sub_filterLoading)
@@ -1017,26 +556,24 @@ int main(int argc, char *argv[])
 		double k_DL = 0;				// Gradual change in return duct leakage from filter loading [% per 10^6kg of air mass through filter]
 		
 		// Open filter loading file
-		ofstream filterFile(outPath + output_file + ".fil");
-		if(!filterFile) { 
-			cout << "Cannot open: " << outPath + output_file + ".fil" << endl;
-			_pause();
-			return 1; 
+		ofstream filterFile;
+		if(printFilterFile) {
+			filterFile.open(filterFileName);
+			if(!filterFile) { 
+				cout << "Cannot open filter file: " << filterFileName << endl;
+				return 1; 
+			}
+			filterFile << "mAH_cumu\tqAH\twAH\tretLF" << endl;
 		}
-
-		filterFile << "mAH_cumu\tqAH\twAH\tretLF" << endl;
 		
 		// Filter loading coefficients are in the sub_filterLoading sub routine
 		if(filterLoadingFlag == 1)
-			sub_filterLoading(MERV, loadingRate, BPMflag, A_qAH_heat, A_qAH_cool, A_wAH_heat, A_wAH_cool, A_DL, k_qAH, k_wAH, k_DL, qAH_heat0, qAH_cool0, qAH_low);
+			sub_filterLoading(MERV, loadingRate, AHMotorType, A_qAH_heat, A_qAH_cool, A_wAH_heat, A_wAH_cool, A_DL, k_qAH, k_wAH, k_DL, qAH_heat0, qAH_cool0, qAH_low);
 		// [END] Filter Loading ====================================================================================
 
 		// Cooling capacity air flow correction term (using CFM)
 		double qAH_cfm = qAH_cool / .0004719;
 		double qAHcorr = 1.62 - .62 * qAH_cfm / (400 * capacityraw) + .647 * log(qAH_cfm / (400 * capacityraw));	
-
-		// Occupancy and dynamic schedule flags
-		int dynamicScheduleFlag = 1;	// 1 = use dynamic fan schedules, 0 = do not use dynamic fan schedules
 
 		// For RIVEC calculations
 		int peakFlag = 0;				// Peak flag (0 or 1) prevents two periods during same day
@@ -1054,8 +591,6 @@ int main(int argc, char *argv[])
 			if(fan[i].oper == 21 || fan[i].oper == 22)
 				economizerUsed = 1;		// Lets REGCAP know that an economizer is being used
 				//economizerUsed = 0;		// Force economizer to be off
-			if(fan[i].oper == 23 || fan[i].oper == 24 || fan[i].oper == 25 || fan[i].oper == 26 || fan[i].oper == 27)
-				dynamicScheduleFlag = 1;
 			if(fan[i].oper == 30 || fan[i].oper == 31 || fan[i].oper == 50 || fan[i].oper == 51) { // RIVEC fans
 				qRivec = -1 * fan[i].q	* 1000;
 				rivecFlag = 1;
@@ -1090,8 +625,7 @@ int main(int argc, char *argv[])
 
 		ifstream shelterFile(shelterFile_name); 
 		if(!shelterFile) { 
-			cout << "Cannot open: " << shelterFile_name << endl;
-			_pause();
+			cout << "Cannot open shelter file: " << shelterFile_name << endl;
 			return 1; 
 		}
 
@@ -1108,8 +642,6 @@ int main(int argc, char *argv[])
 		// Terrain where the house is located (for wind shelter etc.) See ASHRAE Fundamentals 2009 F24.3
 		double windPressureExp;		// Power law exponent of the wind speed profile at the building site
 		double layerThickness;		// Atmospheric boundary layer thickness [m]
-
-		int terrain = 2;	// 1 = large city centres, 2 = urban and suburban, 3 = open terrain, 4 = open sea
 
 		switch (terrain) {
 		case 1:
@@ -1157,13 +689,16 @@ int main(int argc, char *argv[])
 		double AL5 = C * sqrt(airDensityRef / 2) * pow(4, (n - .5));
 
 		// ================= CREATE OUTPUT FILE =================================================
-		ofstream outputFile(outPath + output_file + ".rco"); 
-		if(!outputFile) { 
-			cout << "Cannot open: " << outPath + output_file + ".rco" << endl;
-			_pause();
-			return 1; 
+		ofstream outputFile;
+		if(printOutputFile) {
+			ofstream outputFile(outputFileName); 
+			if(!outputFile) { 
+				cout << "Cannot open output file: " << outputFileName << endl;
+				return 1; 
+			}
+			outputFile << "Time\tMin\twindSpeed\ttempOut\ttempHouse\tsetpoint\ttempAttic\ttempSupply\ttempReturn\tAHflag\tAHpower\tHcap\tcompressPower\tCcap\tmechVentPower\tHR\tSHR\tMcoil\thousePress\tQhouse\tACH\tACHflue\tventSum\tnonRivecVentSum\tfan1\tfan2\tfan3\tfan4\tfan5\tfan6\tfan7\trivecOn\tturnover\trelExpRIVEC\trelDoseRIVEC\toccupiedExpReal\toccupiedDoseReal\toccupied\toccupiedExp\toccupiedDose\tDAventLoad\tMAventLoad\tHROUT\tHRhouse\tRH%house\tRHind60\tRHind70" << endl; 
 		}
-
+		
 		// 5 HR nodes
 		// Node 1 is attic air (Node HR[0])
 		// Node 2 is return air (Node HR[1])
@@ -1171,17 +706,10 @@ int main(int argc, char *argv[])
 		// Node 4 is house air (Node HR[3])
 		// Node 5 is house materials that interact with house air only (Node HR[4])
 
-		// Write output file headers
-
-		outputFile << "Time\tMin\twindSpeed\ttempOut\ttempHouse\tsetpoint\ttempAttic\ttempSupply\ttempReturn\tAHflag\tAHpower\tHcap\tcompressPower\tCcap\tmechVentPower\tHR\tSHR\tMcoil\thousePress\tQhouse\tACH\tACHflue\tventSum\tnonRivecVentSum\tfan1\tfan2\tfan3\tfan4\tfan5\tfan6\tfan7\trivecOn\tturnover\trelExpRIVEC\trelDoseRIVEC\toccupiedExpReal\toccupiedDoseReal\toccupied\toccupiedExp\toccupiedDose\tDAventLoad\tMAventLoad\tHROUT\tHRhouse\tRH%house\tRHind60\tRHind70" << endl; 
-
-
 		// ================== OPEN WEATHER FILE FOR INPUT ========================================
-		ifstream weatherFile(weatherPath + weather_file + ".ws3");		// WS3 for updated TMY3 weather files
-		//ifstream weatherFile(weatherPath + weather_file + ".ws2");	// WS2 for outdated TMY2 weather files
+		ifstream weatherFile(weatherFileName);
 		if(!weatherFile) { 
-			cout << "Cannot open: " << weatherPath + weather_file + ".ws3" << endl;
-			_pause();
+			cout << "Cannot open weather file: " << weatherFileName << endl;
 			return 1; 
 		}
 
@@ -1235,15 +763,10 @@ int main(int argc, char *argv[])
 		double NL = 1000 * (ELA / floorArea) * pow(numStories, .3);				// Normalized Leakage Calculation. Iain! Brennan! this does not match 62.2-2013 0.4 exponent assumption.
 		double wInfil = weatherFactor * NL;										// Infiltration credit from updated ASHRAE 136 weather factors [ACH]
 		double defaultInfil = .001 * ((floorArea / 100) * 10) * 3600 / houseVolume;	// Default infiltration credit [ACH] (ASHRAE 62.2, 4.1.3 p.4). This NO LONGER exists in 62.2-2013
-
 		double rivecX = (.05 * floorArea + 3.5 * (numBedrooms + 1)) / qRivec;
 		double rivecY = 0;
-
 		double Q622 = .001 * (.05 * floorArea + 3.5 * (numBedrooms + 1)) * (3600 / houseVolume); // ASHRAE 62.2 Mechanical Ventilation Rate [ACH]
-		
 		double Aeq = 0;		// Equivalent air change rate of house to meet 62.2 minimum for RIVEC calculations. Choose one of the following:
-
-		int AeqCalcs = 1; //Brennan. ALWAYS use option 1 (or 4 for existing home with flow deficit), to do 62.2-2013 Aeq calculation. Options 2 and 3 are for 62.2-2010.
 
 		switch (AeqCalcs) {
 			// 1. 62.2-2013 ventilation rate with no infiltration credit [ACH]. Brennan
@@ -1312,11 +835,6 @@ int main(int argc, char *argv[])
 		double totalOccupiedDose = 0;				//Cumulative sum for OccupiedDose
 		double meanOccupiedDose = 0;				// Mean occupied relative dose over the year
 
-
-
-
-
-
 		double turnoverRealOld = 0;
 		double relDoseRealOld = 0;
 		
@@ -1348,28 +866,11 @@ int main(int argc, char *argv[])
 		// [START] Fan Schedule Inputs =========================================================================================
 		// Read in fan schedule (lists of 1s and 0s, 1 = fan ON, 0 = fan OFF, for every minute of the year)
 		// Different schedule file depending on number of bathrooms
-		string fanSchedule = "no_fan_schedule";
-		ifstream fanschedulefile;
-
-		if(dynamicScheduleFlag == 1) {
-			switch (bathroomSchedule) {
-			case 1:
-				fanSchedule = fanSchedulefile_name1;			// Two bathroom fans, 4 occupants, using a dynamic schedule
-				break;
-			case 2:
-				fanSchedule = fanSchedulefile_name2;			// Three bathroom fans, 4 occupants, using dynamic schedules
-				break;
-			case 3:
-				fanSchedule = fanSchedulefile_name3;			// Three bathroom fans, 5 occupants, using dynamic schedules
-				break;
-			}
-
-			fanschedulefile.open(fanSchedule + ".txt"); 
-			if(!fanschedulefile) { 
-				cout << "Cannot open: " << fanSchedule + ".txt" << endl;
-				_pause();
-				return 1; 
-			}			
+		ifstream fanScheduleFile;
+		fanScheduleFile.open(fanScheduleFileName); 
+		if(!fanScheduleFile) { 
+			cout << "Cannot open fan schedule: " << fanScheduleFileName << endl;
+			return 1; 		
 		}
 
 
@@ -1386,18 +887,14 @@ int main(int argc, char *argv[])
 		int bathThreeFan = 0;	// Dynamic schedule flag for third bathroom fan (0 or 1)
 		int HOUR;				// Hour of the day
 		//int ttime;			// replaced with the HOUR variable instead of having a separate counter just for thermostats
-		int weekendFlag;
-		int occupied[24] = {0};	// Used for setting which hours of the day the house is occupied (1) or vacant (0)
+		int weekend;
 		int compTime = 0;
 		int compTimeCount = 0;
 		int rivecOn = 0;		// 0 (off) or 1 (on) for RIVEC devices
 		int mainIterations;
-		int Crawl = 0;
 		int ERRCODE = 0;
 		int economizerRan = 0;	// 0 or else 1 if economizer has run that day
 		int hcFlag = 1;
-		int FirstCut = 0; //Monthly Indexes assigned based on climate zone
-		int SecondCut = 0; //Monthly Indexes assigned based on climate zone
 
 		double pRef;				// Outdoor air pressure read in from weather file
 		double sc;
@@ -1410,10 +907,7 @@ int main(int argc, char *argv[])
 		double hcap;				// Heating capacity of furnace (or gas burned by furnace)
 		double mHRV =0;				// Mass flow of stand-alone HRV unit
 		double mHRV_AH = 0;			// Mass flow of HRV unit integrated with the Air Handler
-		double HRV_ASE = 0.82;		// Apparent Sensible Effectiveness of HRV unit
 		double mERV_AH = 0;			// Mass flow of stand-alone ERV unit
-		double ERV_SRE = 0.63;		// Sensible Recovery Efficiency of ERV unit. SRE and TRE based upon averages from ERV units in HVI directory, as of 5/2015.
-		double ERV_TRE = 0.51;		// Total Recovery Efficiency of ERV unit, includes humidity transfer for moisture subroutine		
 		double fanHeat;
 		double ventSumIN;			// Sum of all ventilation flows into house
 		double ventSumOUT;			// Sum of all ventilation flows out from house
@@ -1531,17 +1025,12 @@ int main(int argc, char *argv[])
 		double FanQ = fan[0].q; //Brennan's attempt to fix the airflow outside of the if() structures in the fan.oper section. fan[0].q was always the whole house exhaust fan, to be operated continuously or controlled by temperature controls.
 		double FanP = fan[0].power; //Brennan's attempt to fix the fan power outside of the if() structures in the fan.oper section.
 
-		//Variables Brennan added for Smart Ventilatoin Humidity Control.
-		double doseTarget = 0.9; //Targeted dose value based on the climate zone file.
-		double HiDose = 1.5; //Variable high dose value for real-time humidity control, based on worst-case large, low-occupancy home. 
-		int HiMonths[3] = {0, 0, 0};
-		int LowMonths[3] = {0, 0, 0};
-		double HiMonthDose = 1;
-		double LowMonthDose = 1;
-		double W25 = 0; //25th percentile control, for outdoor humidity sensor control #14
-		double W75 = 0; //75th percentile control, for outdoor humidity sensor control #14
-		
-
+		cout << endl;
+		cout << "Simulation: " << simNum << endl;
+		cout << "Batch File:\t " << batchFileName << endl;
+		cout << "Input File:\t " << inputFileName << endl;
+		cout << "Output File:\t " << outputFileName << endl;
+		cout << "Weather File:\t " << weatherFileName << endl;
 
 		
 		// ==============================================================================================
@@ -1643,19 +1132,9 @@ int main(int argc, char *argv[])
 
 			// Print out simulation day to screen
 			if(minute_day == 0) {
-#ifdef _WIN32
-				system("CLS");
-#elif __APPLE__
-				system("clear");
-#endif
-				cout << "REGCAP++ Building Simulation Tool LBNL" << endl << endl;
-				cout << "Batch File: \t " << batchFile_name << endl;
-				cout << "Input File: \t " << inPath + input_file << ".csv" << endl;
-				cout << "Output File: \t " << outPath + output_file << ".rco" << endl;
-				cout << "Weather File: \t " << weather_file << endl << endl;
-				
-				cout << "Simulation: " << sim + 1 << "/" << numSims << endl << endl;
-				cout << "Day = " << day << endl;
+				//system("CLS");
+				//system("clear");
+				cout << "\rDay = " << day << flush;
 			}
 
 			////These are the average temperature for the first day of the year.
@@ -1725,19 +1204,7 @@ int main(int argc, char *argv[])
 
 			// Fan Schedule Inputs
 			// Assumes operation of dryer and kitchen fans, then 1 - 3 bathroom fans
-			if(dynamicScheduleFlag == 1) {
-				switch (bathroomSchedule) {
-				case 1:
-					fanschedulefile >> dryerFan >> kitchenFan >> bathOneFan >> bathTwoFan;
-					break;
-				case 2:
-					fanschedulefile >> dryerFan >> kitchenFan >> bathOneFan >> bathTwoFan >> bathThreeFan;
-					break;
-				case 3:
-					fanschedulefile >> dryerFan >> kitchenFan >> bathOneFan >> bathTwoFan >> bathThreeFan;
-					break;
-				}
-			}
+			fanScheduleFile >> dryerFan >> kitchenFan >> bathOneFan >> bathTwoFan >> bathThreeFan;
 
 			HOUR = int (minute_day / 60);	// HOUR is hours into the current day - used to control diurnal cycles for fans
 
@@ -1747,73 +1214,12 @@ int main(int argc, char *argv[])
 			//MINUTE++;
 			//MINUTE = MINUTE + dt;				// Is number of minutes into simulation - used for beginning and end of cycle fan operation
 			//ttime = int ((minute_day - 1) / 60) + 1;      // Hours into day for thermostat schedule, now using HOUR
-
-			// Day 1 of simulation is a Sunday then weekendFlag = 1 every Saturday and Sunday, equals 0 rest of the time
-			if((int (day / 7) == day / 7.) || (int ((day - 1) / 7) == (day - 1) / 7.))
-				weekendFlag = 1;
-			else
-				weekendFlag = 0;
-
-			// [START] Occupancy Schedules ====================================================================================
 			
-			// Set all occupied[n] = 1 to negate occupancy calculations of dose and exposure
-			// Weekends (Sat and Sun)
-			if(weekendFlag == 1) {
-
-				occupied[0] = 1;         //Midnight to 01:00
-				occupied[1] = 1;         //01:00 to 02:00
-				occupied[2] = 1;         //02:00 to 03:00
-				occupied[3] = 1;
-				occupied[4] = 1;
-				occupied[5] = 1;
-				occupied[6] = 1;
-				occupied[7] = 1;
-				occupied[8] = 1;
-				occupied[9] = 1;
-				occupied[10] = 1;
-				occupied[11] = 1;
-				occupied[12] = 1;        //Midday to 13:00
-				occupied[13] = 1;
-				occupied[14] = 1;
-				occupied[15] = 1;
-				occupied[16] = 1;
-				occupied[17] = 1;
-				occupied[18] = 1;
-				occupied[19] = 1;
-				occupied[20] = 1;
-				occupied[21] = 1;
-				occupied[22] = 1;
-				occupied[23] = 1;        //23:00 to Midnight
-			}
-
-			// Week days (Mon to Fri). Brennan: iain suggests changing al lthese to "1".
-			if(weekendFlag == 0) {
-				occupied[0] = 1;         //Midnight to 01:00
-				occupied[1] = 1;         //01:00 to 02:00
-				occupied[2] = 1;         //02:00 to 03:00
-				occupied[3] = 1;
-				occupied[4] = 1;
-				occupied[5] = 1;
-				occupied[6] = 1;
-				occupied[7] = 1;
-				occupied[8] = 1;		// 0, Brennan, I changed these to 1, per Iain.
-				occupied[9] = 1;
-				occupied[10] = 1;
-				occupied[11] = 1;
-				occupied[12] = 1;       //Midday to 13:00
-				occupied[13] = 1;
-				occupied[14] = 1;
-				occupied[15] = 1;		// 0, Brennan, I changed these to 1, per Iain.
-				occupied[16] = 1;
-				occupied[17] = 1;
-				occupied[18] = 1;
-				occupied[19] = 1;
-				occupied[20] = 1;
-				occupied[21] = 1;
-				occupied[22] = 1;
-				occupied[23] = 1;       //23:00 to Midnight
-			}
-			// [END] Occupancy Schedules ====================================================================================
+			// Day 1 of simulation is a Sunday then weekend = 1 every Saturday and Sunday, equals 0 rest of the time
+			if(day % 7 <= 1)
+				weekend = 1;
+			else
+				weekend = 0;
 
 			if(MINUTE == 1) {				// Setting initial humidity conditions
 				for(int i = 0; i < 5; i++) {
@@ -1858,8 +1264,8 @@ int main(int argc, char *argv[])
 				month = 12;
 
 			int NOONMIN = 720 - minute_day;
-			double HA = pi * .25 * NOONMIN / 180;			// Hour Angle
-			double L = pi * latitude / 180;					// LATITUDE
+			double HA = M_PI * .25 * NOONMIN / 180;			// Hour Angle
+			double L = M_PI * latitude / 180;					// LATITUDE
 
 			// SOLAR DECLINATION FROM ASHRAE P.27.2, 27.9IP  BASED ON 21ST OF EACH MONTH
 			double dec;
@@ -1867,11 +1273,11 @@ int main(int argc, char *argv[])
 
 			switch (month) {
 			case 1:
-				dec = -20 * pi / 180;
+				dec = -20 * M_PI / 180;
 				Csol = .103;
 				break;
 			case 2:
-				dec = -10.8 * pi / 180;
+				dec = -10.8 * M_PI / 180;
 				Csol = .104;
 				break;
 			case 3:
@@ -1879,23 +1285,23 @@ int main(int argc, char *argv[])
 				Csol = .109;
 				break;
 			case 4:
-				dec = 11.6 * pi / 180;
+				dec = 11.6 * M_PI / 180;
 				Csol = .12;
 				break;
 			case 5:
-				dec = 20 * pi / 180;
+				dec = 20 * M_PI / 180;
 				Csol = .13;
 				break;
 			case 6:
-				dec = 23.45 * pi / 180;
+				dec = 23.45 * M_PI / 180;
 				Csol = .137;
 				break;
 			case 7:
-				dec = 20.6 * pi / 180;
+				dec = 20.6 * M_PI / 180;
 				Csol = .138;
 				break;
 			case 8:
-				dec = 12.3 * pi / 180;
+				dec = 12.3 * M_PI / 180;
 				Csol = .134;
 				break;
 			case 9:
@@ -1903,15 +1309,15 @@ int main(int argc, char *argv[])
 				Csol = .121;
 				break;
 			case 10:
-				dec = -10.5 * pi / 180;
+				dec = -10.5 * M_PI / 180;
 				Csol = .111;
 				break;
 			case 11:
-				dec = -19.8 * pi / 180;
+				dec = -19.8 * M_PI / 180;
 				Csol = .106;
 				break;
 			case 12:
-				dec = -23.45 * pi / 180;
+				dec = -23.45 * M_PI / 180;
 				Csol = .103;
 				break;
 			}
@@ -1928,7 +1334,7 @@ int main(int argc, char *argv[])
 			double diffuse = solth - hdirect;
 
 			// FOR SOUTH ROOF
-			double SIGMA = pi * roofPitch / 180;		//ROOF PITCH ANGLE
+			double SIGMA = M_PI * roofPitch / 180;		//ROOF PITCH ANGLE
 			CTHETA = CBETA * 1 * sin(SIGMA) + SBETA * cos(SIGMA);
 			double ssolrad = idirect * CTHETA + diffuse;
 
@@ -2085,1478 +1491,482 @@ int main(int argc, char *argv[])
 			if (HOUR == peakEnd)
 				peakFlag = 1;			// Prevents two peak periods in the same day when there is heating and cooling
 
-			for(int i=0; i < numFans; i++) {
-
-
-				// [START] ---------------------FAN 50---------- RIVEC OPERATION BASED ON CONTROL ALGORITHM v6
-				// v6 of the algorithm only uses the peakStart and peakEnd variables, no more base or recovery periods.(
-
-				if(fan[i].oper == 50 || fan[i].oper == 13 || fan[i].oper == 17) { //traditional (50), cfis (13) or erv+ahu (17) fans for rivec control
- 
-					if(minute_hour == 1 || minute_hour == 11 || minute_hour == 21 || minute_hour == 31 || minute_hour == 41 || minute_hour == 51) {
+ 			if(minute_hour == 1 || minute_hour == 11 || minute_hour == 21 || minute_hour == 31 || minute_hour == 41 || minute_hour == 51) {
+				for(int i=0; i < numFans; i++) {
+					// [START] ---------------------FAN 50---------- RIVEC OPERATION BASED ON CONTROL ALGORITHM v6
+					// v6 of the algorithm only uses the peakStart and peakEnd variables, no more base or recovery periods.(
+					if(fan[i].oper == 50 || fan[i].oper == 13 || fan[i].oper == 17) { //traditional (50), cfis (13) or erv+ahu (17) fans for rivec control
 						// rivecOn = 1 or 0: 1 = whole-house fan ON, 0 = whole-house fan OFF
 						rivecOn = 0;
-
-						//0.012 kg/kg
-
-
-
-
-						  
-				  //    	if(HumContType == 2){  				   				
-						////Indoor and Outdoor sensor based control. It really seems we will need some sense of the relative parts of the year when these are true...We may need to toy with these relExp thresholds
-						//	
-						//	if(RHhouse >= 55){ //Engage increased or decreased ventilation only if house RH is >60 (or 55% maybe?). 
-
-						//		if(HROUT > HR[3]){ //do not want to vent. Add some "by what amount" deadband value. 
-						//			if(relExp >= 2.5 || relDose > 1){ //have to with high exp
-						//				rivecOn = 1;
-						//			} else { //otherwise off
-						//				rivecOn = 0;
-						//			}
-						//		} else { //want to vent due to high indoor humidity, so maybe we just let it run, without relExp control?
-						//			if(relExp >= 0.50 || relDose > 1){ //control to exp = 0.5. Need to change this value based on weighted avg results.
-						//				rivecOn = 1; //OR we can change the does calculation based on expected periods of contol function (i.e., 1-week,1-month, etc.)
-						//			} else {
-						//				rivecOn = 0;
-						//			}
-						//		}
-						//	} else {
-						//		if(relExp >= 0.95 || relDose > 1){ 
-						//			rivecOn = 1;
-						//		} else {
-						//			rivecOn = 0;
-						//		}
+						//// RIVEC fan operation after algorithm decision
+						//if(rivecOn) {	  												// RIVEC has turned ON this fan
+						//	fan[i].on = 1;
+						//	mechVentPower = mechVentPower + fan[i].power;				// vent fan power
+						//	if(fan[i].q > 0) { 											// supply fan - its heat needs to be added to the internal gains of the house
+						//		fanHeat = fan[i].power * .84;							// 16% efficiency for this fan
+						//		ventSumIN = ventSumIN + abs(fan[i].q) * 3600 / houseVolume;
+						//	} else { 													// exhaust fan
+						//		ventSumOUT = ventSumOUT + abs(fan[i].q) * 3600 / houseVolume;
 						//	}
+						//	rivecMinutes++;
 						//}
-
-				      	if(HumContType == 1){  	//Cooling system tie-in.			   				
-							
-							if(hcFlag == 2){ //test if we're in cooling season
-								if(AHflag == 2){
-									rivecOn = 1;
-								} else
-									if(relExp >= 2.5 || relDose > 1.0){ //have to with high exp
-										rivecOn = 1;
-									} else { //otherwise off
-										rivecOn = 0;					
-									}
-							} else //if NOT in cooling season
-								if(relExp >= 0.95 || relDose > 1.0){ //have to with high exp
-										rivecOn = 1;
-									} else { //otherwise off
-										rivecOn = 0;					
-									}
-								}
-
-
-				      	if(HumContType == 2){  	//Fixed control. 	   				
-						//Indoor and Outdoor sensor based control. 
-							
-							if(RHhouse >= 55){ //Engage increased or decreased ventilation only if house RH is >60 (or 55% maybe?). 
-
-								if(HROUT > HR[3]){ //do not want to vent. Add some "by what amount" deadband value. 
-									if(relExp >= 2.5 || relDose > 1.0){ //have to with high exp
-										rivecOn = 1;
-									} else { //otherwise off
-										rivecOn = 0;
-									}
-								} else { //want to vent due to high indoor humidity, so maybe we just let it run, without relExp control?
-									if(relExp >= 0.50 || relDose > 1.0){ //control to exp = 0.5. Need to change this value based on weighted avg results.
-										rivecOn = 1; //OR we can change the does calculation based on expected periods of contol function (i.e., 1-week,1-month, etc.)
-									} else {
-										rivecOn = 0;
-									}
-								}
-							} else {
-								if(relExp >= 0.95 || relDose > 1.0){ 
-									rivecOn = 1;
-								} else {
-									rivecOn = 0;
-								}
-							}
-						}
-
-				      	if(HumContType == 3){  	//Fixed control + cooling system tie-in.		   				
-						//Indoor and Outdoor sensor based control. 
-							
-							if(RHhouse >= 55){ //Engage increased or decreased ventilation only if house RH is >60 (or 55% maybe?). 
-
-								if(HROUT > HR[3]){ //do not want to vent. Add some "by what amount" deadband value. 
-									if(AHflag == 2){
-										rivecOn = 1;
-									} else
-										if(relExp >= 2.5 || relDose > 1.0){ //have to with high exp
-											rivecOn = 1;
-										} else { //otherwise off
-											rivecOn = 0;
-										}
-								} else { //want to vent due to high indoor humidity, so maybe we just let it run, without relExp control?
-									if(relExp >= 0.50 || relDose > 1.0){ //control to exp = 0.5. Need to change this value based on weighted avg results.
-										rivecOn = 1; //OR we can change the does calculation based on expected periods of contol function (i.e., 1-week,1-month, etc.)
-									} else {
-										rivecOn = 0;
-									}
-								}
-							} else {
-								if(relExp >= 0.95 || relDose > 1.0){ 
-									rivecOn = 1;
-								} else {
-									rivecOn = 0;
-								}
-							}
-						}
-
-
-
-				      	if(HumContType == 4){ //Proportional control.  				   				
-						//Indoor and Outdoor sensor based control. 
-
-							if(RHhouse >= 55){
-
-								if(HROUT > HR[3]){ //More humid outside than inside, want to under-vent.  
-									relExpTarget = 1 + (2.5-1) * abs((HR[3]-HROUT) / (wDiffMaxNeg)); //wDiffMax has to be an avergaed value, because in a real-world controller you would not know this. 
-									if(relExpTarget > 2.5){
-										relExpTarget = 2.5;
-									}
-									if(relExp >= relExpTarget || relDose > 1){ //relDose may be over a 1-week or 2-week time span...
-										rivecOn = 1;
-									} else { //otherwise off
-										rivecOn = 0;
-									}
-								} else { // More humid inside than outside, want to over-vent
-									relExpTarget = 1 - abs((HR[3]- HROUT) / (wDiffMaxPos));
-									if(relExpTarget < 0){
-										relExpTarget = 0;
-									}
-									if(relExp >= relExpTarget || relDose > 1){ //
-										rivecOn = 1;
-									} else {
-										rivecOn = 0;
-									}
-								}
-							} else {
-								if(relExp >= 0.95 || relDose > 1){ 
-									rivecOn = 1;
-								} else {
-									rivecOn = 0;
-								}
-							}
-						}
-						
-
-				      	if(HumContType == 5){ //Proportional control + cooling system tie-in. 				   				
-						//Indoor and Outdoor sensor based control. 
-							if(RHhouse >= 55){
-
-								if(HROUT > HR[3]){ //More humid outside than inside, want to under-vent.  
-									relExpTarget = 1 + (2.5-1) * abs((HR[3]-HROUT) / (wDiffMaxNeg)); //wDiffMax has to be an avergaed value, because in a real-world controller you would not know this. 
-									if(relExpTarget > 2.5){
-										relExpTarget = 2.5;
-									}
-									if(AHflag == 2){
-										rivecOn = 1;
-									} else if(relExp >= relExpTarget || relDose > 1){ //relDose may be over a 1-week or 2-week time span...
-											rivecOn = 1;
-										} else { //otherwise off
-											rivecOn = 0;
-										}
-									} else { // More humid inside than outside, want to over-vent
-										relExpTarget = 1 - abs((HR[3]- HROUT) / (wDiffMaxPos));
-										if(relExpTarget < 0){
-											relExpTarget = 0;
-										}
-										if(relExp >= relExpTarget || relDose > 1){ //
-											rivecOn = 1;
-										} else {
-											rivecOn = 0;
-										}
-									}
-							} else {
-								if(relExp >= 0.95 || relDose > 1){ 
-									rivecOn = 1;
-								} else {
-									rivecOn = 0;
-								}
-							}
-						}
-
-
-						if(HumContType == 6){ //Monthly Seasonal Control
-						//Monthly timer-based control, based on mean HRdiff by month. doseTargets are based on weighted average targeting dose = 1.5 during low-ventilation months, targeting annual dose of 0.98. 
-
-							if(weather_file == "Orlando"){
-								FirstCut = 4; 
-								SecondCut = 11;
-								doseTarget = 0.46;
-							} if(weather_file == "Charleston"){
-								FirstCut = 5; 
-								SecondCut = 10;
-								doseTarget = 0.72;
-							} if(weather_file == "07"){ //Baltimore
-								FirstCut = 6; 
-								SecondCut = 9;
-								doseTarget = 0.876;
-							} if(weather_file == "01"){ //Miami
-								FirstCut = 4; 
-								SecondCut = 11;
-								doseTarget = 0.46;
-							} if(weather_file == "02"){ //Houston
-								FirstCut = 4; 
-								SecondCut = 10;
-								doseTarget = 0.61;
-							} if(weather_file == "04"){ //Memphis
-								FirstCut = 5; 
-								SecondCut = 10;
-								doseTarget = 0.72;
-							}
-
-							if(month <= FirstCut || month >= SecondCut){ //High ventilation months with net-humidity transport from inside to outside.
-								if(relDose > doseTarget){
-									rivecOn = 1;
-								} else {						
-									rivecOn = 0;
-								} 
-							} else { //Low ventilation months with net-humidity transport from outside to inside.
-								if(relExp >= 2.5 || relDose > 1.5){
-									rivecOn = 1;
-								} else {
-									rivecOn = 0;
-								}
-							}
-						}
-
-
-				  //    	if(HumContType == 7){  	//Fixed control + cooling system tie-in + Monthly Seasonal Control.		   				
-						////Indoor and Outdoor sensor based control. 
-
-						//	if(weather_file == "Orlando"){
-						//		FirstCut = 4; 
-						//		SecondCut = 11;
-						//		doseTarget = 0.46;
-						//	} if(weather_file == "Charleston"){
-						//		FirstCut = 5; 
-						//		SecondCut = 10;
-						//		doseTarget = 0.72;
-						//	} if(weather_file == "07"){ //Baltimore
-						//		FirstCut = 6; 
-						//		SecondCut = 9;
-						//		doseTarget = 0.876;
-						//	} if(weather_file == "01"){ //Miami
-						//		FirstCut = 4; 
-						//		SecondCut = 11;
-						//		doseTarget = 0.46;
-						//	} if(weather_file == "02"){ //Houston
-						//		FirstCut = 4; 
-						//		SecondCut = 10;
-						//		doseTarget = 0.61;
-						//	} if(weather_file == "04"){ //Memphis
-						//		FirstCut = 5; 
-						//		SecondCut = 10;
-						//		doseTarget = 0.72;
-						//	}
-
-						//	if(month <= FirstCut || month >= SecondCut){
-						//		doseTarget = doseTarget;
-						//	} else {
-						//		doseTarget = 1.5;
-						//	}
-
-						//	if(RHhouse >= 55){ //Engage increased or decreased ventilation only if house RH is >60 (or 55% maybe?). 
-
-						//		if(HROUT > HR[3]){ //do not want to vent. Add some "by what amount" deadband value. 
-						//			if(AHflag == 2){
-						//				rivecOn = 1;
-						//			} else
-						//				if(relExp >= 2.5 || relDose > doseTarget){ //have to with high exp 0.61
-						//					rivecOn = 1;
-						//				} else { //otherwise off
-						//					rivecOn = 0;
-						//				}
-						//		} else { //want to vent due to high indoor humidity, so maybe we just let it run, without relExp control?
-						//			if(relExp >= 0.5 || relDose > doseTarget){ //control to exp = 0.5. Need to change this value based on weighted avg results.
-						//				rivecOn = 1; //OR we can change the does calculation based on expected periods of contol function (i.e., 1-week,1-month, etc.)
-						//			} else {
-						//				rivecOn = 0;
-						//			}
-						//		}
-
-						//	} else {
-						//		if(relExp >= 0.95 || relDose > doseTarget){
-						//			rivecOn = 1;
-						//		} else {
-						//			rivecOn = 0;
-						//		}
-						//	}
+						//else {
+						//	fan[i].on = 0;
 						//}
+					}
+				}
+				// [END] ========================== END RIVEC Decision ====================================
 
-
-				      	if(HumContType == 7){  	//Fixed control + cooling system tie-in + Monthly Seasonal Control.		   				
-						//Indoor and Outdoor sensor based control. 
-
-							//if(weather_file == "Orlando"){
-							//	doseTarget = 0.46;
-							//} if(weather_file == "Charleston"){
-							//	doseTarget = 0.72;
-							//} if(weather_file == "07"){ //Baltimore
-							//	doseTarget = 0.876;
-							//} if(weather_file == "01"){ //Miami
-							//	doseTarget = 0.46;
-							//} if(weather_file == "02"){ //Houston
-							//	doseTarget = 0.61;
-							//} if(weather_file == "04"){ //Memphis
-							//	doseTarget = 0.72;
-							//}
-
-							//if(weather_file == "Orlando"){
-							//	HiDose = 1.2;
-							//	doseTarget = 0.51;
-							//} if(weather_file == "Charleston"){
-							//	HiDose = 1.3;
-							//	doseTarget = 0.47;
-							//} if(weather_file == "07"){ //Baltimore
-							//	HiDose = 1.4;
-							//	doseTarget = 0.66;
-							//} if(weather_file == "01"){ //Miami
-							//	HiDose = 1.1;
-							//	doseTarget = 0.59;
-							//} if(weather_file == "02"){ //Houston
-							//	HiDose = 1.3;
-							//	doseTarget = 0.36;
-							//} if(weather_file == "04"){ //Memphis
-							//	HiDose = 1.3;
-							//	doseTarget = 0.64;
-							//}
-
-							if(weather_file == "Orlando"){
-								HiDose = 1.2;
-								doseTarget = 0.38; 
-							} if(weather_file == "Charleston"){
-								HiDose = 1.2; 
-								doseTarget = 0.47;
-							} if(weather_file == "07"){ //Baltimore
-								HiDose = 1.3;
-								doseTarget = 0.66;
-							} if(weather_file == "01"){ //Miami
-								HiDose = 1.1;
-								doseTarget = 0.38; 
-							} if(weather_file == "02"){ //Houston
-								HiDose = 1.2; 
-								doseTarget = 0.36;
-							} if(weather_file == "04"){ //Memphis
-								HiDose = 1.2;
-								doseTarget = 0.64; 
+				// ========================== Start Humidity Control Logic ================================
+				//Cooling system tie-in.
+				if(HumContType == 1){			   				
+					if(hcFlag == 2){ //test if we're in cooling season
+						if(AHflag == 2){
+							rivecOn = 1;
+						} else
+							if(relExp >= 2.5 || relDose > 1.0){ //have to with high exp
+								rivecOn = 1;
+							} else { //otherwise off
+								rivecOn = 0;					
 							}
+					} else //if NOT in cooling season
+						if(relExp >= 0.95 || relDose > 1.0){ //have to with high exp
+								rivecOn = 1;
+							} else { //otherwise off
+								rivecOn = 0;					
+							}
+					}
 
-							if(HROUT > HR[3]){ //do not want to vent. 
-								if(AHflag == 2){
-									rivecOn = 1;
-								} else
-									if(relExp >= 2.5 || relDose > HiDose){ 
-										rivecOn = 1;
-									} else { //otherwise off
-										rivecOn = 0;
-									}
-							} else { //want to vent due to high indoor humidity, so maybe we just let it run, without relExp control?
-								if(relDose > doseTarget){ 
-									rivecOn = 1; 
-								} else {
-									rivecOn = 0;
-								}
+				//Fixed control. 	   				
+				//Indoor and Outdoor sensor based control. 
+				if(HumContType == 2){
+					if(RHhouse >= 55){ //Engage increased or decreased ventilation only if house RH is >60 (or 55% maybe?). 
+						if(HROUT > HR[3]){ //do not want to vent. Add some "by what amount" deadband value. 
+							if(relExp >= 2.5 || relDose > 1.0){ //have to with high exp
+								rivecOn = 1;
+							} else { //otherwise off
+								rivecOn = 0;
+							}
+						} else { //want to vent due to high indoor humidity, so maybe we just let it run, without relExp control?
+							if(relExp >= 0.50 || relDose > 1.0){ //control to exp = 0.5. Need to change this value based on weighted avg results.
+								rivecOn = 1; //OR we can change the does calculation based on expected periods of contol function (i.e., 1-week,1-month, etc.)
+							} else {
+								rivecOn = 0;
 							}
 						}
-
-
-
-						if(HumContType == 8){ //Monthly Seasonal controller + time of day
-						//Monthly timer-based control, based on mean HRdiff by month. doseTargets are based on weighted average targeting dose = 1.5 during low-ventilation months, targeting annual dose of 0.98. 
-
-							if(weather_file == "Orlando"){
-								FirstCut = 4; 
-								SecondCut = 11;
-								doseTarget = 0.46;
-								//PreLows = {;
-								//PreHighs = ;
-								//SummLows =
-								//SummHighs = 
-								//PostLows = 
-								//PostHighs = 
-							} if(weather_file == "Charleston"){
-								FirstCut = 5; 
-								SecondCut = 10;
-								doseTarget = 0.72;
-							} if(weather_file == "07"){ //Baltimore
-								FirstCut = 6; 
-								SecondCut = 9;
-								doseTarget = 0.876;
-							} if(weather_file == "01"){ //Miami
-								FirstCut = 4; 
-								SecondCut = 11;
-								doseTarget = 0.46;
-							} if(weather_file == "02"){ //Houston
-								FirstCut = 4; 
-								SecondCut = 10;
-								doseTarget = 0.61;
-							} if(weather_file == "04"){ //Memphis
-								FirstCut = 5; 
-								SecondCut = 10;
-								doseTarget = 0.72;
-							}
-
-							if(month <= FirstCut || month >= SecondCut){ //High ventilation months with net-humidity transport from inside to outside.
-								if(HOUR >= 3 && HOUR <= 7){ //Maybe change this to the warmest hours of the day.
-									rivecOn = 1;
-								} else {
-									if(relDose > doseTarget){
-										rivecOn = 1;
-									} else {						
-										rivecOn = 0;
-									} 
-								}
-							} else { //Low ventilation months with net-humidity transport from outside to inside.
-								if(HOUR >= 8 && HOUR <= 11){
-									rivecOn = 0;
-								} if(HOUR >= 15 && HOUR <=18){
-									rivecOn = 1;
-								} else {
-									if(relExp >= 2.5 || relDose > 1.5){
-										rivecOn = 1;
-									} else {
-										rivecOn = 0;
-									}
-								}
-							}
+					} else {
+						if(relExp >= 0.95 || relDose > 1.0){ 
+							rivecOn = 1;
+						} else {
+							rivecOn = 0;
 						}
+					}
+				}
 
-				  //    	if(HumContType == 9){  	//Fixed control + Monthly Seasonal Control.		   				
-						////Indoor and Outdoor sensor based control. 
-
-						//	if(weather_file == "Orlando"){
-						//		FirstCut = 4; 
-						//		SecondCut = 11;
-						//		doseTarget = 0.46;
-						//	} if(weather_file == "Charleston"){
-						//		FirstCut = 5; 
-						//		SecondCut = 10;
-						//		doseTarget = 0.72;
-						//	} if(weather_file == "07"){ //Baltimore
-						//		FirstCut = 6; 
-						//		SecondCut = 9;
-						//		doseTarget = 0.876;
-						//	} if(weather_file == "01"){ //Miami
-						//		FirstCut = 4; 
-						//		SecondCut = 11;
-						//		doseTarget = 0.46;
-						//	} if(weather_file == "02"){ //Houston
-						//		FirstCut = 4; 
-						//		SecondCut = 10;
-						//		doseTarget = 0.61;
-						//	} if(weather_file == "04"){ //Memphis
-						//		FirstCut = 5; 
-						//		SecondCut = 10;
-						//		doseTarget = 0.72;
-						//	}
-
-						//	if(month <= FirstCut || month >= SecondCut){
-						//		doseTarget = doseTarget;
-						//	} else {
-						//		doseTarget = 1.5;
-						//	}
-
-						//	if(RHhouse >= 55){ //Engage increased or decreased ventilation only if house RH is >60 (or 55% maybe?).
-
-						//		if(HROUT > HR[3]){ //do not want to vent. Add some "by what amount" deadband value. 
-						//			if(relExp >= 2.5 || relDose > doseTarget){ //have to with high exp 0.61
-						//				rivecOn = 1;
-						//			} else { //otherwise off
-						//				rivecOn = 0;
-						//			}
-						//		} else { //want to vent due to high indoor humidity, so maybe we just let it run, without relExp control?
-						//			if(relExp >= 0.50 || relDose > doseTarget){ //control to exp = 0.5. Need to change this value based on weighted avg results.
-						//				rivecOn = 1; //OR we can change the does calculation based on expected periods of contol function (i.e., 1-week,1-month, etc.)
-						//			} else {
-						//				rivecOn = 0;
-						//			}
-						//		}
-						//	} else {
-						//		if(relExp >= 0.95 || relDose > doseTarget){
-						//			rivecOn = 1;
-						//		} else {
-						//			rivecOn = 0;
-						//		}
-						//	}
-						//}
-
-				      	if(HumContType == 9){  	//Fixed control + Monthly Seasonal Control.		   				
-						//Indoor and Outdoor sensor based control. 
-
-							//if(weather_file == "Orlando"){
-							//	doseTarget = 0.46;
-							//} if(weather_file == "Charleston"){
-							//	doseTarget = 0.72;
-							//} if(weather_file == "07"){ //Baltimore
-							//	doseTarget = 0.876;
-							//} if(weather_file == "01"){ //Miami
-							//	doseTarget = 0.46;
-							//} if(weather_file == "02"){ //Houston
-							//	doseTarget = 0.61;
-							//} if(weather_file == "04"){ //Memphis
-							//	doseTarget = 0.72;
-							//}
-
-							//if(weather_file == "Orlando"){
-							//	HiDose = 1.2;
-							//	doseTarget = 0.51; //1.3 and 0.38
-							//} if(weather_file == "Charleston"){
-							//	HiDose = 1.3; //try 1.4
-							//	doseTarget = 0.47;
-							//} if(weather_file == "07"){ //Baltimore
-							//	HiDose = 1.4;
-							//	doseTarget = 0.66; //1.3 and 0.75
-							//} if(weather_file == "01"){ //Miami
-							//	HiDose = 1.1;
-							//	doseTarget = 0.59; //Consider trying 1.2 and 0.38
-							//} if(weather_file == "02"){ //Houston
-							//	HiDose = 1.3; //try 1.4
-							//	doseTarget = 0.36;
-							//} if(weather_file == "04"){ //Memphis
-							//	HiDose = 1.3;
-							//	doseTarget = 0.64; //1.4 and 0.52
-							//}
-
-							//if(weather_file == "Orlando"){
-							//	HiDose = 1.2; //1.1
-							//	doseTarget = 0.38; 
-							//} if(weather_file == "Charleston"){
-							//	HiDose = 1.2; //1.15
-							//	doseTarget = 0.47;
-							//} if(weather_file == "07"){ //Baltimore
-							//	HiDose = 1.3; //1.25
-							//	doseTarget = 0.66;
-							//} if(weather_file == "01"){ //Miami
-							//	HiDose = 1.1; //1.05
-							//	doseTarget = 0.38; 
-							//} if(weather_file == "02"){ //Houston
-							//	HiDose = 1.2; //1.15
-							//	doseTarget = 0.36;
-							//} if(weather_file == "04"){ //Memphis
-							//	HiDose = 1.2;
-							//	doseTarget = 0.64; 
-							//}
-
-							if(weather_file == "Orlando"){
-								HiDose = 1.1; //1.1
-								doseTarget = 0.38; 
-							} if(weather_file == "Charleston"){
-								HiDose = 1.15; //1.15
-								doseTarget = 0.47;
-							} if(weather_file == "07"){ //Baltimore
-								HiDose = 1.25; //1.25
-								doseTarget = 0.66;
-							} if(weather_file == "01"){ //Miami
-								HiDose = 1.05; //1.05
-								doseTarget = 0.38; 
-							} if(weather_file == "02"){ //Houston
-								HiDose = 1.15; //1.15
-								doseTarget = 0.36;
-							} if(weather_file == "04"){ //Memphis
-								HiDose = 1.2;
-								doseTarget = 0.64; 
-							}
-
-
-							if(HROUT > HR[3]){ //do not want to vent. Add some "by what amount" deadband value. 
-								if(relExp >= 2.5 || relDose > HiDose){ //have to with high exp 0.61
+				//Fixed control + cooling system tie-in.		   				
+				//Indoor and Outdoor sensor based control. 
+				if(HumContType == 3){							
+					if(RHhouse >= 55){ //Engage increased or decreased ventilation only if house RH is >60 (or 55% maybe?). 
+						if(HROUT > HR[3]){ //do not want to vent. Add some "by what amount" deadband value. 
+							if(AHflag == 2){
+								rivecOn = 1;
+							} else
+								if(relExp >= 2.5 || relDose > 1.0){ //have to with high exp
 									rivecOn = 1;
 								} else { //otherwise off
 									rivecOn = 0;
 								}
-							} else { //want to vent due to high indoor humidity, so maybe we just let it run, without relExp control?
-								if(relDose > doseTarget){ //control to exp = 0.5. Need to change this value based on weighted avg results.
-									rivecOn = 1; //OR we can change the does calculation based on expected periods of contol function (i.e., 1-week,1-month, etc.)
-								} else {
-									rivecOn = 0;
-								}
-							}
-						}
-
-
-
-						if(HumContType == 10){ //The real opportunities for control based on outside are when the outside value is changing rapidly. Sharp increases, decrease ventilation. Sharp decreases, increase ventilation. 
-						//Need to undervent at above the 75th percentile and overvent below the 25th percentile based on a per month basis. 
-							
-							//Outdoor-only sensor based control
-
-
-							if(HROUT > 0.012){ //If humid outside, reduce ventilation. 
-
-								if(relExp >= 2.5 || relDose > 1){
-									rivecOn = 1; 
-								} else {
-									rivecOn = 0;
-								}
-
-							} else { //If dry outside, increase vnetilation.
-								if(relExp >= 0.95 || relDose > 1){ //but we do if exp is high
-									rivecOn = 1;
-								} else {
-									rivecOn = 0; //otherwise don't vent under high humidity condition.
-								}
-							}
-						}
-
-
-						if(HumContType == 11){ //Monthly Advanced Seasonal Control
-						//Monthly timer-based control, based on mean HRdiff by month. doseTargets are based on weighted average targeting dose = 1.5 during low-ventilation months, targeting annual dose of 0.98. 
-
-							if(weather_file == "Orlando"){
-								FirstCut = 4; 
-								SecondCut = 11;
-								doseTarget = 0.46;
-
-								HiMonths[0] = 2;
-								HiMonths[1] = 11;
-								HiMonths[2] = 12;
-								HiMonthDose = 0.38;
-
-								LowMonths[0] = 10;
-								LowMonths[1] = 0;
-								LowMonths[2] = 0;
-								LowMonthDose = 1.74;
-
-							} if(weather_file == "Charleston"){
-								FirstCut = 5; 
-								SecondCut = 10;
-								doseTarget = 0.72;
-
-								HiMonths[0] = 10;
-								HiMonths[1] = 11;
-								HiMonths[2] = 0;
-								HiMonthDose = 0.47;
-
-								LowMonths[0] = 8;
-								LowMonths[1] = 9;
-								LowMonths[2] = 0;
-								LowMonthDose = 1.75;
-
-							} if(weather_file == "07"){ //Baltimore
-								FirstCut = 6; 
-								SecondCut = 9;
-								doseTarget = 0.876;
-
-								HiMonths[0] = 10;
-								HiMonths[1] = 0;
-								HiMonths[2] = 0;
-								HiMonthDose = 0.626;
-
-								LowMonths[0] = 7;
-								LowMonths[1] = 8;
-								LowMonths[2] = 0;
-								LowMonthDose = 1.625;
-
-							} if(weather_file == "01"){ //Miami
-								FirstCut = 4; 
-								SecondCut = 11;
-								doseTarget = 0.46;
-
-								HiMonths[0] = 1;
-								HiMonths[1] = 2;
-								HiMonths[2] = 12;
-								HiMonthDose = 0.38;
-
-								LowMonths[0] = 10;
-								LowMonths[1] = 0;
-								LowMonths[2] = 0;
-								LowMonthDose = 1.74;
-
-							} if(weather_file == "02"){ //Houston
-								FirstCut = 4; 
-								SecondCut = 10;
-								doseTarget = 0.61;
-
-								HiMonths[0] = 4;
-								HiMonths[1] = 10;
-								HiMonths[2] = 11;
-								HiMonthDose = 0.38;
-
-								LowMonths[0] = 5;
-								LowMonths[1] = 0;
-								LowMonths[2] = 0;
-								LowMonthDose = 2.184;
-
-							} if(weather_file == "04"){ //Memphis
-								FirstCut = 5; 
-								SecondCut = 10;
-								doseTarget = 0.72;
-
-								HiMonths[0] = 4;
-								HiMonths[1] = 10;
-								HiMonths[2] = 11;
-								HiMonthDose = 0.492;
-
-								LowMonths[0] = 9;
-								LowMonths[1] = 0;
-								LowMonths[2] = 0;
-								LowMonthDose = 2.184;
-							}
-
-							//Setting the appropriate Dose Target based on the month
-							if(month == HiMonths[0] || month == HiMonths[1]  || month == HiMonths[2]){
-								doseTarget = HiMonthDose;
-							} else if(month == LowMonths[0] || month == LowMonths[1]  || month == LowMonths[2]){
-								doseTarget = LowMonthDose;
-							} else if(month > FirstCut && month < SecondCut){
-								doseTarget = 1.5;
+						} else { //want to vent due to high indoor humidity, so maybe we just let it run, without relExp control?
+							if(relExp >= 0.50 || relDose > 1.0){ //control to exp = 0.5. Need to change this value based on weighted avg results.
+								rivecOn = 1; //OR we can change the does calculation based on expected periods of contol function (i.e., 1-week,1-month, etc.)
 							} else {
-								doseTarget = doseTarget;
-							}
-							
-							if(doseTarget >= 1.5){
-								if(relExp >= 2.5 || relDose > doseTarget){
-									rivecOn = 1; 
-								} else {
-									rivecOn = 0;
-								}
-							}
-							else {
-								if(relDose > doseTarget){
-									rivecOn = 1;
-								} else {						
-									rivecOn = 0;
-								} 
+								rivecOn = 0;
 							}
 						}
-
-
-				      	if(HumContType == 12){  	//Monthly Seasonal Control + Cooling system tie-in.		   				
-						//Indoor and Outdoor sensor based control. 
-
-							if(weather_file == "Orlando"){
-								FirstCut = 4; 
-								SecondCut = 11;
-								doseTarget = 0.46;
-							} if(weather_file == "Charleston"){
-								FirstCut = 5; 
-								SecondCut = 10;
-								doseTarget = 0.72;
-							} if(weather_file == "07"){ //Baltimore
-								FirstCut = 6; 
-								SecondCut = 9;
-								doseTarget = 0.876;
-							} if(weather_file == "01"){ //Miami
-								FirstCut = 4; 
-								SecondCut = 11;
-								doseTarget = 0.46;
-							} if(weather_file == "02"){ //Houston
-								FirstCut = 4; 
-								SecondCut = 10;
-								doseTarget = 0.61;
-							} if(weather_file == "04"){ //Memphis
-								FirstCut = 5; 
-								SecondCut = 10;
-								doseTarget = 0.72;
-							}
-
-							if(month <= FirstCut || month >= SecondCut){
-								doseTarget = doseTarget;
-							} else {
-								doseTarget = 1.5;
-							}
-
-							if(AHflag == 2){
-									rivecOn = 1;
-							} else if(doseTarget >= 1.5){
-								if(relExp >= 2.5 || relDose > doseTarget){
-									rivecOn = 1; 
-								} else {
-									rivecOn = 0;
-								}
-							} else {
-								if(relDose > doseTarget){
-									rivecOn = 1;
-								} else {						
-									rivecOn = 0;
-								} 
-							}
+					} else {
+						if(relExp >= 0.95 || relDose > 1.0){ 
+							rivecOn = 1;
+						} else {
+							rivecOn = 0;
 						}
-
-
-						if(HumContType == 13){ 
-							//Outdoor-only sensor based control, with variable dose targets
-
-							if(weather_file == "Orlando"){
-								wCutoff = 0.012;
-							} if(weather_file == "Charleston"){
-								wCutoff = 0.011;
-							} if(weather_file == "07"){ //Baltimore
-								wCutoff = 0.006;
-							} if(weather_file == "01"){ //Miami
-								wCutoff = 0.016;
-							} if(weather_file == "02"){ //Houston
-								wCutoff = 0.012;
-							} if(weather_file == "04"){ //Memphis
-								wCutoff = 0.009;
-							}
-
-							if(HROUT >= wCutoff){ //If humid outside, reduce ventilation. 
-								if(relExp >= 2.5 || relDose > 1.5){
-									rivecOn = 1; 
-								} else {
-									rivecOn = 0;
-								}
-							} else { //If dry outside, increase vnetilation.
-								if(relDose > 0.5){ //but we do if exp is high
-									rivecOn = 1;
-								} else {
-									rivecOn = 0; //otherwise don't vent under high humidity condition.
-								}
-							}
-						}
-
-
-						if(HumContType == 14){ 
-						//Outdoor-only sensor based control, control based on 25th and 75th percentile monthly values for each month and climate zone.
-
-						switch (month) {
-						case 1:
-							W75 = W75_1;
-							W25 = W25_1;
-							break;
-						case 2:
-							W75 = W75_2;
-							W25 = W25_2;
-							break;
-						case 3:
-							W75 = W75_3;
-							W25 = W25_3;
-							break;
-						case 4:
-							W75 = W75_4;
-							W25 = W25_4;
-							break;
-						case 5:
-							W75 = W75_5;
-							W25 = W25_5;
-							break;
-						case 6:
-							W75 = W75_6;
-							W25 = W25_6;
-							break;
-						case 7:
-							W75 = W75_7;
-							W25 = W25_7;
-							break;
-						case 8:
-							W75 = W75_8;
-							W25 = W25_8;
-							break;
-						case 9:
-							W75 = W75_9;
-							W25 = W25_9;
-							break;
-						case 10:
-							W75 = W75_10;
-							W25 = W25_10;
-							break;
-						case 11:
-							W75 = W75_11;
-							W25 = W25_11;
-							break;
-						case 12:
-							W75 = W75_12;
-							W25 = W25_12;
-							break;
-						}
-
-
-							if(HROUT >= W75){ //If humid outside, reduce ventilation. 
-								if(relExp >= 2.5 || relDose > 1.5){
-									rivecOn = 1; 
-								} else {
-									rivecOn = 0;
-								}
-							} else if (HROUT <= W25){ //If dry outside, increase vnetilation.
-								if(relDose > 0.5){ //but we do if exp is high
-									rivecOn = 1;
-								} else {
-									rivecOn = 0; //otherwise don't vent under high humidity condition.
-								}
-							} else {
-								if(relExp >= 0.95 || relDose > 1.0){ //Need to reduce this target to make equivalence work out...
-									rivecOn = 1;
-								} else {
-									rivecOn = 0;
-								}
-							}
-						}
-
-
-					if(HumContType == 15){ //Monthly Advanced Seasonal Control + Fixed Control + Cooling System Tie_in
-						//Monthly timer-based control, based on mean HRdiff by month. doseTargets are based on weighted average targeting dose = 1.5 during low-ventilation months, targeting annual dose of 0.98. 
-
-							if(weather_file == "Orlando"){
-								FirstCut = 4; 
-								SecondCut = 11;
-								doseTarget = 0.46;
-
-								HiMonths[0] = 2;
-								HiMonths[1] = 11;
-								HiMonths[2] = 12;
-								HiMonthDose = 0.38;
-
-								LowMonths[0] = 10;
-								LowMonths[1] = 0;
-								LowMonths[2] = 0;
-								LowMonthDose = 1.74;
-
-							} if(weather_file == "Charleston"){
-								FirstCut = 5; 
-								SecondCut = 10;
-								doseTarget = 0.72;
-
-								HiMonths[0] = 10;
-								HiMonths[1] = 11;
-								HiMonths[2] = 0;
-								HiMonthDose = 0.47;
-
-								LowMonths[0] = 8;
-								LowMonths[1] = 9;
-								LowMonths[2] = 0;
-								LowMonthDose = 1.75;
-
-							} if(weather_file == "07"){ //Baltimore
-								FirstCut = 6; 
-								SecondCut = 9;
-								doseTarget = 0.876;
-
-								HiMonths[0] = 10;
-								HiMonths[1] = 0;
-								HiMonths[2] = 0;
-								HiMonthDose = 0.626;
-
-								LowMonths[0] = 7;
-								LowMonths[1] = 8;
-								LowMonths[2] = 0;
-								LowMonthDose = 1.625;
-
-							} if(weather_file == "01"){ //Miami
-								FirstCut = 4; 
-								SecondCut = 11;
-								doseTarget = 0.46;
-
-								HiMonths[0] = 1;
-								HiMonths[1] = 2;
-								HiMonths[2] = 12;
-								HiMonthDose = 0.38;
-
-								LowMonths[0] = 10;
-								LowMonths[1] = 0;
-								LowMonths[2] = 0;
-								LowMonthDose = 1.74;
-
-							} if(weather_file == "02"){ //Houston
-								FirstCut = 4; 
-								SecondCut = 10;
-								doseTarget = 0.61;
-
-								HiMonths[0] = 4;
-								HiMonths[1] = 10;
-								HiMonths[2] = 11;
-								HiMonthDose = 0.38;
-
-								LowMonths[0] = 5;
-								LowMonths[1] = 0;
-								LowMonths[2] = 0;
-								LowMonthDose = 2.184;
-
-							} if(weather_file == "04"){ //Memphis
-								FirstCut = 5; 
-								SecondCut = 10;
-								doseTarget = 0.72;
-
-								HiMonths[0] = 4;
-								HiMonths[1] = 10;
-								HiMonths[2] = 11;
-								HiMonthDose = 0.492;
-
-								LowMonths[0] = 9;
-								LowMonths[1] = 0;
-								LowMonths[2] = 0;
-								LowMonthDose = 2.184;
-							}
-
-							//Setting the appropriate Dose Target based on the month
-							if(month == HiMonths[0] || month == HiMonths[1]  || month == HiMonths[2] || month == LowMonths[0] || month == LowMonths[1]  || month == LowMonths[2]){
-								//doseTarget = HiMonthDose;
-								if(HROUT > HR[3]){ //do not want to vent. Add some "by what amount" deadband value. 
-									if(AHflag == 2){
-										rivecOn = 1;
-									} else
-										if(relExp >= 2.5 || relDose > LowMonthDose){ //have to with high exp
-											rivecOn = 1;
-										} else { //otherwise off
-											rivecOn = 0;
-										}
-								} else { //want to vent due to high indoor humidity, so maybe we just let it run, without relExp control?
-									if(relDose > HiMonthDose){ //control to exp = 0.5. Need to change this value based on weighted avg results.
-										rivecOn = 1; //OR we can change the does calculation based on expected periods of contol function (i.e., 1-week,1-month, etc.)
-									} else {
-										rivecOn = 0;
-									}
-								}
-
-							} else {
-								if(HROUT > HR[3]){ //do not want to vent. Add some "by what amount" deadband value. 
-									if(AHflag == 2){
-										rivecOn = 1;
-									} else
-										if(relExp >= 2.5 || relDose > 1.5){ //have to with high exp
-											rivecOn = 1;
-										} else { //otherwise off
-											rivecOn = 0;
-										}
-								} else { //want to vent due to high indoor humidity, so maybe we just let it run, without relExp control?
-									if(relDose > doseTarget){ //control to exp = 0.5. Need to change this value based on weighted avg results.
-										rivecOn = 1; //OR we can change the does calculation based on expected periods of contol function (i.e., 1-week,1-month, etc.)
-									} else {
-										rivecOn = 0;
-									}
-								}
-							}
-						}
-
-
-
-					if(HumContType == 16){ //Monthly Advanced Seasonal Control + Fixed Control
-						//Monthly timer-based control, based on mean HRdiff by month. doseTargets are based on weighted average targeting dose = 1.5 during low-ventilation months, targeting annual dose of 0.98. 
-
-							if(weather_file == "Orlando"){
-								FirstCut = 4; 
-								SecondCut = 11;
-								doseTarget = 0.46;
-
-								HiMonths[0] = 2;
-								HiMonths[1] = 11;
-								HiMonths[2] = 12;
-								HiMonthDose = 0.38;
-
-								LowMonths[0] = 10;
-								LowMonths[1] = 0;
-								LowMonths[2] = 0;
-								LowMonthDose = 1.74;
-
-							} if(weather_file == "Charleston"){
-								FirstCut = 5; 
-								SecondCut = 10;
-								doseTarget = 0.72;
-
-								HiMonths[0] = 10;
-								HiMonths[1] = 11;
-								HiMonths[2] = 0;
-								HiMonthDose = 0.47;
-
-								LowMonths[0] = 8;
-								LowMonths[1] = 9;
-								LowMonths[2] = 0;
-								LowMonthDose = 1.75;
-
-							} if(weather_file == "07"){ //Baltimore
-								FirstCut = 6; 
-								SecondCut = 9;
-								doseTarget = 0.876;
-
-								HiMonths[0] = 10;
-								HiMonths[1] = 0;
-								HiMonths[2] = 0;
-								HiMonthDose = 0.626;
-
-								LowMonths[0] = 7;
-								LowMonths[1] = 8;
-								LowMonths[2] = 0;
-								LowMonthDose = 1.625;
-
-							} if(weather_file == "01"){ //Miami
-								FirstCut = 4; 
-								SecondCut = 11;
-								doseTarget = 0.46;
-
-								HiMonths[0] = 1;
-								HiMonths[1] = 2;
-								HiMonths[2] = 12;
-								HiMonthDose = 0.38;
-
-								LowMonths[0] = 10;
-								LowMonths[1] = 0;
-								LowMonths[2] = 0;
-								LowMonthDose = 1.74;
-
-							} if(weather_file == "02"){ //Houston
-								FirstCut = 4; 
-								SecondCut = 10;
-								doseTarget = 0.61;
-
-								HiMonths[0] = 4;
-								HiMonths[1] = 10;
-								HiMonths[2] = 11;
-								HiMonthDose = 0.38;
-
-								LowMonths[0] = 5;
-								LowMonths[1] = 0;
-								LowMonths[2] = 0;
-								LowMonthDose = 2.184;
-
-							} if(weather_file == "04"){ //Memphis
-								FirstCut = 5; 
-								SecondCut = 10;
-								doseTarget = 0.72;
-
-								HiMonths[0] = 4;
-								HiMonths[1] = 10;
-								HiMonths[2] = 11;
-								HiMonthDose = 0.492;
-
-								LowMonths[0] = 9;
-								LowMonths[1] = 0;
-								LowMonths[2] = 0;
-								LowMonthDose = 2.184;
-							}
-
-							//Setting the appropriate Dose Target based on the month
-							if(month == HiMonths[0] || month == HiMonths[1]  || month == HiMonths[2] || month == LowMonths[0] || month == LowMonths[1]  || month == LowMonths[2]){
-								//doseTarget = HiMonthDose;
-								if(HROUT > HR[3]){ //do not want to vent. Add some "by what amount" deadband value. 
-									if(relExp >= 2.5 || relDose > LowMonthDose){ //have to with high exp
-											rivecOn = 1;
-										} else { //otherwise off
-											rivecOn = 0;
-										}
-								} else { //want to vent due to high indoor humidity, so maybe we just let it run, without relExp control?
-									if(relDose > HiMonthDose){ //control to exp = 0.5. Need to change this value based on weighted avg results.
-										rivecOn = 1; //OR we can change the does calculation based on expected periods of contol function (i.e., 1-week,1-month, etc.)
-									} else {
-										rivecOn = 0;
-									}
-								}
-
-							} else {
-								if(HROUT > HR[3]){ //do not want to vent. Add some "by what amount" deadband value. 
-									if(relExp >= 2.5 || relDose > 1.5){ //have to with high exp
-											rivecOn = 1;
-										} else { //otherwise off
-											rivecOn = 0;
-										}
-								} else { //want to vent due to high indoor humidity, so maybe we just let it run, without relExp control?
-									if(relDose > doseTarget){ //control to exp = 0.5. Need to change this value based on weighted avg results.
-										rivecOn = 1; //OR we can change the does calculation based on expected periods of contol function (i.e., 1-week,1-month, etc.)
-									} else {
-										rivecOn = 0;
-									}
-								}
-							}
-						}
-
-
-
-				  //    	if(HumContType == 4){  				   				
-						////Indoor and Outdoor sensor based control. It really seems we will need some sense of the relative parts of the year when these are true...We may need to toy with these relExp thresholds
-
-						//	if(RHhouse >= 55){
-
-						//		if(AHflag == 2){
-						//			rivecOn = 1;
-
-						//		} else if((abs(airDensityOUT * fan[i].q * HROUT)) > (abs(airDensityIN * fan[i].q * HR[3]) + latentLoad)){ //TRUE when net-humidity transport is from outside to inside. Reduce ventilation.
-						//			relExpTarget = 1 + (2.5-1) * abs((HR[3]-HROUT) / (wDiffMaxNeg)); //wDiffMax has to be an avergaed value, because in a real-world controller you would not know this. 
-						//			if(relExpTarget > 2.5){
-						//				relExpTarget = 2.5;
-						//			}
-						//			if(relExp >= relExpTarget || relDose > 1.5){ //relDose may be over a 1-week or 2-week time span...Need to establish an alternate dose target to allow more under-venting during summmer.
-						//				rivecOn = 1;
-						//			} else { //otherwise off
-						//				rivecOn = 0;
-						//			}
-
-						//		} else { //TRUE when net-humidity transport is from inside to outside. Increase ventilation. 
-						//			relExpTarget = 1 - abs((HR[3]- HROUT) / (wDiffMaxPos));
-						//			if(relExpTarget < 0){
-						//				relExpTarget = 0;
-						//			}
-						//			if(relExp >= relExpTarget){ //|| relDose > 1 Brennan removed, because we don't want to limit over-venting to control humidity.
-						//				rivecOn = 1; //OR we can change the does calculation based on expected periods of contol function (i.e., 1-week,1-month, etc.)
-						//			} else {
-						//				rivecOn = 0;
-						//			}
-						//		}
-
-						//	} else {//I only want this to over-vent during summer. Lock this part of the control out based on cooling thermostat months, maybe? Or remove this entirely. 
-						//		if(relExp >= 0.95 || relDose > 1.0){ //Need to reduce this target to make equivalence work out...
-						//			rivecOn = 1;
-						//		} else {
-						//			rivecOn = 0;
-
-						//		}
-						//	}
-						//}
-
-				  //    	if(HumContType == 4){  				   				
-						////Indoor and Outdoor sensor based control. It really seems we will need some sense of the relative parts of the year when these are true...We may need to toy with these relExp thresholds
-
-						//	//if(RHhouse >= 55){
-						//	if(weather_file == "Orlando"){
-						//		doseTarget = 0.6; //Was 0.7 based on weighted avg calcs
-						//	} if(weather_file == "Charleston"){
-						//		doseTarget = 0.73; //Was 0.83 based on weighted avg calcs.
-						//	} if(weather_file == "07"){
-						//		doseTarget = 0.97;
-						//	}
-
-						//	//doseTarget = 1;
-						//		
-						//	//}
-						//		 if((abs(airDensityOUT * fan[i].q * HROUT)) > (abs(airDensityIN * fan[i].q * HR[3]) + latentLoad)){ //TRUE when net-humidity transport is from outside to inside. Reduce ventilation.
-						//			relExpTarget = 1 + (2.5-1) * abs((HR[3]-HROUT) / (wDiffMaxNeg)); //wDiffMax has to be an avergaed value, because in a real-world controller you would not know this. 
-						//			if(relExpTarget > 2.5){
-						//				relExpTarget = 2.5;
-						//			//} if(AHflag == 2){ //Add some only first 20 minutes of cycle code. 
-						//			//	rivecOn = 1;
-						//			} if(relExp >= relExpTarget || relDose > 1.5){ //relDose may be over a 1-week or 2-week time span...Need to establish an alternate dose target to allow more under-venting during summmer.
-						//				rivecOn = 1;
-						//			} else { //otherwise off
-						//				rivecOn = 0;
-						//			}
-
-						//		} else { //TRUE when net-humidity transport is from inside to outside. Increase ventilation. 
-						//			relExpTarget = 1 - abs((HR[3]- HROUT) / (wDiffMaxPos));
-						//			if(relExpTarget < 0){
-						//				relExpTarget = 0;
-						//			} if(relExp >= relExpTarget || relDose > doseTarget){ //|| relDose > 1 Brennan removed, because we don't want to limit over-venting to control humidity. 0.7 for Orlando. 0.83 for Charleston. 0.97 for Baltimore. 
-						//				rivecOn = 1; //OR we can change the does calculation based on expected periods of contol function (i.e., 1-week,1-month, etc.)
-						//			} else {
-						//				rivecOn = 0;
-						//			}
-						//		}
-						//	}
-
-							//} else {//I only want this to over-vent during summer. Lock this part of the control out based on cooling thermostat months, maybe? Or remove this entirely. 
-							//	if(relExp >= 0.95 || relDose > 1.0){ //Need to reduce this target to make equivalence work out...
-							//		rivecOn = 1;
-							//	} else {
-							//		rivecOn = 0;
-
-							/*	}
-							}
-						}*/
-
-
-						//if(HumContType == 5){ //Marginal improvements, ~2-3% reductions in RH60 and RH70 exceedances.
-						////Monthly timer-based control. Can control to exp=2.5 and target ~0.28, or exp=2.0 and target ~0.5
-
-						//	if(month <= 4 || month > 8){ //Jan-April and Sept-Dec, over ventilate. Can experiment with this at 5 and 9, as well. 
-						//		if(relExp >= 0.5 || relDose > 0.5){
-						//			rivecOn = 1;
-						//		} else {						
-						//			rivecOn = 0;
-						//		} 
-						//	} else { //May-Aug, underventilate.
-						//		if(relExp >= 2.0 || relDose > 2.0){
-						//			rivecOn = 1;
-						//		} else {
-						//			rivecOn = 0;
-						//		}
-						//	}
-						//}
-
-						//if(HumContType == 5){ //Marginal improvements, ~2-3% reductions in RH60 and RH70 exceedances.
-						////Monthly timer-based control. Can control to exp=2.5 and target ~0.28, or exp=2.0 and target ~0.5
-
-						//	if(weather_file == "Orlando"){
-						//		FirstCut = 4; 
-						//		SecondCut = 10;
-						//	} if(weather_file == "Charleston"){
-						//		FirstCut = 4; 
-						//		SecondCut = 9;
-						//	} if(weather_file == "07"){ //Baltimore
-						//		FirstCut = 5; 
-						//		SecondCut = 8;
-						//	} if(weather_file == "01"){ //Miami
-						//		FirstCut = 3; 
-						//		SecondCut = 11;
-						//	} if(weather_file == "02"){ //Houston
-						//		FirstCut = 4; 
-						//		SecondCut = 9;
-						//	} if(weather_file == "04"){ //Memphis
-						//		FirstCut = 5; 
-						//		SecondCut = 9;
-						//	}
-
-						//	if(month <= FirstCut || month > SecondCut){ //Jan-April and Sept-Dec, over ventilate. Can experiment with this at 5 and 9, as well. 
-						//		if(relExp >= 0.5 || relDose > 0.5){
-						//			rivecOn = 1;
-						//		} else {						
-						//			rivecOn = 0;
-						//		} 
-						//	} else { //May-Aug, underventilate.
-						//		if(relExp >= 2.0 || relDose > 2.0){
-						//			rivecOn = 1;
-						//		} else {
-						//			rivecOn = 0;
-						//		}
-						//	}
-						//}
-
-
-						//if(HumContType == 6){ //Marginal improvements, ~2-3% reductions in RH60 and RH70 exceedances.
-						////4am to 10am fan control, reduce ventilation between 4 and 10 am. 6-hour control.
-						//	if(month < 4 || month > 11){ //control normally Jan-March and Dec.
-						//		if(relExp >= 0.95 || relDose > 1){ 
-						//			rivecOn = 1;
-						//		} else {
-						//			rivecOn = 0;
-						//		}
-						//	} else {						
-						//		if(HOUR < 4 || HOUR > 9){ //before 4am or after 10am operate fan controlled to exp < 1
-						//			if(relExp >= 0.95 || relDose > 1){
-						//				rivecOn = 1;
-						//			} else {
-						//				rivecOn = 0;
-						//			}
-						//		} else { //Between 4 and 10 am, only ventilate if exp >2.5
-						//			if(relExp >= 2.5){
-						//				rivecOn = 1;
-						//			} else {
-						//				rivecOn = 0;
-						//			}
-						//		}
-						//	}
-						//}
-
-						//if(HumContType == 7){ //So far, this control makes humidity slightly worse in Med Med home sizes/occ densities.
-						////4am to 10am fan control, increase ventilation between 4 and 10am. 6-hour control.
-						//	if(month < 4 || month > 11){ //control normally Jan-March and Dec.
-						//		if(relExp >= 0.95 || relDose > 1){ 
-						//			rivecOn = 1;
-						//		} else {
-						//			rivecOn = 0;
-						//		}
-						//	} else {
-						//		if(HOUR < 4 || HOUR > 9){ //before 4am or after 10am, under-vent to 1.2
-						//			if(relExp >= 1.2){
-						//				rivecOn = 1;
-						//			} else {
-						//				rivecOn = 0;
-						//			}
-						//		} else { //Between 4 and 10 am, over-vent down to exp 1
-						//			if(relExp >= 0.95 || relDose > 1){ 
-						//				rivecOn = 1;
-						//			} else {
-						//				rivecOn = 0;
-						//			}
-						//		}
-						//	}
-						//}
-
-						//if(HumContType == 8){ //So far, this control makes humidity slightly worse in Med Med home sizes/occ densities.
-						////12pm to 6pm fan control, reduce ventilation between 12 and 6. 6-hour control.
-						//	if(month < 4 || month > 11){ //control normally Jan-March and Dec.
-						//		if(relExp >= 0.95 || relDose > 1){ 
-						//			rivecOn = 1;
-						//		} else {
-						//			rivecOn = 0;
-						//		}
-						//	} else {
-						//		if(HOUR < 12 || HOUR > 17){ //before 12pm or after 6pm operate fan controlled to exp < 1
-						//			if(relExp >= 0.95 || relDose > 1){
-						//				rivecOn = 1;
-						//			} else {
-						//				rivecOn = 0;
-						//			}
-						//		} else { //Between 12 and 6pm, only ventilate if exp >2.5
-						//			if(relExp >= 2.5){
-						//				rivecOn = 1;
-						//			} else {
-						//				rivecOn = 0;
-						//			}
-						//		}
-						//	}
-						//}
-
-						//if(HumContType == 9){ //Marginal improvements, ~2-3% reductions in RH60 and RH70 exceedances.
-						////12pm to 6pm fan control, increase ventilation between 12 and 6. 6-hour control.
-						//	if(month < 4 || month > 11){ //control normally Jan-March and Dec.
-						//		if(relExp >= 0.95 || relDose > 1){ 
-						//			rivecOn = 1;
-						//		} else {
-						//			rivecOn = 0;
-						//		}
-						//	} else { //All other months, use hourly controls. 
-						//		if(HOUR < 12 || HOUR > 17){ //before 12pm or after 6pm, under-vent to exp 1.2
-						//			if(relExp >= 1.2){
-						//				rivecOn = 1;
-						//			} else {
-						//				rivecOn = 0;
-						//			}
-						//		} else { //Between 12 and 6pm, over-vent down to dose 1
-						//			if(relExp >= 0.95 || relDose > 1){
-						//				rivecOn = 1;
-						//			} else {
-						//				rivecOn = 0;
-						//			}
-						//		}
-						//	}
-						//}
-
-						if(HumContType == 0){
-						//Rivec control of number 50 fan type, algorithm v6					     
-					
-							if(occupied[HOUR]) {				            	// Base occupied
-								if(relExp >= 0.95 || relDose >= 1.0)
-									rivecOn = 1;
-
-							} else {						                	// Base unoccupied
-								if(relExp >= expLimit)
-									rivecOn = 1;
-							}
-
-							if(HOUR >= peakStart && HOUR < peakEnd && peakFlag == 0) {		// PEAK Time Period
-								rivecOn = 0;												// Always off
-								if(relExp >= expLimit)
-									rivecOn = 1;
-							}
-						}
-					
-
-					//// RIVEC fan operation after algorithm decision
-					//if(rivecOn) {	  												// RIVEC has turned ON this fan
-					//	fan[i].on = 1;
-					//	mechVentPower = mechVentPower + fan[i].power;				// vent fan power
-					//	if(fan[i].q > 0) { 											// supply fan - its heat needs to be added to the internal gains of the house
-					//		fanHeat = fan[i].power * .84;							// 16% efficiency for this fan
-					//		ventSumIN = ventSumIN + abs(fan[i].q) * 3600 / houseVolume;
-					//	} else { 													// exhaust fan
-					//		ventSumOUT = ventSumOUT + abs(fan[i].q) * 3600 / houseVolume;
-					//	}
-					//	rivecMinutes++;
-					//}
-					//else {
-					//	fan[i].on = 0;
-
-					//}
 					}
 				}
+
+				//Proportional control.  				   				
+				//Indoor and Outdoor sensor based control. 
+				if(HumContType == 4) {
+					if(RHhouse >= 55) {
+						if(HROUT > HR[3]){ //More humid outside than inside, want to under-vent.  
+							relExpTarget = 1 + (2.5-1) * abs((HR[3]-HROUT) / (wDiffMaxNeg)); //wDiffMax has to be an avergaed value, because in a real-world controller you would not know this. 
+							if(relExpTarget > 2.5){
+								relExpTarget = 2.5;
+							}
+							if(relExp >= relExpTarget || relDose > 1){ //relDose may be over a 1-week or 2-week time span...
+								rivecOn = 1;
+							} else { //otherwise off
+								rivecOn = 0;
+							}
+						} else { // More humid inside than outside, want to over-vent
+							relExpTarget = 1 - abs((HR[3]- HROUT) / (wDiffMaxPos));
+							if(relExpTarget < 0){
+								relExpTarget = 0;
+							}
+							if(relExp >= relExpTarget || relDose > 1){ //
+								rivecOn = 1;
+							} else {
+								rivecOn = 0;
+							}
+						}
+					} else {
+						if(relExp >= 0.95 || relDose > 1){ 
+							rivecOn = 1;
+						} else {
+							rivecOn = 0;
+						}
+					}
+				}
+
+				//Proportional control + cooling system tie-in. 				   				
+				//Indoor and Outdoor sensor based control.
+				if(HumContType == 5) { 
+					if(RHhouse >= 55) {
+						if(HROUT > HR[3]) { //More humid outside than inside, want to under-vent.  
+							relExpTarget = 1 + (2.5-1) * abs((HR[3]-HROUT) / (wDiffMaxNeg)); //wDiffMax has to be an avergaed value, because in a real-world controller you would not know this. 
+							if(relExpTarget > 2.5) {
+								relExpTarget = 2.5;
+							}
+							if(AHflag == 2) {
+								rivecOn = 1;
+							} else if(relExp >= relExpTarget || relDose > 1) { //relDose may be over a 1-week or 2-week time span...
+								rivecOn = 1;
+							} else { //otherwise off
+								rivecOn = 0;
+							}
+						} else { // More humid inside than outside, want to over-vent
+							relExpTarget = 1 - abs((HR[3]- HROUT) / (wDiffMaxPos));
+							if(relExpTarget < 0) {
+								relExpTarget = 0;
+							}
+							if(relExp >= relExpTarget || relDose > 1) {
+								rivecOn = 1;
+							} else {
+								rivecOn = 0;
+							}
+						}
+					} else {
+						if(relExp >= 0.95 || relDose > 1) { 
+							rivecOn = 1;
+						} else {
+							rivecOn = 0;
+						}
+					}
+				}
+
+				//Monthly Seasonal Control
+				//Monthly timer-based control, based on mean HRdiff by month. doseTargets are based on weighted average targeting dose = 1.5 during low-ventilation months, targeting annual dose of 0.98. 
+				if(HumContType == 6) {
+					if(month <= FirstCut || month >= SecondCut) { //High ventilation months with net-humidity transport from inside to outside.
+						if(relDose > doseTarget) {
+							rivecOn = 1;
+						} else {						
+							rivecOn = 0;
+						} 
+					} else { //Low ventilation months with net-humidity transport from outside to inside.
+						if(relExp >= 2.5 || relDose > 1.5) {
+							rivecOn = 1;
+						} else {
+							rivecOn = 0;
+						}
+					}
+				}
+
+				//Fixed control + cooling system tie-in + Monthly Seasonal Control.		   				
+				//Indoor and Outdoor sensor based control.
+				if(HumContType == 7) { 
+					if(HROUT > HR[3]) { //do not want to vent. 
+						if(AHflag == 2) {
+							rivecOn = 1;
+						} else if(relExp >= 2.5 || relDose > HiDose) { 
+							rivecOn = 1;
+						} else { //otherwise off
+							rivecOn = 0;
+						}
+					} else { //want to vent due to high indoor humidity, so maybe we just let it run, without relExp control?
+						if(relDose > doseTarget) { 
+							rivecOn = 1; 
+						} else {
+							rivecOn = 0;
+						}
+					}
+				}
+
+				// Monthly Seasonal controller + time of day
+				// Monthly timer-based control, based on mean HRdiff by month. doseTargets are based on weighted average
+				// targeting dose = 1.5 during low-ventilation months, targeting annual dose of 0.98. 
+				if(HumContType == 8) {
+					if(month <= FirstCut || month >= SecondCut) { //High ventilation months with net-humidity transport from inside to outside.
+						if(HOUR >= 3 && HOUR <= 7) { //Maybe change this to the warmest hours of the day.
+							rivecOn = 1;
+						} else {
+							if(relDose > doseTarget) {
+								rivecOn = 1;
+							} else {						
+								rivecOn = 0;
+							} 
+						}
+					} else { //Low ventilation months with net-humidity transport from outside to inside.
+						if(HOUR >= 8 && HOUR <= 11) {
+							rivecOn = 0;
+						} if(HOUR >= 15 && HOUR <=18) {
+							rivecOn = 1;
+						} else {
+							if(relExp >= 2.5 || relDose > 1.5) {
+								rivecOn = 1;
+							} else {
+								rivecOn = 0;
+							}
+						}
+					}
+				}
+
+				//Fixed control + Monthly Seasonal Control.		   				
+				//Indoor and Outdoor sensor based control.
+				if(HumContType == 9) { 
+					if(HROUT > HR[3]) { //do not want to vent. Add some "by what amount" deadband value. 
+						if(relExp >= 2.5 || relDose > HiDose) { //have to with high exp 0.61
+							rivecOn = 1;
+						} else { //otherwise off
+							rivecOn = 0;
+						}
+					} else { //want to vent due to high indoor humidity, so maybe we just let it run, without relExp control?
+						if(relDose > doseTarget) { //control to exp = 0.5. Need to change this value based on weighted avg results.
+							rivecOn = 1; //OR we can change the does calculation based on expected periods of contol function (i.e., 1-week,1-month, etc.)
+						} else {
+							rivecOn = 0;
+						}
+					}
+				}
+
+				//The real opportunities for control based on outside are when the outside value is changing rapidly. Sharp increases, decrease ventilation. Sharp decreases, increase ventilation. 
+				//Need to undervent at above the 75th percentile and overvent below the 25th percentile based on a per month basis. 
+				//Outdoor-only sensor based control
+				if(HumContType == 10) {
+					if(HROUT > 0.012) { //If humid outside, reduce ventilation. 
+						if(relExp >= 2.5 || relDose > 1) {
+							rivecOn = 1; 
+						} else {
+							rivecOn = 0;
+						}
+					} else { //If dry outside, increase vnetilation.
+						if(relExp >= 0.95 || relDose > 1) { //but we do if exp is high
+							rivecOn = 1;
+						} else {
+							rivecOn = 0; //otherwise don't vent under high humidity condition.
+						}
+					}
+				}
+
+				// Monthly Advanced Seasonal Control
+				// Monthly timer-based control, based on mean HRdiff by month. 
+				// doseTargets are based on weighted average targeting dose = 1.5 during low-ventilation months, targeting annual dose of 0.98. 
+				// Setting the appropriate Dose Target based on the month						
+				if(HumContType == 11) {
+					double doseTargetTmp;
+					if(month == HiMonths[0] || month == HiMonths[1] || month == HiMonths[2]){
+						doseTargetTmp = HiMonthDose;
+					} else if(month == LowMonths[0] || month == LowMonths[1]  || month == LowMonths[2]) {
+						doseTargetTmp = LowMonthDose;
+					} else if(month > FirstCut && month < SecondCut) {
+						doseTargetTmp = 1.5;
+					} else {
+						doseTargetTmp = doseTarget;
+					}
+					if(doseTargetTmp >= 1.5) {
+						if(relExp >= 2.5 || relDose > doseTargetTmp) {
+							rivecOn = 1; 
+						} else {
+							rivecOn = 0;
+						}
+					}
+					else {
+						if(relDose > doseTargetTmp) {
+							rivecOn = 1;
+						} else {						
+							rivecOn = 0;
+						} 
+					}
+				}
+
+
+				//Monthly Seasonal Control + Cooling system tie-in.		   				
+				//Indoor and Outdoor sensor based control. 
+				if(HumContType == 12) {
+					double doseTargetTmp;
+					if(month <= FirstCut || month >= SecondCut) {
+						doseTargetTmp = doseTarget;
+					} else {
+						doseTargetTmp = 1.5;
+					}
+					if(AHflag == 2) {
+							rivecOn = 1;
+					} else if(doseTargetTmp >= 1.5) {
+						if(relExp >= 2.5 || relDose > doseTargetTmp) {
+							rivecOn = 1; 
+						} else {
+							rivecOn = 0;
+						}
+					} else {
+						if(relDose > doseTargetTmp) {
+							rivecOn = 1;
+						} else {						
+							rivecOn = 0;
+						} 
+					}
+				}
+
+				//Outdoor-only sensor based control, with variable dose targets
+				if(HumContType == 13) { 
+					if(HROUT >= wCutoff) { //If humid outside, reduce ventilation. 
+						if(relExp >= 2.5 || relDose > 1.5) {
+							rivecOn = 1; 
+						} else {
+							rivecOn = 0;
+						}
+					} else { //If dry outside, increase vnetilation.
+						if(relDose > 0.5) { //but we do if exp is high
+							rivecOn = 1;
+						} else {
+							rivecOn = 0; //otherwise don't vent under high humidity condition.
+						}
+					}
+				}
+
+				//Outdoor-only sensor based control, control based on 25th and 75th percentile monthly values for each month and climate zone.
+				if(HumContType == 14) { 
+					if(HROUT >= W75[month-1]) { //If humid outside, reduce ventilation. 
+						if(relExp >= 2.5 || relDose > 1.5) {
+							rivecOn = 1; 
+						} else {
+							rivecOn = 0;
+						}
+					} else if (HROUT <= W25[month-1]) { //If dry outside, increase vnetilation.
+						if(relDose > 0.5) { //but we do if exp is high
+							rivecOn = 1;
+						} else {
+							rivecOn = 0; //otherwise don't vent under high humidity condition.
+						}
+					} else {
+						if(relExp >= 0.95 || relDose > 1.0){ //Need to reduce this target to make equivalence work out...
+							rivecOn = 1;
+						} else {
+							rivecOn = 0;
+						}
+					}
+				}
+
+				//Monthly Advanced Seasonal Control + Fixed Control + Cooling System Tie_in
+				//Monthly timer-based control, based on mean HRdiff by month. doseTargets are based on weighted average targeting dose = 1.5 during low-ventilation months, targeting annual dose of 0.98. 
+				//Setting the appropriate Dose Target based on the month
+				if(HumContType == 15) {
+					if(month == HiMonths[0] || month == HiMonths[1]  || month == HiMonths[2] ||
+						month == LowMonths[0] || month == LowMonths[1]  || month == LowMonths[2]) {
+						//doseTargetTmp = HiMonthDose;
+						if(HROUT > HR[3]) { //do not want to vent. Add some "by what amount" deadband value. 
+							if(AHflag == 2) {
+								rivecOn = 1;
+							} else if(relExp >= 2.5 || relDose > LowMonthDose) { //have to with high exp
+								rivecOn = 1;
+							} else { //otherwise off
+								rivecOn = 0;
+							}
+						} else { //want to vent due to high indoor humidity, so maybe we just let it run, without relExp control?
+							if(relDose > HiMonthDose) { //control to exp = 0.5. Need to change this value based on weighted avg results.
+								rivecOn = 1; //OR we can change the does calculation based on expected periods of contol function (i.e., 1-week,1-month, etc.)
+							} else {
+								rivecOn = 0;
+							}
+						}
+					} else {
+						if(HROUT > HR[3]) { //do not want to vent. Add some "by what amount" deadband value. 
+							if(AHflag == 2) {
+								rivecOn = 1;
+							} else if(relExp >= 2.5 || relDose > 1.5) { //have to with high exp
+								rivecOn = 1;
+							} else { //otherwise off
+								rivecOn = 0;
+							}
+						} else { //want to vent due to high indoor humidity, so maybe we just let it run, without relExp control?
+							if(relDose > doseTarget) { //control to exp = 0.5. Need to change this value based on weighted avg results.
+								rivecOn = 1; //OR we can change the does calculation based on expected periods of contol function (i.e., 1-week,1-month, etc.)
+							} else {
+								rivecOn = 0;
+							}
+						}
+					}
+				}
+
+				//Monthly Advanced Seasonal Control + Fixed Control
+				//Monthly timer-based control, based on mean HRdiff by month. doseTargets are based on weighted average targeting dose = 1.5 during low-ventilation months, targeting annual dose of 0.98. 
+				//Setting the appropriate Dose Target based on the month
+				if(HumContType == 16) {
+					if(month == HiMonths[0] || month == HiMonths[1]  || month == HiMonths[2] || 
+						month == LowMonths[0] || month == LowMonths[1]  || month == LowMonths[2]) {
+						//doseTargetTmp = HiMonthDose;
+						if(HROUT > HR[3]) { //do not want to vent. Add some "by what amount" deadband value. 
+							if(relExp >= 2.5 || relDose > LowMonthDose) { //have to with high exp
+								rivecOn = 1;
+							} else { //otherwise off
+								rivecOn = 0;
+							}
+						} else { //want to vent due to high indoor humidity, so maybe we just let it run, without relExp control?
+							if(relDose > HiMonthDose) { //control to exp = 0.5. Need to change this value based on weighted avg results.
+								rivecOn = 1; //OR we can change the does calculation based on expected periods of contol function (i.e., 1-week,1-month, etc.)
+							} else {
+								rivecOn = 0;
+							}
+						}
+					} else {
+						if(HROUT > HR[3]) { //do not want to vent. Add some "by what amount" deadband value. 
+							if(relExp >= 2.5 || relDose > 1.5) { //have to with high exp
+								rivecOn = 1;
+							} else { //otherwise off
+								rivecOn = 0;
+							}
+						} else { //want to vent due to high indoor humidity, so maybe we just let it run, without relExp control?
+							if(relDose > doseTarget) { //control to exp = 0.5. Need to change this value based on weighted avg results.
+								rivecOn = 1; //OR we can change the does calculation based on expected periods of contol function (i.e., 1-week,1-month, etc.)
+							} else {
+								rivecOn = 0;
+							}
+						}
+					}
+				}
+
+				//Rivec control of number 50 fan type, algorithm v6					     
+				if(HumContType == 0) {
+					if(occupied[weekend][HOUR]) {				            	// Base occupied
+						if(relExp >= 0.95 || relDose >= 1.0)
+							rivecOn = 1;
+					} else {						                	// Base unoccupied
+						if(relExp >= expLimit)
+							rivecOn = 1;
+					}
+					if(HOUR >= peakStart && HOUR < peakEnd && peakFlag == 0) {		// PEAK Time Period
+						rivecOn = 0;												// Always off
+						if(relExp >= expLimit)
+							rivecOn = 1;
+					}
+				}
+				// ================== End Humidity Control Logic ================================
 			}
-			
-				// [END] ========================== END RIVEC Decision ====================================
-
-
-
 				
 			AHflagPrev = AHflag;
 			if(AHflag != 0)
 				AHminutes++;			// counting number of air handler operation minutes in the hour
 
 			// the following air flows depend on if we are heating or cooling
-			supVelAH = qAH / (pow(supDiameter,2) * pi / 4);
-			retVelAH = qAH / (pow(retDiameter,2) * pi / 4);
+			supVelAH = qAH / (pow(supDiameter,2) * M_PI / 4);
+			retVelAH = qAH / (pow(retDiameter,2) * M_PI / 4);
 			qSupReg = -qAH * supLF + qAH;
 			qRetReg = qAH * retLF - qAH;
 			qRetLeak = -qAH * retLF;
@@ -3577,8 +1987,8 @@ int main(int argc, char *argv[])
 					mRetLeak = 0;
 					mSupLeak = 0;
 					mRetReg = 0;
-					supVel = abs(mSupAHoff) / airDensitySUP / (pow(supDiameter,2) * pi / 4);
-					retVel = abs(mRetAHoff) / airDensityRET / (pow(retDiameter,2) * pi / 4);
+					supVel = abs(mSupAHoff) / airDensitySUP / (pow(supDiameter,2) * M_PI / 4);
+					retVel = abs(mRetAHoff) / airDensityRET / (pow(retDiameter,2) * M_PI / 4);
 					AHfanPower = 0;		// Fan power consumption [W]
 					AHfanHeat = 0;		// Fan heat into air stream [W]
 					hcap = 0;			// Gas burned by furnace NOT heat output (that is hcapacity)
@@ -3732,8 +2142,8 @@ int main(int argc, char *argv[])
 						AHflag = 100;
 						AHminutes = AHminutes + 1;
 						qAH = qAH_cool;
-						supVelAH = qAH / (pow(supDiameter,2) * pi / 4);
-						retVelAH = qAH / (pow(retDiameter,2) * pi / 4);
+						supVelAH = qAH / (pow(supDiameter,2) * M_PI / 4);
+						retVelAH = qAH / (pow(retDiameter,2) * M_PI / 4);
 						qSupReg = -qAH * supLF + qAH;
 						qRetReg = qAH * retLF - qAH;
 						qRetLeak = -qAH * retLF;
@@ -3758,8 +2168,8 @@ int main(int argc, char *argv[])
 							AHflag = 100;
 							AHminutes = AHminutes + 1;
 							qAH = qAH_cool;
-							supVelAH = qAH / (pow(supDiameter,2) * pi / 4);
-							retVelAH = qAH / (pow(retDiameter,2) * pi / 4);
+							supVelAH = qAH / (pow(supDiameter,2) * M_PI / 4);
+							retVelAH = qAH / (pow(retDiameter,2) * M_PI / 4);
 							qSupReg = -qAH * supLF + qAH;
 							qRetReg = qAH * retLF - qAH;
 							qRetLeak = -qAH * retLF;
@@ -3816,8 +2226,8 @@ int main(int argc, char *argv[])
 							AHflag = 100;
 							AHminutes = AHminutes + 1;
 							qAH = qAH_cool;
-							supVelAH = qAH / (pow(supDiameter,2) * pi / 4);
-							retVelAH = qAH / (pow(retDiameter,2) * pi / 4);
+							supVelAH = qAH / (pow(supDiameter,2) * M_PI / 4);
+							retVelAH = qAH / (pow(retDiameter,2) * M_PI / 4);
 							qSupReg = -qAH * supLF + qAH;
 							qRetReg = qAH * retLF - qAH;
 							qRetLeak = -qAH * retLF;
@@ -3853,8 +2263,8 @@ int main(int argc, char *argv[])
 							AHflag = 100;
 							AHminutes = AHminutes + 1;
 							qAH = qAH_cool;
-							supVelAH = qAH / (pow(supDiameter,2) * pi / 4);
-							retVelAH = qAH / (pow(retDiameter,2) * pi / 4);
+							supVelAH = qAH / (pow(supDiameter,2) * M_PI / 4);
+							retVelAH = qAH / (pow(retDiameter,2) * M_PI / 4);
 							qSupReg = -qAH * supLF + qAH;
 							qRetReg = qAH * retLF - qAH;
 							qRetLeak = -qAH * retLF;
@@ -3937,7 +2347,7 @@ int main(int argc, char *argv[])
 					}
 
 				} else if(fan[i].oper == 19) {					// DRYER FAN
-					if(weekendFlag == 1) {						// Three hours of operation, two days per week
+					if(weekend == 1) {						// Three hours of operation, two days per week
 						if(HOUR > 12 && HOUR <= 15) {
 							fan[i].on = 1;
 							mechVentPower = mechVentPower + fan[i].power;
@@ -4647,7 +3057,7 @@ int main(int argc, char *argv[])
 					sub_houseLeak(AHflag, flag, windSpeed, direction, tempHouse, tempAttic, tempOut, C, n, h, R, X, numFlues,
 						flue, wallFraction, floorFraction, Sw, flueShelterFactor, numWinDoor, winDoor, numFans, fan, numPipes,
 						Pipe, mIN, mOUT, Pint, mFlue, mCeiling, mFloor, atticC, dPflue, dPceil, dPfloor, Crawl,
-						Hfloor, rowOrIsolated, soffitFraction, Patticint, wallCp, airDensityRef, airTempRef, mSupReg, mAH, mRetLeak, mSupLeak,
+						Hfloor, rowOrIsolated, soffitFraction, Patticint, wallCp, mSupReg, mAH, mRetLeak, mSupLeak,
 						mRetReg, mHouseIN, mHouseOUT, supC, supn, retC, retn, mSupAHoff, mRetAHoff, Aeq, airDensityIN, airDensityOUT, airDensityATTIC, ceilingC, houseVolume, windPressureExp, Q622);
 					//Yihuan : put the mCeilingIN on comment 
 					flag = flag + 1;
@@ -4660,7 +3070,7 @@ int main(int argc, char *argv[])
 					// call atticleak subroutine to calculate air flow to/from the attic
 					sub_atticLeak(flag, windSpeed, direction, tempHouse, tempOut, tempAttic, atticC, atticPressureExp, h, roofPeakHeight,
 						flueShelterFactor, Sw, numAtticVents, atticVent, soffit, mAtticIN, mAtticOUT, Patticint, mCeiling, rowOrIsolated,
-						soffitFraction, roofPitch, roofPeakOrient, numAtticFans, atticFan, airDensityRef, airTempRef, mSupReg, mRetLeak, mSupLeak, matticenvin,
+						soffitFraction, roofPitch, roofPeakOrient, numAtticFans, atticFan, mSupReg, mRetLeak, mSupLeak, matticenvin,
 						matticenvout, dtau, mSupAHoff, mRetAHoff, airDensityIN, airDensityOUT, airDensityATTIC);
 				}
 
@@ -4670,7 +3080,7 @@ int main(int argc, char *argv[])
 				bsize = sizeof(b)/sizeof(b[0]);
 
 				// Call heat subroutine to calculate heat exchange
-				sub_heat(tempOut, airDensityRef, airTempRef, mCeiling, AL4, windSpeed, ssolrad, nsolrad, tempOld, atticVolume, houseVolume, sc, b, ERRCODE, TSKY,
+				sub_heat(tempOut, mCeiling, AL4, windSpeed, ssolrad, nsolrad, tempOld, atticVolume, houseVolume, sc, b, ERRCODE, TSKY,
 					floorArea, roofPitch, ductLocation, mSupReg, mRetReg, mRetLeak, mSupLeak, mAH, supRval, retRval, supDiameter,
 					retDiameter, supArea, retArea, supThickness, retThickness, supVolume, retVolume, supCp, retCp, supVel, retVel, suprho,
 					retrho, pRef, HROUT, diffuse, UA, matticenvin, matticenvout, mHouseIN, mHouseOUT, planArea, mSupAHoff,
@@ -4840,7 +3250,7 @@ int main(int argc, char *argv[])
 			relExpReal = Aeq * turnoverReal;
 
 			// Relative Dose and Exposure for times when the house is occupied
-			if(occupied[HOUR] == 0) { //unoccupied. fixes dose at 1
+			if(occupied[weekend][HOUR] == 0) { //unoccupied. fixes dose at 1
 				relDose = 1 * (1 - exp(-rivecdt / 24)) + relDoseOld * exp(-rivecdt / 24);
 				relDoseReal = 1 * (1 - exp(-rivecdt / 24)) + relDoseRealOld * exp(-rivecdt / 24);
 			} else { //occupied. dose calculated by based on turnover.
@@ -4848,13 +3258,13 @@ int main(int argc, char *argv[])
 				relDoseReal = relExpReal * (1 - exp(-rivecdt / 24)) + relDoseRealOld * exp(-rivecdt / 24);
 			}
 			
-			occupiedDose = relDose * occupied[HOUR];				// dose and exposure for when the building is occupied
-			occupiedExp = relExp * occupied[HOUR];					//If house is always occupied, then relExp = occupiedExp
+			occupiedDose = relDose * occupied[weekend][HOUR];				// dose and exposure for when the building is occupied
+			occupiedExp = relExp * occupied[weekend][HOUR];					//If house is always occupied, then relExp = occupiedExp
 			
-			occupiedDoseReal = relDoseReal * occupied[HOUR];		// dose and exposure for when the building is occupied
-			occupiedExpReal = relExpReal * occupied[HOUR];			//If house is always occupied, then relExpReal = occupiedExpReal
+			occupiedDoseReal = relDoseReal * occupied[weekend][HOUR];		// dose and exposure for when the building is occupied
+			occupiedExpReal = relExpReal * occupied[weekend][HOUR];			//If house is always occupied, then relExpReal = occupiedExpReal
 
-			if(occupied[HOUR] == 1) {
+			if(occupied[weekend][HOUR] == 1) {
 				occupiedMinCount = occupiedMinCount + 1;			// counts number of minutes while house is occupied
 			}
 
@@ -4911,22 +3321,25 @@ int main(int argc, char *argv[])
 			//outputFile << "Time\tMin\twindSpeed\ttempOut\ttempHouse\tsetpoint\ttempAttic\ttempSupply\ttempReturn\tAHflag\tAHpower\tHcap\tcompressPower\tCcap\tmechVentPower\tHR\tSHR\tMcoil\thousePress\tQhouse\tACH\tACHflue\tventSum\tnonRivecVentSum\tfan1\tfan2\tfan3\tfan4\tfan5\tfan6\tfan7\trivecOn\tturnover\trelExpRIVEC\trelDoseRIVEC\toccupiedExpReal\toccupiedDoseReal\toccupied\toccupiedExp\toccupiedDose\tDAventLoad\tMAventLoad\tHROUT\tHRhouse\tRH%house\tRHind60\tRHind70" << endl; 
 
 			// tab separated instead of commas- makes output files smaller
-			outputFile << HOUR << "\t" << MINUTE << "\t" << windSpeed << "\t" << tempOut << "\t" << tempHouse << "\t" << setpoint << "\t";
-			outputFile << tempAttic << "\t" << tempSupply << "\t" << tempReturn << "\t" << AHflag << "\t" << AHfanPower << "\t";
-			outputFile << hcap << "\t" << compressorPower << "\t" << capacityc << "\t" << mechVentPower << "\t" << HR[3] * 1000 << "\t" << SHR << "\t" << Mcoil << "\t";
-			outputFile << Pint << "\t"<< qHouse << "\t" << houseACH << "\t" << flueACH << "\t" << ventSum << "\t" << nonRivecVentSum << "\t";
-			outputFile << fan[0].on << "\t" << fan[1].on << "\t" << fan[2].on << "\t" << fan[3].on << "\t" << fan[4].on << "\t" << fan[5].on << "\t" << fan[6].on << "\t" ;
-			outputFile << rivecOn << "\t" << turnover << "\t" << relExp << "\t" << relDose << "\t" << occupiedExpReal << "\t" << occupiedDoseReal << "\t";
-			outputFile << occupied[HOUR] << "\t" << occupiedExp << "\t" << occupiedDose << "\t" << DAventLoad << "\t" << MAventLoad << "\t" << HROUT << "\t" << HR[3] << "\t" << RHhouse << "\t" << RHind60 << "\t" << RHind70 << endl; //<< "\t" << mIN << "\t" << mOUT << "\t" ; //Brennan. Added DAventLoad and MAventLoad and humidity values.
-			//outputFile << mCeiling << "\t" << mHouseIN << "\t" << mHouseOUT << "\t" << mSupReg << "\t" << mRetReg << "\t" << mSupAHoff << "\t" ;
-			//outputFile << mRetAHoff << "\t" << mHouse << "\t"<< flag << "\t"<< AIM2 << "\t" << AEQaim2FlowDiff << "\t" << qFanFlowRatio << "\t" << C << endl; //Breann/Yihuan added these for troubleshooting
-
+			if(printOutputFile) {
+				outputFile << HOUR << "\t" << MINUTE << "\t" << windSpeed << "\t" << tempOut << "\t" << tempHouse << "\t" << setpoint << "\t";
+				outputFile << tempAttic << "\t" << tempSupply << "\t" << tempReturn << "\t" << AHflag << "\t" << AHfanPower << "\t";
+				outputFile << hcap << "\t" << compressorPower << "\t" << capacityc << "\t" << mechVentPower << "\t" << HR[3] * 1000 << "\t" << SHR << "\t" << Mcoil << "\t";
+				outputFile << Pint << "\t"<< qHouse << "\t" << houseACH << "\t" << flueACH << "\t" << ventSum << "\t" << nonRivecVentSum << "\t";
+				outputFile << fan[0].on << "\t" << fan[1].on << "\t" << fan[2].on << "\t" << fan[3].on << "\t" << fan[4].on << "\t" << fan[5].on << "\t" << fan[6].on << "\t" ;
+				outputFile << rivecOn << "\t" << turnover << "\t" << relExp << "\t" << relDose << "\t" << occupiedExpReal << "\t" << occupiedDoseReal << "\t";
+				outputFile << occupied[weekend][HOUR] << "\t" << occupiedExp << "\t" << occupiedDose << "\t" << DAventLoad << "\t" << MAventLoad << "\t" << HROUT << "\t" << HR[3] << "\t" << RHhouse << "\t" << RHind60 << "\t" << RHind70 << endl; //<< "\t" << mIN << "\t" << mOUT << "\t" ; //Brennan. Added DAventLoad and MAventLoad and humidity values.
+				//outputFile << mCeiling << "\t" << mHouseIN << "\t" << mHouseOUT << "\t" << mSupReg << "\t" << mRetReg << "\t" << mSupAHoff << "\t" ;
+				//outputFile << mRetAHoff << "\t" << mHouse << "\t"<< flag << "\t"<< AIM2 << "\t" << AEQaim2FlowDiff << "\t" << qFanFlowRatio << "\t" << C << endl; //Breann/Yihuan added these for troubleshooting
+			}
+			
 			// ================================= WRITING MOISTURE DATA FILE =================================
 			//File column names, for reference.
 			//moistureFile << "HROUT\tHRattic\tHRreturn\tHRsupply\tHRhouse\tHRmaterials\tRH%house\tRHind60\tRHind70" << endl;
-
-			moistureFile << HROUT << "\t" << HR[0] << "\t" << HR[1] << "\t" << HR[2] << "\t" << HR[3] << "\t" << HR[4] << "\t" << RHhouse << "\t" << RHind60 << "\t" << RHind70 << endl;
-
+			if(printMoistureFile) {
+				moistureFile << HROUT << "\t" << HR[0] << "\t" << HR[1] << "\t" << HR[2] << "\t" << HR[3] << "\t" << HR[4] << "\t" << RHhouse << "\t" << RHind60 << "\t" << RHind70 << endl;
+			}
+			
 			// ================================= WRITING Filter Loading DATA FILE =================================
 			
 			massFilter_cumulative = massFilter_cumulative + (mAH * 60);	// Time steps are every minute and mAH is in [kg/s]
@@ -4934,7 +3347,9 @@ int main(int argc, char *argv[])
 			
 
 			// Filter loading output file
-			filterFile << massAH_cumulative << "\t"  << qAH << "\t" << AHfanPower << "\t" << retLF << endl;
+			if(printFilterFile) {
+				filterFile << massAH_cumulative << "\t"  << qAH << "\t" << AHfanPower << "\t" << retLF << endl;
+			}
 			
 			// Calculating sums for electrical and gas energy use
 			AH_kWh = AH_kWh + AHfanPower / 60000;						// Total air Handler energy for the simulation in kWh
@@ -4955,30 +3370,23 @@ int main(int argc, char *argv[])
 			minute_day++;												// Minute count (of day so 1 to 60)
 			//timeSteps++;												// Simulation time steps
 
-			if(MINUTE > (totaldays * 1440))
+			if(MINUTE > (365 * 1440))
 				break;
 
 		} while (weatherFile);			// Run until end of weather file
-		//} while (day <= totaldays);	// Run for one calendar year
 
 		//[END] Main Simulation Loop ==============================================================================================================================================
 
-		//------------Simulation Start and End Times----------
-		time(&endTime);
-		string runEndTime = ctime(&endTime);
-
-		cout << "\nStart of simulations\t= " << runStartTime;
-		cout << "End of simulations\t= " << runEndTime << endl;
-		//----------------------------------------------------
-
 		// Close files
-		outputFile.close();
 		weatherFile.close();
-		moistureFile.close();
-		filterFile.close();
+		if(printOutputFile)
+			outputFile.close();
+		if(printMoistureFile) 
+			moistureFile.close();
+		if(printFilterFile)
+			filterFile.close();
 
-		if(dynamicScheduleFlag == 1)								// Fan Schedule
-			fanschedulefile.close();
+		fanScheduleFile.close();
 
 		double total_kWh = AH_kWh + furnace_kWh + compressor_kWh + mechVent_kWh;
 
@@ -5002,10 +3410,9 @@ int main(int argc, char *argv[])
 		RHexcAnnual70 = RHtot70 / MINUTE;
 		
 		// Write summary output file (RC2 file)
-		ofstream ou2File(outPath + output_file + ".rc2"); 
+		ofstream ou2File(summaryFileName); 
 		if(!ou2File) { 
-			cout << "Cannot open: " << outPath + output_file + ".rc2" << endl;
-			_pause();
+			cout << "Cannot open summary file: " << summaryFileName << endl;
 			return 1; 
 		}
 
@@ -5025,8 +3432,15 @@ int main(int argc, char *argv[])
 		ou2File.close();
 
 	}
+	batchFile.close();
 
-	_pause();
+	//------------Simulation Start and End Times----------
+	time(&endTime);
+	string runEndTime = ctime(&endTime);
+
+	cout << "\nStart of simulations\t= " << runStartTime;
+	cout << "End of simulations\t= " << runEndTime << endl;
+	//----------------------------------------------------
 
 	return 0;
 }
