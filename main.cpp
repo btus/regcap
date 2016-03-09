@@ -691,7 +691,7 @@ cout << "HumContType:" << HumContType << " LowMonths[1]" << LowMonths[1] << " Lo
 		// ================= CREATE OUTPUT FILE =================================================
 		ofstream outputFile;
 		if(printOutputFile) {
-			ofstream outputFile(outputFileName); 
+			outputFile.open(outputFileName); 
 			if(!outputFile) { 
 				cout << "Cannot open output file: " << outputFileName << endl;
 				return 1; 
@@ -3332,7 +3332,7 @@ cout << "HumContType:" << HumContType << " LowMonths[1]" << LowMonths[1] << " Lo
 				//outputFile << mCeiling << "\t" << mHouseIN << "\t" << mHouseOUT << "\t" << mSupReg << "\t" << mRetReg << "\t" << mSupAHoff << "\t" ;
 				//outputFile << mRetAHoff << "\t" << mHouse << "\t"<< flag << "\t"<< AIM2 << "\t" << AEQaim2FlowDiff << "\t" << qFanFlowRatio << "\t" << C << endl; //Breann/Yihuan added these for troubleshooting
 			}
-			
+
 			// ================================= WRITING MOISTURE DATA FILE =================================
 			//File column names, for reference.
 			//moistureFile << "HROUT\tHRattic\tHRreturn\tHRsupply\tHRhouse\tHRmaterials\tRH%house\tRHind60\tRHind70" << endl;
