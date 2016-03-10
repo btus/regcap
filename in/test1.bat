@@ -1,2 +1,3 @@
 regcap.cfg
-test01_11
+test01_0
+test01t_0
