@@ -77,7 +77,7 @@ int main(int argc, char *argv[], char* envp[])
 	string inPath = config.pString("inPath");
 	string outPath = config.pString("outPath");
 	string weatherPath = config.pString("weatherPath");
-	string shelterFile_name = config.pString("shelterFile_name");
+	string schedulePath = config.pString("schedulePath");
 	
 	// output file control
 	bool printMoistureFile = config.pBool("printMoistureFile");
@@ -130,10 +130,11 @@ int main(int argc, char *argv[], char* envp[])
 		int occupied[2][24];	    // Used for setting which hours of the weekday/weekend the house is occupied (1) or vacant (0)
 
 		// Input file variables
-		string weather_file;
+		string weatherFileName;
 		string fanScheduleFileName;
 		string tstatFileName;
 		string occupancyFileName;
+		string shelterFileName;
 		double C;
 		double n;		// Envelope Pressure Exponent
 		double h;		// Eaves Height [m]
@@ -293,11 +294,16 @@ int main(int argc, char *argv[], char* envp[])
 			return 1; 
 		}
 
-		buildingFile >> weather_file;
-		string weatherFileName = weatherPath + weather_file + ".WS3";  // for now until we move all weather file dependent inputs to input file
+		buildingFile >> weatherFileName;
+		weatherFileName = weatherPath + weatherFileName;
 		buildingFile >> fanScheduleFileName;
+		fanScheduleFileName = schedulePath + fanScheduleFileName;
 		buildingFile >> tstatFileName;
+		tstatFileName = schedulePath + tstatFileName;
 		buildingFile >> occupancyFileName;
+		occupancyFileName = schedulePath + occupancyFileName;
+		buildingFile >> shelterFileName;
+		shelterFileName = schedulePath + shelterFileName;
 
 		buildingFile >> C;
 		buildingFile >> n;
@@ -542,13 +548,13 @@ cout << "HumContType:" << HumContType << " LowMonths[1]" << LowMonths[1] << " Lo
 		double supLF = supLF0;
 
 		double massFilter_cumulative = 0;	// Cumulative mass that has flown through the filter
-		double massAH_cumulative = 0;		// Cumulative mass that has flown through the AH
+		double massAH_cumulative = 0;			// Cumulative mass that has flown through the AH
 
 		// Filter loading coefficients (initialization- attributed values in sub_filterLoading)
-		double A_qAH_heat = 0;			// Initial AH airflow change (in heating mode) from installing filter [%]
-		double A_qAH_cool = 0;			// Initial AH airflow change (in cooling mode) from installing filter [%]
-		double A_wAH_heat = 0;			// Initial AH power change (in heating mode) from installing filter [%]
-		double A_wAH_cool = 0;			// Initial AH power change (in cooling mode) from installing filter [%]
+		double A_qAH_heat = 0;		// Initial AH airflow change (in heating mode) from installing filter [%]
+		double A_qAH_cool = 0;		// Initial AH airflow change (in cooling mode) from installing filter [%]
+		double A_wAH_heat = 0;		// Initial AH power change (in heating mode) from installing filter [%]
+		double A_wAH_cool = 0;		// Initial AH power change (in cooling mode) from installing filter [%]
 		double A_DL = 0;				// Intial return duct leakage change from installing filter [%]
 		
 		double k_qAH = 0;				// Gradual change in AH airflow from filter loading [% per 10^6kg of air mass through filter]
@@ -576,9 +582,9 @@ cout << "HumContType:" << HumContType << " LowMonths[1]" << LowMonths[1] << " Lo
 		double qAHcorr = 1.62 - .62 * qAH_cfm / (400 * capacityraw) + .647 * log(qAH_cfm / (400 * capacityraw));	
 
 		// For RIVEC calculations
-		int peakFlag = 0;				// Peak flag (0 or 1) prevents two periods during same day
-		int rivecFlag = 0;				// Dose controlled ventilation (RIVEC) flag 0 = off, 1 = use rivec (mainly for HRV/ERV control)
-		double qRivec = 1.0;			// Airflow rate of RIVEC fan for max allowed dose and exposure [L/s]
+		int peakFlag = 0;						// Peak flag (0 or 1) prevents two periods during same day
+		int rivecFlag = 0;					// Dose controlled ventilation (RIVEC) flag 0 = off, 1 = use rivec (mainly for HRV/ERV control)
+		double qRivec = 1.0;					// Airflow rate of RIVEC fan for max allowed dose and exposure [L/s]
 		int numFluesActual = numFlues;	// numFluesActual used to remember the number of flues for when RIVEC blocks them off as part of a hybrid ventilation strategy
 
 		// For Economizer calculations
@@ -623,9 +629,9 @@ cout << "HumContType:" << HumContType << " LowMonths[1]" << LowMonths[1] << " Lo
 		// (reading urban shelter values from a data file: Bshelter.dat)
 		// Computed for the houses at AHHRF for every degree of wind angle
 
-		ifstream shelterFile(shelterFile_name); 
+		ifstream shelterFile(shelterFileName); 
 		if(!shelterFile) { 
-			cout << "Cannot open shelter file: " << shelterFile_name << endl;
+			cout << "Cannot open shelter file: " << shelterFileName << endl;
 			return 1; 
 		}
 
@@ -739,14 +745,13 @@ cout << "HumContType:" << HumContType << " LowMonths[1]" << LowMonths[1] << " Lo
 
 		// Initialise time keeping variables
 		int minute_day = 0;				// Minute number in the current day (1 to 1440)
-		//int minute_hour = 0;			// Minute number in the current hour (1 to 60)
 
 		// Setting initial values of air mass for moisture balance:
 		double M1 = atticVolume * airDensityRef;		// Mass of attic air
-		double M12 = retVolume * airDensityRef;			// Mass of return air
-		double M15 = supVolume * airDensityRef;			// Mass of supply air
+		double M12 = retVolume * airDensityRef;		// Mass of return air
+		double M15 = supVolume * airDensityRef;		// Mass of supply air
 		double M16 = houseVolume * airDensityRef;		// Mass of house air
-		double Mw5 = 60 * floorArea;					// Active mass of moisture in the house (empirical)
+		double Mw5 = 60 * floorArea;						// Active mass of moisture in the house (empirical)
 
 		// Like the mass transport coefficient, the active mass for moisture scales with floor area
 
@@ -798,39 +803,36 @@ cout << "HumContType:" << HumContType << " LowMonths[1]" << LowMonths[1] << " Lo
 		double relDose = 1;							// Initial value for relative dose used in the RIVEC algorithm
 		double relExp = 1;							// Initial value for relative exposure used in the RIVEC algorithm
 		double turnover = 1 / Aeq;					// Initial value for turnover time (hrs) used in the RIVEC algorithm. Turnover is calculated the same for occupied and unoccupied minutes.					
-		double dtau = 60;							// RIVEC, one minute timestep (in seconds)
+		double dtau = 60;								// RIVEC, one minute timestep (in seconds)
 		double rivecdt = dtau / 3600;				// Rivec timestep is in hours, dtau is simulation timestep in seconds. Used in calculation of relative dose and exposure.
 
 		//For calculating the "real" exposure and dose, based on the actual air change of the house predicted by the mass balance. Standard exposure and dose use the sum of annual average infiltration and current total fan airflow.
 		double relDoseReal = 1;						// Initial value for relative dose using ACH of house, i.e. the real rel dose not based on ventSum
 		double relExpReal = 1;						// Initial value for relative exposure using ACH of house i.e. the real rel exposure not based on ventSum
-		double turnoverReal = 1 / Aeq;				// Initial value for real turnover using ACH of house
-
-
+		double turnoverReal = 1 / Aeq;			// Initial value for real turnover using ACH of house
 
 		// for calculating the dose and exposure based on the hours of occupancy
-		long int occupiedMinCount = 0;				// Counts the number of minutes in a year that the house is occupied
-		double occupiedDose = 0;		// Relative dose only while occupants are present in the house. IF always occupied, this is equal to relDose
-		double occupiedExp = 0;			// Relative exposure only while occupants are present in the house. IF always occupied, this is equal to relExp
-		double occupiedDoseReal = 0;	// "Real" relative dose only while occupants are present in the house, based an ACH predicted by mass balance. IF always occupied, this is equal to relDoseReal
-		double occupiedExpReal = 0;		// "Real" relative exposure only while occupants are present in the house, based an ACH predicted by mass balance. IF always occupied, this is equal to relExpReal
-
+		long int occupiedMinCount = 0;			// Counts the number of minutes in a year that the house is occupied
+		double occupiedDose = 0;					// Relative dose only while occupants are present in the house. IF always occupied, this is equal to relDose
+		double occupiedExp = 0;						// Relative exposure only while occupants are present in the house. IF always occupied, this is equal to relExp
+		double occupiedDoseReal = 0;				// "Real" relative dose only while occupants are present in the house, based an ACH predicted by mass balance. IF always occupied, this is equal to relDoseReal
+		double occupiedExpReal = 0;				// "Real" relative exposure only while occupants are present in the house, based an ACH predicted by mass balance. IF always occupied, this is equal to relExpReal
 
 		//For calculating the annual values of relative dose and exposure, "real" and "occupied". These include cumulative sums and annual averages.
 		double meanRelExp = 0;						// Mean relative exposure over the year, used as a cumulative sum and then ultimately annual average value	
 		double meanRelDose = 0;						// Mean relative dose over the year, used as a cumulative sum and then ultimately annual average value
 
 		double meanRelExpReal = 0;					//Mean "real" relative exposure over the year, used as a cumulative sum and then ultimately annual average value
-		double meanRelDoseReal = 0;					//Mean "real" relative dose over the year, used as a cumulative sum and then ultimately annual average value
+		double meanRelDoseReal = 0;				//Mean "real" relative dose over the year, used as a cumulative sum and then ultimately annual average value
 
 		double totalOccupiedExpReal = 0;			//Cumulative sum 
-		double meanOccupiedExpReal = 0;				//Annual average
+		double meanOccupiedExpReal = 0;			//Annual average
 
-		double totalOccupiedDoseReal = 0;			// Cumulative sum for "real" calculations. total dose and exp over the occupied time period
+		double totalOccupiedDoseReal = 0;		// Cumulative sum for "real" calculations. total dose and exp over the occupied time period
 		double meanOccupiedDoseReal = 0;			// Mean for "real" calculations. total dose and exp over the occupied time period
 
 		double totalOccupiedExp = 0;				//Cumulative sum for OccupiedExp
-		double meanOccupiedExp = 0;					// Mean occupied relative exposure over the year
+		double meanOccupiedExp = 0;				// Mean occupied relative exposure over the year
 
 		double totalOccupiedDose = 0;				//Cumulative sum for OccupiedDose
 		double meanOccupiedDose = 0;				// Mean occupied relative dose over the year
@@ -840,26 +842,6 @@ cout << "HumContType:" << HumContType << " LowMonths[1]" << LowMonths[1] << " Lo
 		
 		double relExpTarget = 1;		//This is a relative expsoure value target used for humidity control simulations. It varies between 0 and 2.5, depending on magnitude of indoor-outdoor humidity ratio difference.
 
-
-		//if(weather_file == "Orlando"){ //For seasonal humidity controller #6 ONLY, we set the dose/exposure to the target values, in order to do longer dose calculation periods (720 hours). 
-		//	relDose = 0.46;
-		//	relExp = 0.46;
-		//} if(weather_file == "Charleston"){
-		//	relDose = 0.72;
-		//	relExp = 0.72;
-		//} if(weather_file == "07"){ //Baltimore
-		//	relDose = 0.876;
-		//	relExp = 0.876;
-		//} if(weather_file == "01"){ //Miami
-		//	relDose = 0.46;
-		//	relExp = 0.46;
-		//} if(weather_file == "02"){ //Houston
-		//	relDose = 0.61;
-		//	relExp = 0.61;
-		//} if(weather_file == "04"){ //Memphis
-		//	relDose = 0.72;
-		//	relExp = 0.72;
-		//}
 
 		// =====================================================================================================================
 
@@ -880,34 +862,32 @@ cout << "HumContType:" << HumContType << " LowMonths[1]" << LowMonths[1] << " Lo
 		int day = 1;
 		int idirect;
 		int solth;
-		int dryerFan = 0;		// Dynamic schedule flag for dryer fan (0 or 1)
+		int dryerFan = 0;			// Dynamic schedule flag for dryer fan (0 or 1)
 		int kitchenFan = 0;		// Dynamic schedule flag for kitchen fan (0 or 1)
 		int bathOneFan = 0;		// Dynamic schedule flag for first bathroom fan (0 or 1)
 		int bathTwoFan = 0;		// Dynamic schedule flag for second bathroom fan (0 or 1)
 		int bathThreeFan = 0;	// Dynamic schedule flag for third bathroom fan (0 or 1)
-		//int HOUR;				// Hour of the day
-		//int ttime;			// replaced with the HOUR variable instead of having a separate counter just for thermostats
 		int weekend;
 		int compTime = 0;
 		int compTimeCount = 0;
-		int rivecOn = 0;		// 0 (off) or 1 (on) for RIVEC devices
+		int rivecOn = 0;		   // 0 (off) or 1 (on) for RIVEC devices
 		int mainIterations;
 		int ERRCODE = 0;
 		int economizerRan = 0;	// 0 or else 1 if economizer has run that day
-		int hcFlag = 1;
+		int hcFlag = 1;         // Start with HEATING (simulations start in January)
 
 		double pRef;				// Outdoor air pressure read in from weather file
 		double sc;
-		double weatherTemp;			// Outdoor air temperature read in from weather file [C]. Brennan.
-		double tempOut;				// Outdoor temperature converted to Kelvin [K]
+		double weatherTemp;		// Outdoor air temperature read in from weather file [C]. Brennan.
+		double tempOut;			// Outdoor temperature converted to Kelvin [K]
 		double HROUT;				// Outdoor humidity ratio read in from weather file [kg/kg]
 		double windSpeed;			// Wind speed read in from weather file [m/s]
 		double direction;			// Wind direction read in from weather file
 		double mFanCycler;
 		double hcap;				// Heating capacity of furnace (or gas burned by furnace)
-		double mHRV =0;				// Mass flow of stand-alone HRV unit
-		double mHRV_AH = 0;			// Mass flow of HRV unit integrated with the Air Handler
-		double mERV_AH = 0;			// Mass flow of stand-alone ERV unit
+		double mHRV =0;			// Mass flow of stand-alone HRV unit
+		double mHRV_AH = 0;		// Mass flow of HRV unit integrated with the Air Handler
+		double mERV_AH = 0;		// Mass flow of stand-alone ERV unit
 		double fanHeat;
 		double ventSumIN;			// Sum of all ventilation flows into house
 		double ventSumOUT;			// Sum of all ventilation flows out from house
