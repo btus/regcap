@@ -67,7 +67,7 @@ int main(int argc, char *argv[], char* envp[])
 	if(!batchFile) { 
 		cout << "Cannot open batch file: " << batchFileName << endl;
 		return 1; 
-	} 
+	}
 
 	// read in config file
 	batchFile >> configFileName;
@@ -272,6 +272,13 @@ int main(int argc, char *argv[], char* envp[])
 		double RHtot70 = 0; //cumulative sum of index value (0 or 1) if RHhouse > 70
 		double RHexcAnnual70 = 0; //annual fraction of the year where RHhouse > 70
 		double hret = 28;				// Initial number for hret in Btu/lb
+		double latitude; 
+		double altitude;
+		string siteID;
+		string siteName;
+		string state;
+		int timeZone;
+		double longitude;
 
 		// Open moisture output file
 		ofstream moistureFile;
@@ -719,10 +726,22 @@ cout << "HumContType:" << HumContType << " LowMonths[1]" << LowMonths[1] << " Lo
 			return 1; 
 		}
 
-		// Read in first line of weather file as latitude and altitude
-		double latitude, altitude;
-		weatherFile >> latitude >> altitude;
-
+		// Determine weather file type and read in header
+		char first[20], second[100];
+		weatherFile >> first >> second;
+		if(strtod(first, NULL) > 100) {		// TMY3
+			siteID = first;
+			siteName = second;
+			weatherFile >> state >> timeZone >> latitude >> longitude >> altitude;
+			cout << "TMY3! siteID=" << siteID << " siteName=" << siteName << endl;
+return 0;
+		}
+		else {							// 1 minute data
+			latitude = strtod(first, NULL);
+			altitude = strtod(second, NULL);
+			cout << "1 minute!" << endl;
+		}
+		cout << "lat=" << latitude << " alt=" << altitude << endl;
 		// set 1 = air handler off, and house air temp below setpoint minus 0.5 degrees
 		// set 0 = air handler off, but house air temp above setpoint minus 0.5 degrees
 		int set = 0;
