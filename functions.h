@@ -320,4 +320,6 @@ void sub_filterLoading (
 	double& qAH_low
 	);
 
+double saturationVaporPressure (double temp);
+
 #endif

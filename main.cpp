@@ -2912,31 +2912,7 @@ return 0;
 						matticenvin, HROUT, mSupLeak, mAH, mRetReg, mRetLeak, mSupReg, latcap, mHouseIN, mHouseOUT,
 						latentLoad, mFanCycler, mHRV_AH, mERV_AH, ERV_TRE, MWha, airDensityIN, airDensityOUT);
 
-					//Coefficients for saturation vapor pressure over ice -100 to 0C. ASHRAE HoF.
-					C1 = -5.6745359E+03;
-					C2 = 6.3925247E+00;
-					C3 = -9.6778430E-03;
-					C4 = 6.2215701E-07;
-					C5 = 2.0747825E-09;
-					C6 = -9.4840240E-13;
-					C7 = 4.1635019E+00;
-
-					//Coefficients for saturation vapor pressure over liquid water 0 to 200C. ASHRAE HoF.
-					C8 = -5.8002206E+03;
-					C9 = 1.3914993E+00;
-					C10 = -4.8640239E-02;
-					C11 = 4.1764768E-05;
-					C12 = -1.4452093E-08;
-					C13 = 6.5459673E+00;
-
-					//Calculate Saturation Vapor Pressure, Equations 5 and 6 in ASHRAE HoF
-					if((tempHouse-273.15) <= 0){
-						SatVaporPressure = exp((C1/tempHouse)+(C2)+(C3*tempHouse)+(C4*pow(tempHouse, 2))+(C5*pow(tempHouse, 3))+(C6*pow(tempHouse, 4))+(C7*log(tempHouse)));
-					} else{
-						SatVaporPressure = exp((C8/tempHouse)+(C9)+(C10*tempHouse)+(C11*pow(tempHouse, 2))+(C12*pow(tempHouse, 3))+(C13*log(tempHouse)));
-					}
-
-					//SatVaporPressure = (exp(77.345+(0.0057*tempHouse)-(7235/tempHouse))/(pow(tempHouse,8.2))); //Brennan's old method of calculating the Saturation vapor pressure.
+					SatVaporPressure = saturationVaporPressure(tempHouse);
 
 					//Calculate Saturation Humidity Ratio, Equation 23 in ASHRAE HoF
 					HRsaturation = 0.621945*(SatVaporPressure/(pRef-SatVaporPressure)); 

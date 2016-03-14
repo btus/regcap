@@ -9,7 +9,8 @@ using namespace std;
 // ============================== CONSTANTS ===============================================
 const double g = 9.81;			// Acceleration due to gravity (m/s^2)
 const int ArraySize = 16;
-const double airTempRef = 293.15;		// Reference room temp [K] = 20 deg C
+const double T0Celsius = 273.15;
+const double airTempRef = T0Celsius + 20;		// Reference room temp [K] = 20 deg C
 const double SIGMA = 5.6704E-08;			// STEFAN-BOLTZMANN CONST (W/m^2/K^4)
 const double CpAir = 1005.7;				// specific heat of air [j/kg K]
 
@@ -193,7 +194,6 @@ void sub_heat (
 	double A[16][ArraySize];
 	double toldcur[16];
 	double woodThickness;
-	double c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13;
 	double pws;
 	double PW;
 	double A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16;
@@ -267,28 +267,6 @@ void sub_heat (
 	}
 
 	woodThickness = .015;		// thickness of sheathing material
-
-	// THE FOLLOWING ARE CONSTANTS TO DETERMINE WATER VAPOUR PRESSURE
-	c1 = -5674.5359;
-	c2 = 6.3925274;
-	c3 = -9.677843E-03;
-	c4 = .00000062215701;
-	c5 = .000000002074782;
-	c6 = 9.484024E-13;
-	c7 = 4.1635019;
-	c8 = -5800.2206;
-	c9 = 1.3914993;
-	c10 = -.04860239;
-	c11 = .000041764768;
-	c12 = -.000000014452093;
-	c13 = 6.5459673;
-
-	// THE FOLLOWING IS FROM ASHRAE 1989
-	if(tempOut > 273.15) {
-		pws = exp(c8 / tempOut + c9 + c10 * tempOut + c11 * tempOut * tempOut + c12 * pow(tempOut, 3) + c13 * log(tempOut));
-	} else {
-		pws = exp(c1 / tempOut + c2 + c3 * tempOut + c4 * tempOut * tempOut + c5 * pow(tempOut, 3) + c6 * pow(tempOut, 4) + c7 * log(tempOut));
-	}
 
 	PW = HROUT * pRef / (.621945 + HROUT);						// water vapor partial pressure pg 1.9 ASHRAE fundamentals 2009
 	PW = PW / 1000 / 3.38;										// CONVERT TO INCHES OF HG
@@ -2279,7 +2257,7 @@ void f_winDoorFlow(double& tempHouse, double& tempOut, double& airDensityIN, dou
 					winDoor.mOUT = -sqrt(airDensityOUT * airDensityIN) * Kwindow * winDoor.Wide * tempHouse / 3 / g / dT * dummy;
 				}
 			} else {
-				Viscosity = .0000133 + .0000009 * ((tempOut + tempHouse) / 2 - 273);
+				Viscosity = .0000133 + .0000009 * ((tempOut + tempHouse) / 2 - T0Celsius);
 				Kwindow = .4 + .0045 * dT;
 				Topcrit = winDoor.Top - .1 * winDoor.High;
 				Bottomcrit = winDoor.Bottom + .1 * winDoor.High;
@@ -2677,3 +2655,28 @@ int matbs(double A[][ArraySize], double* b, double* x, int* rpvt, int* cpvt, int
 	return 0;
 }
 
+double saturationVaporPressure(double temp) {
+	//Coefficients for saturation vapor pressure over ice -100 to 0C. ASHRAE HoF.
+	const double C1 = -5.6745359E+03;
+	const double C2 = 6.3925247E+00;
+	const double C3 = -9.6778430E-03;
+	const double C4 = 6.2215701E-07;
+	const double C5 = 2.0747825E-09;
+	const double C6 = -9.4840240E-13;
+	const double C7 = 4.1635019E+00;
+
+	//Coefficients for saturation vapor pressure over liquid water 0 to 200C. ASHRAE HoF.
+	const double C8 = -5.8002206E+03;
+	const double C9 = 1.3914993E+00;
+	const double C10 = -4.8640239E-02;
+	const double C11 = 4.1764768E-05;
+	const double C12 = -1.4452093E-08;
+	const double C13 = 6.5459673E+00;
+
+	//Calculate Saturation Vapor Pressure, Equations 5 and 6 in 2009 ASHRAE HoF 1.2
+	if(temp <= T0Celsius){
+		return exp((C1/temp)+(C2)+(C3*temp)+(C4*pow(temp, 2))+(C5*pow(temp, 3))+(C6*pow(temp, 4))+(C7*log(temp)));
+	} else{
+		return exp((C8/temp)+(C9)+(C10*temp)+(C11*pow(temp, 2))+(C12*pow(temp, 3))+(C13*log(temp)));
+	}
+}
