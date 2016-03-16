@@ -44,9 +44,28 @@ const double airDensityRef = 1.20411;	// Reference air density at 20 deg C at se
 const double airTempRef = 293.15;		// Reference room temp [K] = 20 deg C
 
 // ============================= FUNCTIONS ==============================================================
+weatherData readOneMinuteWeather(ifstream& file) {
+	string line;
+	int day;
+	weatherData result;
+	double wd;
+	file >> day
+		>> result.directNormal
+		>> result.globalHorizontal
+		>> result.dryBulb
+		>> result.humidityRatio
+		>> result.windSpeed
+		>> wd
+		>> result.pressure
+		>> result.skyCover;
 
-// ============================= FUNCTION DEFINITIONS ==============================================================
+	result.dryBulb += C_TO_K;
+	result.windDirection = int(wd);
+	result.pressure *= 1000;					// Convert reference pressure to [Pa]
+	result.skyCover /= 10;						// Converting cloud cover index to decimal fraction
 
+	return result;
+}
 
 // Main function
 int main(int argc, char *argv[], char* envp[])
@@ -249,19 +268,6 @@ int main(int argc, char *argv[], char* envp[])
 		double compressor_kWh = 0;
 		double mechVent_kWh = 0;
 		double furnace_kWh = 0;
-		double C1 = -5.6745359E+03; //Coefficients for saturation vapor pressure over liquid water -100 to 0C. ASHRAE HoF.
-		double C2 = 6.3925247E+00;
-		double C3 = -9.6778430E-03;
-		double C4 = 6.2215701E-07;
-		double C5 = 2.0747825E-09;
-		double C6 = -9.4840240E-13;			
-		double C7 = 4.1635019E+00;
-		double C8 = -5.8002206E+03; //Coefficients for saturation vapor pressure over liquid water 0 to 200C. ASHRAE HoF.
-		double C9 = 1.3914993E+00;
-		double C10 = -4.8640239E-02;
-		double C11 = 4.1764768E-05;
-		double C12 = -1.4452093E-08;
-		double C13 = 6.5459673E+00;
 		double SatVaporPressure = 0; //Saturation vapor pressure, pa
 		double HRsaturation = 0; //humidity ratio at saturation
 		double RHhouse = 50; //house relative humidity
@@ -728,20 +734,22 @@ cout << "HumContType:" << HumContType << " LowMonths[1]" << LowMonths[1] << " Lo
 
 		// Determine weather file type and read in header
 		char first[20], second[100];
+		bool tmyWeather;
 		weatherFile >> first >> second;
 		if(strtod(first, NULL) > 100) {		// TMY3
 			siteID = first;
 			siteName = second;
 			weatherFile >> state >> timeZone >> latitude >> longitude >> altitude;
+			tmyWeather = true;
 			cout << "TMY3! siteID=" << siteID << " siteName=" << siteName << endl;
-return 0;
+			return 0;
 		}
 		else {							// 1 minute data
 			latitude = strtod(first, NULL);
 			altitude = strtod(second, NULL);
+			tmyWeather = false;
 			cout << "1 minute!" << endl;
 		}
-		cout << "lat=" << latitude << " alt=" << altitude << endl;
 		// set 1 = air handler off, and house air temp below setpoint minus 0.5 degrees
 		// set 0 = air handler off, but house air temp above setpoint minus 0.5 degrees
 		int set = 0;
@@ -879,8 +887,6 @@ return 0;
 		int AHminutes;
 		int target;
 		int day = 1;
-		int idirect;
-		int solth;
 		int dryerFan = 0;			// Dynamic schedule flag for dryer fan (0 or 1)
 		int kitchenFan = 0;		// Dynamic schedule flag for kitchen fan (0 or 1)
 		int bathOneFan = 0;		// Dynamic schedule flag for first bathroom fan (0 or 1)
@@ -895,13 +901,7 @@ return 0;
 		int economizerRan = 0;	// 0 or else 1 if economizer has run that day
 		int hcFlag = 1;         // Start with HEATING (simulations start in January)
 
-		double pRef;				// Outdoor air pressure read in from weather file
-		double sc;
-		double weatherTemp;		// Outdoor air temperature read in from weather file [C]. Brennan.
-		double tempOut;			// Outdoor temperature converted to Kelvin [K]
-		double HROUT;				// Outdoor humidity ratio read in from weather file [kg/kg]
-		double windSpeed;			// Wind speed read in from weather file [m/s]
-		double direction;			// Wind direction read in from weather file
+		weatherData weather;		// current minute of weather data
 		double mFanCycler;
 		double hcap;				// Heating capacity of furnace (or gas burned by furnace)
 		double mHRV =0;			// Mass flow of stand-alone HRV unit
@@ -1032,9 +1032,9 @@ return 0;
 		cout << "Weather File:\t " << weatherFileName << endl;
 
 		
-		// ==============================================================================================
-		// ||				 THE SIMULATION LOOP FOR MINUTE-BY-MINUTE STARTS HERE:					   ||
-		// ==============================================================================================
+		// =================================================================
+		// ||				 THE SIMULATION LOOPS START HERE:					   ||
+		// =================================================================
 		//hcFlag = 1;					// Start with HEATING (simulations start in January)
 		for(int day = 1; day <= 365; day++) {
 			cout << "\rDay = " << day << flush;
@@ -1125,13 +1125,15 @@ return 0;
 				dec = -23.45 * M_PI / 180;
 				Csol = .103;
 			}
-	
+
+			// =================================== HOUR LOOP ================================	
 			for(int hour = 0; hour < 24; hour++) {
 				AHminutes = 0;					// Resetting air handler operation minutes for this hour
 				mFanCycler = 0;					// Fan cycler?
 				if (hour == peakEnd)
 					peakFlag = 1;			// Prevents two peak periods in the same day when there is heating and cooling
 
+				// ============================== MINUTE LOOP ================================	
 				for(int minute = 1; minute <= 60; minute++) {
 
 					target = minute - 40;			// Target is used for fan cycler operation currently set for 20 minutes operation, in the last 20 minutes of the hour.
@@ -1199,21 +1201,16 @@ return 0;
 					nonRivecVentSumIN = 0;				// Setting sum of non-RIVEC supply mechanical ventilation to zero
 					nonRivecVentSumOUT = 0;				// Setting sum of non-RIVEC exhaust mechanical ventilation to zero
 
-					// [START] Read in Weather Data from External Weather File ==============================================================================
-					int wfDay;
-					weatherFile >> wfDay >> idirect >> solth >> weatherTemp >> HROUT >> windSpeed >> direction >> pRef >> sc; 
-			
-					dailyCumulativeTemp = dailyCumulativeTemp + weatherTemp;
-			
-					pRef = 1000 * pRef;					// Convert reference pressure to [Pa]
-					tempOut = 273.15 + weatherTemp;		// Convert outside air temperature to [K]
-					sc = sc / 10;						// Converting cloud cover index to decimal fraction
-					windSpeed = windSpeed * windSpeedCorrection;		// Correct met wind speed to speed at building eaves height [m/s]
-					if(windSpeed < 1)					// Minimum wind velocity allowed is 1 m/s to account for non-zero start up velocity of anenometers
-						windSpeed = 1;					// Wind speed is never zero
+					// Read in 1-minute Weather Data
+					if(!tmyWeather)
+						weather = readOneMinuteWeather(weatherFile);
+					weather.windSpeed *= windSpeedCorrection;		// Correct met wind speed to speed at building eaves height [m/s]
+					if(weather.windSpeed < 1)					// Minimum wind velocity allowed is 1 m/s to account for non-zero start up velocity of anenometers
+						weather.windSpeed = 1;					// Wind speed is never zero
+					dailyCumulativeTemp = dailyCumulativeTemp + weather.dryBulb - C_TO_K;
 
 					for(int k=0; k < 4; k++)			// Wind direction as a compass direction?
-						Sw[k] = Swinit[k][int (direction + 1) - 1];		// -1 in order to allocate from array (1 to n) to array (0 to n-1)
+						Sw[k] = Swinit[k][weather.windDirection];		// -1 in order to allocate from array (1 to n) to array (0 to n-1)
 
 					// [END] Read in Weather Data from External Weather File ==============================================================================
 
@@ -1223,13 +1220,13 @@ return 0;
 
 					if(MINUTE == 1) {				// Setting initial humidity conditions
 						for(int i = 0; i < 5; i++) {
-							hrold[i] = HROUT;
-							HR[i] = HROUT;
+							hrold[i] = weather.humidityRatio;
+							HR[i] = weather.humidityRatio;
 						}
 					}
 
 					// Calculate air densities
-					double airDensityOUT = airDensityRef * airTempRef / tempOut;		// Outside Air Density
+					double airDensityOUT = airDensityRef * airTempRef / weather.dryBulb;		// Outside Air Density
 					double airDensityIN = airDensityRef * airTempRef / tempHouse;		// Inside Air Density
 					double airDensityATTIC = airDensityRef * airTempRef / tempAttic;	// Attic Air Density
 					double airDensitySUP = airDensityRef * airTempRef / tempSupply;		// Supply Duct Air Density
@@ -1247,13 +1244,13 @@ return 0;
 					if(SBETA < 0)
 						SBETA = 0;
 
-					double hdirect = SBETA * idirect;
-					double diffuse = solth - hdirect;
+					double hdirect = SBETA * weather.directNormal;
+					double diffuse = weather.globalHorizontal - hdirect;
 
 					// FOR SOUTH ROOF
 					double SIGMA = M_PI * roofPitch / 180;		//ROOF PITCH ANGLE
 					CTHETA = CBETA * 1 * sin(SIGMA) + SBETA * cos(SIGMA);
-					double ssolrad = idirect * CTHETA + diffuse;
+					double ssolrad = weather.directNormal * CTHETA + diffuse;
 
 					// FOR NORTH ROOF
 					CTHETA = CBETA * -1 * sin(SIGMA) + SBETA * cos(SIGMA);
@@ -1261,7 +1258,7 @@ return 0;
 					if(CTHETA < 0)
 						CTHETA = 0;
 
-					double nsolrad = idirect * CTHETA + diffuse;
+					double nsolrad = weather.directNormal * CTHETA + diffuse;
 
 
 					// 7 day outdoor temperature running average. If <= 60F we're heating. If > 60F we're cooling
@@ -1352,7 +1349,7 @@ return 0;
 						}
 
 						// [START] ====================== ECONOMIZER RATIONALE ===============================
-						econodt = tempHouse - tempOut;			// 3.333K = 6F
+						econodt = tempHouse - weather.dryBulb;			// 3.333K = 6F
 
 						// No cooling, 6F dt (internal/external) and tempHouse > 21C for economizer operation. 294.15 = 21C
 							//if(AHflag == 0 && econodt >= 3.333 && tempHouse > 294.15 && economizerUsed == 1) {
@@ -1454,7 +1451,7 @@ return 0;
 						//Indoor and Outdoor sensor based control. 
 						if(HumContType == 2){
 							if(RHhouse >= 55){ //Engage increased or decreased ventilation only if house RH is >60 (or 55% maybe?). 
-								if(HROUT > HR[3]){ //do not want to vent. Add some "by what amount" deadband value. 
+								if(weather.humidityRatio > HR[3]){ //do not want to vent. Add some "by what amount" deadband value. 
 									if(relExp >= 2.5 || relDose > 1.0){ //have to with high exp
 										rivecOn = 1;
 									} else { //otherwise off
@@ -1480,7 +1477,7 @@ return 0;
 						//Indoor and Outdoor sensor based control. 
 						if(HumContType == 3){							
 							if(RHhouse >= 55){ //Engage increased or decreased ventilation only if house RH is >60 (or 55% maybe?). 
-								if(HROUT > HR[3]){ //do not want to vent. Add some "by what amount" deadband value. 
+								if(weather.humidityRatio > HR[3]){ //do not want to vent. Add some "by what amount" deadband value. 
 									if(AHflag == 2){
 										rivecOn = 1;
 									} else
@@ -1509,8 +1506,8 @@ return 0;
 						//Indoor and Outdoor sensor based control. 
 						if(HumContType == 4) {
 							if(RHhouse >= 55) {
-								if(HROUT > HR[3]){ //More humid outside than inside, want to under-vent.  
-									relExpTarget = 1 + (2.5-1) * abs((HR[3]-HROUT) / (wDiffMaxNeg)); //wDiffMax has to be an avergaed value, because in a real-world controller you would not know this. 
+								if(weather.humidityRatio > HR[3]){ //More humid outside than inside, want to under-vent.  
+									relExpTarget = 1 + (2.5-1) * abs((HR[3]-weather.humidityRatio) / (wDiffMaxNeg)); //wDiffMax has to be an avergaed value, because in a real-world controller you would not know this. 
 									if(relExpTarget > 2.5){
 										relExpTarget = 2.5;
 									}
@@ -1520,7 +1517,7 @@ return 0;
 										rivecOn = 0;
 									}
 								} else { // More humid inside than outside, want to over-vent
-									relExpTarget = 1 - abs((HR[3]- HROUT) / (wDiffMaxPos));
+									relExpTarget = 1 - abs((HR[3]- weather.humidityRatio) / (wDiffMaxPos));
 									if(relExpTarget < 0){
 										relExpTarget = 0;
 									}
@@ -1543,8 +1540,8 @@ return 0;
 						//Indoor and Outdoor sensor based control.
 						if(HumContType == 5) { 
 							if(RHhouse >= 55) {
-								if(HROUT > HR[3]) { //More humid outside than inside, want to under-vent.  
-									relExpTarget = 1 + (2.5-1) * abs((HR[3]-HROUT) / (wDiffMaxNeg)); //wDiffMax has to be an avergaed value, because in a real-world controller you would not know this. 
+								if(weather.humidityRatio > HR[3]) { //More humid outside than inside, want to under-vent.  
+									relExpTarget = 1 + (2.5-1) * abs((HR[3]-weather.humidityRatio) / (wDiffMaxNeg)); //wDiffMax has to be an avergaed value, because in a real-world controller you would not know this. 
 									if(relExpTarget > 2.5) {
 										relExpTarget = 2.5;
 									}
@@ -1556,7 +1553,7 @@ return 0;
 										rivecOn = 0;
 									}
 								} else { // More humid inside than outside, want to over-vent
-									relExpTarget = 1 - abs((HR[3]- HROUT) / (wDiffMaxPos));
+									relExpTarget = 1 - abs((HR[3]- weather.humidityRatio) / (wDiffMaxPos));
 									if(relExpTarget < 0) {
 										relExpTarget = 0;
 									}
@@ -1596,7 +1593,7 @@ return 0;
 						//Fixed control + cooling system tie-in + Monthly Seasonal Control.		   				
 						//Indoor and Outdoor sensor based control.
 						if(HumContType == 7) { 
-							if(HROUT > HR[3]) { //do not want to vent. 
+							if(weather.humidityRatio > HR[3]) { //do not want to vent. 
 								if(AHflag == 2) {
 									rivecOn = 1;
 								} else if(relExp >= 2.5 || relDose > HiDose) { 
@@ -1645,7 +1642,7 @@ return 0;
 						//Fixed control + Monthly Seasonal Control.		   				
 						//Indoor and Outdoor sensor based control.
 						if(HumContType == 9) { 
-							if(HROUT > HR[3]) { //do not want to vent. Add some "by what amount" deadband value. 
+							if(weather.humidityRatio > HR[3]) { //do not want to vent. Add some "by what amount" deadband value. 
 								if(relExp >= 2.5 || relDose > HiDose) { //have to with high exp 0.61
 									rivecOn = 1;
 								} else { //otherwise off
@@ -1664,7 +1661,7 @@ return 0;
 						//Need to undervent at above the 75th percentile and overvent below the 25th percentile based on a per month basis. 
 						//Outdoor-only sensor based control
 						if(HumContType == 10) {
-							if(HROUT > 0.012) { //If humid outside, reduce ventilation. 
+							if(weather.humidityRatio > 0.012) { //If humid outside, reduce ventilation. 
 								if(relExp >= 2.5 || relDose > 1) {
 									rivecOn = 1; 
 								} else {
@@ -1739,7 +1736,7 @@ return 0;
 
 						//Outdoor-only sensor based control, with variable dose targets
 						if(HumContType == 13) { 
-							if(HROUT >= wCutoff) { //If humid outside, reduce ventilation. 
+							if(weather.humidityRatio >= wCutoff) { //If humid outside, reduce ventilation. 
 								if(relExp >= 2.5 || relDose > 1.5) {
 									rivecOn = 1; 
 								} else {
@@ -1756,13 +1753,13 @@ return 0;
 
 						//Outdoor-only sensor based control, control based on 25th and 75th percentile monthly values for each month and climate zone.
 						if(HumContType == 14) { 
-							if(HROUT >= W75[month-1]) { //If humid outside, reduce ventilation. 
+							if(weather.humidityRatio >= W75[month-1]) { //If humid outside, reduce ventilation. 
 								if(relExp >= 2.5 || relDose > 1.5) {
 									rivecOn = 1; 
 								} else {
 									rivecOn = 0;
 								}
-							} else if (HROUT <= W25[month-1]) { //If dry outside, increase vnetilation.
+							} else if (weather.humidityRatio <= W25[month-1]) { //If dry outside, increase vnetilation.
 								if(relDose > 0.5) { //but we do if exp is high
 									rivecOn = 1;
 								} else {
@@ -1784,7 +1781,7 @@ return 0;
 							if(month == HiMonths[0] || month == HiMonths[1]  || month == HiMonths[2] ||
 								month == LowMonths[0] || month == LowMonths[1]  || month == LowMonths[2]) {
 								//doseTargetTmp = HiMonthDose;
-								if(HROUT > HR[3]) { //do not want to vent. Add some "by what amount" deadband value. 
+								if(weather.humidityRatio > HR[3]) { //do not want to vent. Add some "by what amount" deadband value. 
 									if(AHflag == 2) {
 										rivecOn = 1;
 									} else if(relExp >= 2.5 || relDose > LowMonthDose) { //have to with high exp
@@ -1800,7 +1797,7 @@ return 0;
 									}
 								}
 							} else {
-								if(HROUT > HR[3]) { //do not want to vent. Add some "by what amount" deadband value. 
+								if(weather.humidityRatio > HR[3]) { //do not want to vent. Add some "by what amount" deadband value. 
 									if(AHflag == 2) {
 										rivecOn = 1;
 									} else if(relExp >= 2.5 || relDose > 1.5) { //have to with high exp
@@ -1825,7 +1822,7 @@ return 0;
 							if(month == HiMonths[0] || month == HiMonths[1]  || month == HiMonths[2] || 
 								month == LowMonths[0] || month == LowMonths[1]  || month == LowMonths[2]) {
 								//doseTargetTmp = HiMonthDose;
-								if(HROUT > HR[3]) { //do not want to vent. Add some "by what amount" deadband value. 
+								if(weather.humidityRatio > HR[3]) { //do not want to vent. Add some "by what amount" deadband value. 
 									if(relExp >= 2.5 || relDose > LowMonthDose) { //have to with high exp
 										rivecOn = 1;
 									} else { //otherwise off
@@ -1839,7 +1836,7 @@ return 0;
 									}
 								}
 							} else {
-								if(HROUT > HR[3]) { //do not want to vent. Add some "by what amount" deadband value. 
+								if(weather.humidityRatio > HR[3]) { //do not want to vent. Add some "by what amount" deadband value. 
 									if(relExp >= 2.5 || relDose > 1.5) { //have to with high exp
 										rivecOn = 1;
 									} else { //otherwise off
@@ -2803,7 +2800,7 @@ return 0;
 						capacityh = hcapacity + AHfanHeat;					// include fan heat in furnace capacity (converted to W in main program)
 						capacityc = 0;
 					} else {												// we have cooling
-						Toutf = (tempOut - 273.15) * (9.0 / 5.0) + 32;
+						Toutf = (weather.dryBulb - 273.15) * (9.0 / 5.0) + 32;
 						tretf = (tempOld[11] - 273.15 + AHfanHeat / 1005 / mAH) * (9.0 / 5.0) + 32;		// return in F used for capacity includes fan heat
 						dhret = AHfanHeat / mAH / 2326;										// added to hret in capacity caluations for wet coil - converted to Btu/lb
 
@@ -2909,16 +2906,16 @@ return 0;
 
 					// Call moisture subroutine
 					sub_moisture(HR, hrold, M1, M12, M15, M16, Mw5, dtau, matticenvout, mCeiling, mSupAHoff, mRetAHoff,
-						matticenvin, HROUT, mSupLeak, mAH, mRetReg, mRetLeak, mSupReg, latcap, mHouseIN, mHouseOUT,
+						matticenvin, weather.humidityRatio, mSupLeak, mAH, mRetReg, mRetLeak, mSupReg, latcap, mHouseIN, mHouseOUT,
 						latentLoad, mFanCycler, mHRV_AH, mERV_AH, ERV_TRE, MWha, airDensityIN, airDensityOUT);
 
 					SatVaporPressure = saturationVaporPressure(tempHouse);
 
 					//Calculate Saturation Humidity Ratio, Equation 23 in ASHRAE HoF
-					HRsaturation = 0.621945*(SatVaporPressure/(pRef-SatVaporPressure)); 
+					HRsaturation = 0.621945*(SatVaporPressure/(weather.pressure-SatVaporPressure)); 
 
 					if(HR[1] == 0)
-						HR[1] = HROUT;
+						HR[1] = weather.humidityRatio;
 					if(HR[3] > HRsaturation) // Previously set by Iain to 0.02. Here we've replaced it with the saturation humidity ratio (Ws).
 						HR[3] = HRsaturation; //consider adding calculate saturation humidity ratio by indoor T and Pressure and lmit HR[3] to that.
 
@@ -2943,7 +2940,7 @@ return 0;
 
 						while(1) {
 							// Call houseleak subroutine to calculate air flow. Brennan added the variable mCeilingIN to be passed to the subroutine. Re-add between mHouseIN and mHouseOUT
-							sub_houseLeak(AHflag, flag, windSpeed, direction, tempHouse, tempAttic, tempOut, C, n, h, R, X, numFlues,
+							sub_houseLeak(AHflag, flag, weather.windSpeed, weather.windDirection, tempHouse, tempAttic, weather.dryBulb, C, n, h, R, X, numFlues,
 								flue, wallFraction, floorFraction, Sw, flueShelterFactor, numWinDoor, winDoor, numFans, fan, numPipes,
 								Pipe, mIN, mOUT, Pint, mFlue, mCeiling, mFloor, atticC, dPflue, dPceil, dPfloor, Crawl,
 								Hfloor, rowOrIsolated, soffitFraction, Patticint, wallCp, mSupReg, mAH, mRetLeak, mSupLeak,
@@ -2957,7 +2954,7 @@ return 0;
 								mCeilingOld = mCeiling;
 
 							// call atticleak subroutine to calculate air flow to/from the attic
-							sub_atticLeak(flag, windSpeed, direction, tempHouse, tempOut, tempAttic, atticC, atticPressureExp, h, roofPeakHeight,
+							sub_atticLeak(flag, weather.windSpeed, weather.windDirection, tempHouse, weather.dryBulb, tempAttic, atticC, atticPressureExp, h, roofPeakHeight,
 								flueShelterFactor, Sw, numAtticVents, atticVent, soffit, mAtticIN, mAtticOUT, Patticint, mCeiling, rowOrIsolated,
 								soffitFraction, roofPitch, roofPeakOrient, numAtticFans, atticFan, mSupReg, mRetLeak, mSupLeak, matticenvin,
 								matticenvout, dtau, mSupAHoff, mRetAHoff, airDensityIN, airDensityOUT, airDensityATTIC);
@@ -2969,12 +2966,12 @@ return 0;
 						bsize = sizeof(b)/sizeof(b[0]);
 
 						// Call heat subroutine to calculate heat exchange
-						sub_heat(tempOut, mCeiling, AL4, windSpeed, ssolrad, nsolrad, tempOld, atticVolume, houseVolume, sc, b, ERRCODE, TSKY,
+						sub_heat(weather.dryBulb, mCeiling, AL4, weather.windSpeed, ssolrad, nsolrad, tempOld, atticVolume, houseVolume, weather.skyCover, b, ERRCODE, TSKY,
 							floorArea, roofPitch, ductLocation, mSupReg, mRetReg, mRetLeak, mSupLeak, mAH, supRval, retRval, supDiameter,
 							retDiameter, supArea, retArea, supThickness, retThickness, supVolume, retVolume, supCp, retCp, supVel, retVel, suprho,
-							retrho, pRef, HROUT, diffuse, UA, matticenvin, matticenvout, mHouseIN, mHouseOUT, planArea, mSupAHoff,
+							retrho, weather.pressure, weather.humidityRatio, diffuse, UA, matticenvin, matticenvout, mHouseIN, mHouseOUT, planArea, mSupAHoff,
 							mRetAHoff, solgain, windowS, windowN, windowWE, winShadingCoef, mFanCycler, roofPeakHeight, h, retLength, supLength,
-							roofType, M1, M12, M15, M16, roofRval, rceil, AHflag, dtau, mERV_AH, ERV_SRE, mHRV, HRV_ASE, mHRV_AH, SBETA, CBETA, L, dec, Csol, idirect,
+							roofType, M1, M12, M15, M16, roofRval, rceil, AHflag, dtau, mERV_AH, ERV_SRE, mHRV, HRV_ASE, mHRV_AH, SBETA, CBETA, L, dec, Csol, weather.directNormal,
 							capacityc, capacityh, evapcap, internalGains, bsize, airDensityIN, airDensityOUT, airDensityATTIC, airDensitySUP, airDensityRET, numStories, storyHeight);
 
 						if(abs(b[0] - tempAttic) < .2) {	// Testing for convergence
@@ -3073,9 +3070,9 @@ return 0;
 				} //Yihuan:add these calculation for mCeilingIN calculation 
 
 					//Calculation of dry and moist air ventilation loads. Currently all values are positive, ie don't differentiate between heat gains and losses. Load doens't necessarily mean energy use...
-					Dhda = 1.006 * abs(tempHouse - tempOut); // dry air enthalpy difference across non-ceiling envelope elements [kJ/kg].
+					Dhda = 1.006 * abs(tempHouse - weather.dryBulb); // dry air enthalpy difference across non-ceiling envelope elements [kJ/kg].
 					ceilingDhda = 1.006 * abs(tempHouse - tempAttic); //Dry air enthalpy difference across ceiling [kJ/kg]
-					Dhma = abs((1.006 * (tempHouse - tempOut)) + ((HR[3] * (2501 + 1.86 * tempHouse))-(HROUT * (2501 + 1.86 * tempOut)))); //moist air enthalpy difference across non-ceiling envelope elements [kJ/kg]
+					Dhma = abs((1.006 * (tempHouse - weather.dryBulb)) + ((HR[3] * (2501 + 1.86 * tempHouse))-(weather.humidityRatio * (2501 + 1.86 * weather.dryBulb)))); //moist air enthalpy difference across non-ceiling envelope elements [kJ/kg]
 					ceilingDhma = abs((1.006 * (tempHouse - tempAttic)) + ((HR[3] * (2501 + 1.86 * tempHouse)) - (HR[0] * (2501 + 1.86 * tempAttic)))); //moist air enthalpy difference across ceiling [kJ/kg]
 
 
@@ -3178,7 +3175,7 @@ return 0;
 
 					//Calculation of house relative humidity, as ratio of Partial vapor pressure (calculated in rh variable below) to the Saturation vapor pressure (calculated above). 
 			
-					RHhouse = 100 * ((pRef*(HR[3]/0.621945))/(1+(HR[3]/0.621945)) / SatVaporPressure);
+					RHhouse = 100 * ((weather.pressure*(HR[3]/0.621945))/(1+(HR[3]/0.621945)) / SatVaporPressure);
 
 					//RHhouse = 100 * (pRef*(HR[3]/0.621945))/(1+(HR[3]/0.621945)) / (exp(77.345+(0.0057*tempHouse)-(7235/tempHouse))/(pow(tempHouse,8.2))); //This was Brennan's old rh calculation (used during smart ventilatoin humidity control), which was correct to within ~0.01% or less at possible house temperatures 15-30C. 
 
@@ -3211,13 +3208,13 @@ return 0;
 
 					// tab separated instead of commas- makes output files smaller
 					if(printOutputFile) {
-						outputFile << hour << "\t" << MINUTE << "\t" << windSpeed << "\t" << tempOut << "\t" << tempHouse << "\t" << setpoint << "\t";
+						outputFile << hour << "\t" << MINUTE << "\t" << weather.windSpeed << "\t" << weather.dryBulb << "\t" << tempHouse << "\t" << setpoint << "\t";
 						outputFile << tempAttic << "\t" << tempSupply << "\t" << tempReturn << "\t" << AHflag << "\t" << AHfanPower << "\t";
 						outputFile << hcap << "\t" << compressorPower << "\t" << capacityc << "\t" << mechVentPower << "\t" << HR[3] * 1000 << "\t" << SHR << "\t" << Mcoil << "\t";
 						outputFile << Pint << "\t"<< qHouse << "\t" << houseACH << "\t" << flueACH << "\t" << ventSum << "\t" << nonRivecVentSum << "\t";
 						outputFile << fan[0].on << "\t" << fan[1].on << "\t" << fan[2].on << "\t" << fan[3].on << "\t" << fan[4].on << "\t" << fan[5].on << "\t" << fan[6].on << "\t" ;
 						outputFile << rivecOn << "\t" << turnover << "\t" << relExp << "\t" << relDose << "\t" << occupiedExpReal << "\t" << occupiedDoseReal << "\t";
-						outputFile << occupied[weekend][hour] << "\t" << occupiedExp << "\t" << occupiedDose << "\t" << DAventLoad << "\t" << MAventLoad << "\t" << HROUT << "\t" << HR[3] << "\t" << RHhouse << "\t" << RHind60 << "\t" << RHind70 << endl; //<< "\t" << mIN << "\t" << mOUT << "\t" ; //Brennan. Added DAventLoad and MAventLoad and humidity values.
+						outputFile << occupied[weekend][hour] << "\t" << occupiedExp << "\t" << occupiedDose << "\t" << DAventLoad << "\t" << MAventLoad << "\t" << weather.humidityRatio << "\t" << HR[3] << "\t" << RHhouse << "\t" << RHind60 << "\t" << RHind70 << endl; //<< "\t" << mIN << "\t" << mOUT << "\t" ; //Brennan. Added DAventLoad and MAventLoad and humidity values.
 						//outputFile << mCeiling << "\t" << mHouseIN << "\t" << mHouseOUT << "\t" << mSupReg << "\t" << mRetReg << "\t" << mSupAHoff << "\t" ;
 						//outputFile << mRetAHoff << "\t" << mHouse << "\t"<< flag << "\t"<< AIM2 << "\t" << AEQaim2FlowDiff << "\t" << qFanFlowRatio << "\t" << C << endl; //Breann/Yihuan added these for troubleshooting
 					}
@@ -3226,7 +3223,7 @@ return 0;
 					//File column names, for reference.
 					//moistureFile << "HROUT\tHRattic\tHRreturn\tHRsupply\tHRhouse\tHRmaterials\tRH%house\tRHind60\tRHind70" << endl;
 					if(printMoistureFile) {
-						moistureFile << HROUT << "\t" << HR[0] << "\t" << HR[1] << "\t" << HR[2] << "\t" << HR[3] << "\t" << HR[4] << "\t" << RHhouse << "\t" << RHind60 << "\t" << RHind70 << endl;
+						moistureFile << weather.humidityRatio << "\t" << HR[0] << "\t" << HR[1] << "\t" << HR[2] << "\t" << HR[3] << "\t" << HR[4] << "\t" << RHhouse << "\t" << RHind60 << "\t" << RHind70 << endl;
 					}
 			
 					// ================================= WRITING Filter Loading DATA FILE =================================
@@ -3248,7 +3245,7 @@ return 0;
 					furnace_kWh = gasTherm * 29.3;								// Total heating/furnace energy for the simulation in kWh
 
 					// Average temperatures and airflows
-					meanOutsideTemp = meanOutsideTemp + (tempOut - 273.15);		// Average external temperature over the simulation
+					meanOutsideTemp = meanOutsideTemp + (weather.dryBulb - 273.15);		// Average external temperature over the simulation
 					meanAtticTemp = meanAtticTemp + (tempAttic -273.15);		// Average attic temperatire over the simulation
 					meanHouseTemp = meanHouseTemp + (tempHouse - 273.15);		// Average internal house temperature over the simulation
 					meanHouseACH = meanHouseACH + houseACH;						// Average ACH for the house

@@ -7,6 +7,8 @@
 
 using namespace std;
 
+const double C_TO_K = 273.15;
+
 // additional data types
 struct atticVent_struct {
 	int wall;
@@ -61,6 +63,19 @@ struct flue_struct {
 	double flueTemp;
 };
 
+struct weatherData {
+	int directNormal;				// Direct normal irradiance (Wh/m2)
+	int globalHorizontal;		// Global horizontal irradiance (Wh/m2)
+	double dryBulb;				// Dry-bulb temperature (deg K)
+	double dewPoint;				// Dew-point temperature (deg K)
+	double relativeHumidity;	// Relative humidity (%)
+	double humidityRatio;		// Humidity Ratio (g/g)
+	double windSpeed;				// Wind speed (m/s)
+	int windDirection;			// wind direction (degrees from North)
+	int pressure;					// Station pressure (Pa)
+	double skyCover;				// Total sky cover (fraction)
+};
+
 // Additional functions
 
 void sub_heat ( 
@@ -103,7 +118,7 @@ void sub_heat (
 	double& retVel, 
 	double& suprho, 
 	double& retrho, 
-	double& pRef, 
+	int& pRef, 
 	double& HROUT, 
 	double& diffuse, 
 	double& UA, 
@@ -196,7 +211,7 @@ void sub_houseLeak (
 	int& AHflag,
 	double& flag, 
 	double& U, 
-	double& windAngle, 
+	int& windAngle, 
 	double& tempHouse, 
 	double& tempAttic, 
 	double& tempOut, 
@@ -261,7 +276,7 @@ void sub_houseLeak (
 void sub_atticLeak ( 
 	double& flag, 
 	double& U, 
-	double& windAngle, 
+	int& windAngle, 
 	double& tempHouse, 
 	double& tempOut, 
 	double& tempAttic, 

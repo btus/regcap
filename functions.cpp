@@ -9,8 +9,7 @@ using namespace std;
 // ============================== CONSTANTS ===============================================
 const double g = 9.81;			// Acceleration due to gravity (m/s^2)
 const int ArraySize = 16;
-const double T0Celsius = 273.15;
-const double airTempRef = T0Celsius + 20;		// Reference room temp [K] = 20 deg C
+const double airTempRef = C_TO_K + 20;		// Reference room temp [K] = 20 deg C
 const double SIGMA = 5.6704E-08;			// STEFAN-BOLTZMANN CONST (W/m^2/K^4)
 const double CpAir = 1005.7;				// specific heat of air [j/kg K]
 
@@ -19,7 +18,7 @@ int sgn(double sgnvar);
 
 
 // ============================= FUNCTIONS ==============================================================
-void f_CpTheta(double CP[4][4], double& windAngle, double* wallCp);
+void f_CpTheta(double CP[4][4], int& windAngle, double* wallCp);
 
 void f_flueFlow(double& tempHouse, double& flueShelterFactor, double& dPwind, double& dPtemp, double& h, double& Pint, int& numFlues, flue_struct* flue, double& mFlue,
 	double& airDensityOUT, double& airDensityIN, double& dPflue, double& tempOut, double& Aeq, double& houseVolume, double& windPressureExp, double& Q622);
@@ -46,7 +45,7 @@ void f_pipeFlow(double& airDensityOUT, double& airDensityIN, double& CP, double&
 void f_winDoorFlow(double& tempHouse, double& tempOut, double& airDensityIN, double& airDensityOUT, double& h, double& Bo,
 	double& wallCp, double& n, double& Pint, double& dPtemp, double& dPwind, winDoor_struct& winDoor);
 
-void f_roofCpTheta(double* Cproof, double& windAngle, double* Cppitch, double& roofPitch);
+void f_roofCpTheta(double* Cproof, int& windAngle, double* Cppitch, double& roofPitch);
 
 void f_neutralLevel3(double& dPtemp, double& dPwind, double& Patticint, double& Cpr, double& Broofo, double& roofPeakHeight);
 
@@ -126,7 +125,7 @@ void sub_heat (
 	double& retVel, 
 	double& suprho, 
 	double& retrho, 
-	double& pRef, 
+	int& pRef, 
 	double& HROUT, 
 	double& diffuse, 
 	double& UA, 
@@ -1117,7 +1116,7 @@ void sub_houseLeak (
 	int& AHflag,
 	double& flag, 
 	double& windSpeed, 
-	double& windAngle, 
+	int& windAngle, 
 	double& tempHouse, 
 	double& tempAttic, 
 	double& tempOut, 
@@ -1418,7 +1417,7 @@ void sub_houseLeak (
 void sub_atticLeak ( 
 	double& flag, 
 	double& windSpeed, 
-	double& windAngle, 
+	int& windAngle, 
 	double& tempHouse, 
 	double& tempOut, 
 	double& tempAttic, 
@@ -1959,7 +1958,7 @@ int sgn(double sgnvar) {
 }
 
 
-void f_CpTheta(double CP[4][4], double& windAngle, double* wallCp) {
+void f_CpTheta(double CP[4][4], int& windAngle, double* wallCp) {
 	// this function takes Cps from a single wind angle perpendicular to the
 	// upwind wall and finds Cps for all the walls for any wind angle
 	
@@ -2257,7 +2256,7 @@ void f_winDoorFlow(double& tempHouse, double& tempOut, double& airDensityIN, dou
 					winDoor.mOUT = -sqrt(airDensityOUT * airDensityIN) * Kwindow * winDoor.Wide * tempHouse / 3 / g / dT * dummy;
 				}
 			} else {
-				Viscosity = .0000133 + .0000009 * ((tempOut + tempHouse) / 2 - T0Celsius);
+				Viscosity = .0000133 + .0000009 * ((tempOut + tempHouse) / 2 - C_TO_K);
 				Kwindow = .4 + .0045 * dT;
 				Topcrit = winDoor.Top - .1 * winDoor.High;
 				Bottomcrit = winDoor.Bottom + .1 * winDoor.High;
@@ -2301,7 +2300,7 @@ void f_winDoorFlow(double& tempHouse, double& tempOut, double& airDensityIN, dou
 		winDoor.m = winDoor.mIN + winDoor.mOUT;
 }
 
-void f_roofCpTheta(double* Cproof, double& windAngle, double* Cppitch, double& roofPitch) {
+void f_roofCpTheta(double* Cproof, int& windAngle, double* Cppitch, double& roofPitch) {
 	
 	double Theta;
 	double C2;
@@ -2674,7 +2673,7 @@ double saturationVaporPressure(double temp) {
 	const double C13 = 6.5459673E+00;
 
 	//Calculate Saturation Vapor Pressure, Equations 5 and 6 in 2009 ASHRAE HoF 1.2
-	if(temp <= T0Celsius){
+	if(temp <= C_TO_K){
 		return exp((C1/temp)+(C2)+(C3*temp)+(C4*pow(temp, 2))+(C5*pow(temp, 3))+(C6*pow(temp, 4))+(C7*log(temp)));
 	} else{
 		return exp((C8/temp)+(C9)+(C10*temp)+(C11*pow(temp, 2))+(C12*pow(temp, 3))+(C13*log(temp)));
