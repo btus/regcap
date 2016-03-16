@@ -251,7 +251,7 @@ int main(int argc, char *argv[], char* envp[])
 		double LowMonthDose;
 		
 		// Zeroing the variables to create the sums for the .ou2 file
-		long int MINUTE = 1;
+		long int minuteYear = 1;
 		int endrunon = 0;
 		int prerunon = 0;
 		//int timeSteps = 0;
@@ -770,9 +770,6 @@ cout << "HumContType:" << HumContType << " LowMonths[1]" << LowMonths[1] << " Lo
 		double tempSupply = tempOld[14];
 		double tempHouse = tempOld[15];
 
-		// Initialise time keeping variables
-		int minute_day = 0;				// Minute number in the current day (1 to 1440)
-
 		// Setting initial values of air mass for moisture balance:
 		double M1 = atticVolume * airDensityRef;		// Mass of attic air
 		double M12 = retVolume * airDensityRef;		// Mass of return air
@@ -1038,7 +1035,6 @@ cout << "HumContType:" << HumContType << " LowMonths[1]" << LowMonths[1] << " Lo
 		//hcFlag = 1;					// Start with HEATING (simulations start in January)
 		for(int day = 1; day <= 365; day++) {
 			cout << "\rDay = " << day << flush;
-			minute_day = 0;
 			peakFlag = 0;
 
 			dailyAverageTemp = dailyCumulativeTemp / 1440;
@@ -1134,7 +1130,7 @@ cout << "HumContType:" << HumContType << " LowMonths[1]" << LowMonths[1] << " Lo
 					peakFlag = 1;			// Prevents two peak periods in the same day when there is heating and cooling
 
 				// ============================== MINUTE LOOP ================================	
-				for(int minute = 1; minute <= 60; minute++) {
+				for(int minute = 0; minute < 60; minute++) {
 
 					target = minute - 40;			// Target is used for fan cycler operation currently set for 20 minutes operation, in the last 20 minutes of the hour.
 					if(target < 0)
@@ -1212,13 +1208,11 @@ cout << "HumContType:" << HumContType << " LowMonths[1]" << LowMonths[1] << " Lo
 					for(int k=0; k < 4; k++)			// Wind direction as a compass direction?
 						Sw[k] = Swinit[k][weather.windDirection];		// -1 in order to allocate from array (1 to n) to array (0 to n-1)
 
-					// [END] Read in Weather Data from External Weather File ==============================================================================
-
 					// Fan Schedule Inputs
 					// Assumes operation of dryer and kitchen fans, then 1 - 3 bathroom fans
 					fanScheduleFile >> dryerFan >> kitchenFan >> bathOneFan >> bathTwoFan >> bathThreeFan;
 
-					if(MINUTE == 1) {				// Setting initial humidity conditions
+					if(minuteYear == 1) {				// Setting initial humidity conditions
 						for(int i = 0; i < 5; i++) {
 							hrold[i] = weather.humidityRatio;
 							HR[i] = weather.humidityRatio;
@@ -1232,7 +1226,7 @@ cout << "HumContType:" << HumContType << " LowMonths[1]" << LowMonths[1] << " Lo
 					double airDensitySUP = airDensityRef * airTempRef / tempSupply;		// Supply Duct Air Density
 					double airDensityRET = airDensityRef * airTempRef / tempReturn;		// Return Duct Air Density
 
-					int NOONMIN = 720 - minute_day;
+					int NOONMIN = 720 - ((hour * 60) + minute);
 					double HA = M_PI * .25 * NOONMIN / 180;			// Hour Angle
 					double L = M_PI * latitude / 180;					// LATITUDE
 
@@ -1301,7 +1295,7 @@ cout << "HumContType:" << HumContType << " LowMonths[1]" << LowMonths[1] << " Lo
 						}
 
 						if(AHflag == 0 && AHflag != AHflagPrev)
-							endrunon = MINUTE + 1;		// Adding 1 minute runon during which heat from beginning of cycle is put into air stream
+							endrunon = minuteYear + 1;		// Adding 1 minute runon during which heat from beginning of cycle is put into air stream
 
 						if(AHflag == 1)
 							hcap = hcapacity / AFUE;	// hcap is gas consumed so needs to divide output (hcapacity) by AFUE
@@ -1401,7 +1395,7 @@ cout << "HumContType:" << HumContType << " LowMonths[1]" << LowMonths[1] << " Lo
 					}
 
 
-					if(minute == 1 || minute == 11 || minute == 21 || minute == 31 || minute == 41 || minute == 51) {
+					if(minute == 0 || minute == 10 || minute == 20 || minute == 30 || minute == 40 || minute == 50) {
 						for(int i=0; i < numFans; i++) {
 							// [START] ---------------------FAN 50---------- RIVEC OPERATION BASED ON CONTROL ALGORITHM v6
 							// v6 of the algorithm only uses the peakStart and peakEnd variables, no more base or recovery periods.(
@@ -1891,7 +1885,7 @@ cout << "HumContType:" << HumContType << " LowMonths[1]" << LowMonths[1] << " Lo
 
 					if(AHflag == 0) {			// AH OFF
 						// the 0 at the end of these terms means that the AH is off
-						if(MINUTE >= endrunon) {  // endrunon is the end of the heating cycle + 1 minutes
+						if(minuteYear >= endrunon) {  // endrunon is the end of the heating cycle + 1 minutes
 							mSupReg = 0;
 							mAH = 0;
 							mRetLeak = 0;
@@ -2108,7 +2102,7 @@ cout << "HumContType:" << HumContType << " LowMonths[1]" << LowMonths[1] << " Lo
 
 						if(fan[i].oper == 5) {		// Standalone HRV not synched to air handler
 
-							if((rivecFlag == 0 && minute > 30) || (rivecFlag == 1 && rivecOn == 1)) {	// on for last 30 minutes of every hour or RIVEC controlled
+							if((rivecFlag == 0 && minute >= 30) || (rivecFlag == 1 && rivecOn == 1)) {	// on for last 30 minutes of every hour or RIVEC controlled
 								fan[i].on = 1;
 								mechVentPower = mechVentPower + fan[i].power;
 								if(fan[i].q > 0) {
@@ -2126,7 +2120,7 @@ cout << "HumContType:" << HumContType << " LowMonths[1]" << LowMonths[1] << " Lo
 
 						if(fan[i].oper == 16) {		// HRV + Air Handler
 
-							if((rivecFlag == 0 && minute > 30) || (rivecFlag == 1 && rivecOn == 1)) {	// on for last 30 minutes of every hour or RIVEC controlled
+							if((rivecFlag == 0 && minute >= 30) || (rivecFlag == 1 && rivecOn == 1)) {	// on for last 30 minutes of every hour or RIVEC controlled
 								fan[i].on = 1;
 								ventSumIN = ventSumIN + abs(fan[i].q) * 3600 / houseVolume;
 								ventSumOUT = ventSumOUT + abs(fan[i].q) * 3600 / houseVolume;
@@ -2164,7 +2158,7 @@ cout << "HumContType:" << HumContType << " LowMonths[1]" << LowMonths[1] << " Lo
 						// ERV + Air Handler Copied over from ARTI code
 						if(fan[i].oper == 17) {												
 					
-							if((rivecFlag == 0 && minute > 40) || (rivecFlag == 1 && rivecOn == 1)) {	// on for last 20 minutes of every hour or RIVEC controlled
+							if((rivecFlag == 0 && minute >= 40) || (rivecFlag == 1 && rivecOn == 1)) {	// on for last 20 minutes of every hour or RIVEC controlled
 								fan[i].on = 1;
 								ventSumIN = ventSumIN + abs(fan[i].q) * 3600 / houseVolume;
 								ventSumOUT = ventSumOUT + abs(fan[i].q) * 3600 / houseVolume;
@@ -2217,7 +2211,7 @@ cout << "HumContType:" << HumContType << " LowMonths[1]" << LowMonths[1] << " Lo
 								ventSumOUT = ventSumOUT + abs(fan[i].q) * 3600 / houseVolume;				
 						
 						} else if(fan[i].oper == 2) {					// FIXED SCHEDULE BATHROOM
-							if(hour == 7 && minute > 30 && minute < 61) {
+							if(hour == 7 && minute >= 30) {
 								fan[i].on = 1;
 								mechVentPower = mechVentPower + fan[i].power;
 								ventSumOUT = ventSumOUT + abs(fan[i].q) * 3600 / houseVolume;
@@ -3208,7 +3202,7 @@ cout << "HumContType:" << HumContType << " LowMonths[1]" << LowMonths[1] << " Lo
 
 					// tab separated instead of commas- makes output files smaller
 					if(printOutputFile) {
-						outputFile << hour << "\t" << MINUTE << "\t" << weather.windSpeed << "\t" << weather.dryBulb << "\t" << tempHouse << "\t" << setpoint << "\t";
+						outputFile << hour << "\t" << minuteYear << "\t" << weather.windSpeed << "\t" << weather.dryBulb << "\t" << tempHouse << "\t" << setpoint << "\t";
 						outputFile << tempAttic << "\t" << tempSupply << "\t" << tempReturn << "\t" << AHflag << "\t" << AHfanPower << "\t";
 						outputFile << hcap << "\t" << compressorPower << "\t" << capacityc << "\t" << mechVentPower << "\t" << HR[3] * 1000 << "\t" << SHR << "\t" << Mcoil << "\t";
 						outputFile << Pint << "\t"<< qHouse << "\t" << houseACH << "\t" << flueACH << "\t" << ventSum << "\t" << nonRivecVentSum << "\t";
@@ -3252,11 +3246,9 @@ cout << "HumContType:" << HumContType << " LowMonths[1]" << LowMonths[1] << " Lo
 					meanFlueACH = meanFlueACH + abs(flueACH);					// Average ACH for the flue (-ve and +ve flow considered useful)
 
 					// Time keeping
-					MINUTE++;													// Minute count of year
-					minute_day++;												// Minute count (of day so 1 to 60)
-					//timeSteps++;												// Simulation time steps
+					minuteYear++;													// Minute count of year
 
-					if(MINUTE > (365 * 1440))
+					if(minuteYear > (365 * 1440))
 						break;
 				}     // end of minute loop
 			}        // end of hour loop
@@ -3278,15 +3270,15 @@ cout << "HumContType:" << HumContType << " LowMonths[1]" << LowMonths[1] << " Lo
 
 		double total_kWh = AH_kWh + furnace_kWh + compressor_kWh + mechVent_kWh;
 
-		meanOutsideTemp = meanOutsideTemp / MINUTE;
-		meanAtticTemp = meanAtticTemp / MINUTE;
-		meanHouseTemp = meanHouseTemp / MINUTE;
-		meanHouseACH = meanHouseACH / MINUTE;
-		meanFlueACH = meanFlueACH / MINUTE;
-		meanRelDose = meanRelDose / MINUTE;
-		meanRelExp = meanRelExp / MINUTE;
-		meanRelDoseReal = meanRelDoseReal / MINUTE;				//Brennan. Added these and need to define in the definitions area. 
-		meanRelExpReal = meanRelExpReal / MINUTE;
+		meanOutsideTemp = meanOutsideTemp / minuteYear;
+		meanAtticTemp = meanAtticTemp / minuteYear;
+		meanHouseTemp = meanHouseTemp / minuteYear;
+		meanHouseACH = meanHouseACH / minuteYear;
+		meanFlueACH = meanFlueACH / minuteYear;
+		meanRelDose = meanRelDose / minuteYear;
+		meanRelExp = meanRelExp / minuteYear;
+		meanRelDoseReal = meanRelDoseReal / minuteYear;				//Brennan. Added these and need to define in the definitions area. 
+		meanRelExpReal = meanRelExpReal / minuteYear;
 
 		meanOccupiedDose = totalOccupiedDose / occupiedMinCount;
 		meanOccupiedExp = totalOccupiedExp / occupiedMinCount;
@@ -3294,8 +3286,8 @@ cout << "HumContType:" << HumContType << " LowMonths[1]" << LowMonths[1] << " Lo
 		meanOccupiedDoseReal = totalOccupiedDoseReal / occupiedMinCount;
 		meanOccupiedExpReal = totalOccupiedExpReal / occupiedMinCount;
 
-		RHexcAnnual60 = RHtot60 / MINUTE;
-		RHexcAnnual70 = RHtot70 / MINUTE;
+		RHexcAnnual60 = RHtot60 / minuteYear;
+		RHexcAnnual70 = RHtot70 / minuteYear;
 		
 		// Write summary output file (RC2 file)
 		ofstream ou2File(summaryFileName); 
