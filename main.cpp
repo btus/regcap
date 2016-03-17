@@ -279,7 +279,6 @@ int main(int argc, char *argv[], char* envp[])
 
 		// [START] Read in Building Inputs =========================================================================================================================
 		ifstream buildingFile(inputFileName); 
-
 		if(!buildingFile) { 
 			cout << "Cannot open input file: " << inputFileName << endl;
 			return 1; 
@@ -729,13 +728,13 @@ cout << "HumContType:" << HumContType << " LowMonths[1]" << LowMonths[1] << " Lo
 			begin = readTMY3(weatherFile);		// duplicate first hour for interpolation of 0->1
 			end = begin;
 			tmyWeather = true;
-			cout << "drybulb=" << begin.dryBulb << endl;
 		}
 		else {							// 1 minute data
-			latitude = row[0];
-			altitude = row[1];
+			weatherFile.close();
+			weatherFile.open(weatherFileName);
+			weatherFile >> latitude >> altitude;
 			tmyWeather = false;
-			cout << "1 minute:" << "Lat:" << row[0] << " Alt:" << row[1] << endl;
+			cout << "1 minute:" << "Lat:" << latitude << " Alt:" << altitude << endl;
 		}
 		// set 1 = air handler off, and house air temp below setpoint minus 0.5 degrees
 		// set 0 = air handler off, but house air temp above setpoint minus 0.5 degrees
