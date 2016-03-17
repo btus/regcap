@@ -7,6 +7,9 @@
    #include <cmath>        // needed for mac g++
 #endif
 #include "functions.h"
+#include "weather.h"
+#include "psychro.h"
+#include "constants.h"
 #include "config/config.h"
 
 using namespace std;
@@ -39,33 +42,7 @@ New inputs:
 	Addendum N weather factors (weatherFactor)
 */
 
-// ============================== CONSTANTS ===============================================
-const double airDensityRef = 1.20411;	// Reference air density at 20 deg C at sea level [kg/m3]
-const double airTempRef = 293.15;		// Reference room temp [K] = 20 deg C
-
 // ============================= FUNCTIONS ==============================================================
-weatherData readOneMinuteWeather(ifstream& file) {
-	string line;
-	int day;
-	weatherData result;
-	double wd;
-	file >> day
-		>> result.directNormal
-		>> result.globalHorizontal
-		>> result.dryBulb
-		>> result.humidityRatio
-		>> result.windSpeed
-		>> wd
-		>> result.pressure
-		>> result.skyCover;
-
-	result.dryBulb += C_TO_K;
-	result.windDirection = int(wd);
-	result.pressure *= 1000;					// Convert reference pressure to [Pa]
-	result.skyCover /= 10;						// Converting cloud cover index to decimal fraction
-
-	return result;
-}
 
 // Main function
 int main(int argc, char *argv[], char* envp[])

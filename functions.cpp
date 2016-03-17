@@ -1,4 +1,6 @@
 #include "functions.h"
+#include "psychro.h"
+#include "constants.h"
 #include <iomanip> // RAD: so far used only for setprecission() in cmd output
 #ifdef __APPLE__
    #include <cmath>        // needed for mac g++
@@ -6,12 +8,6 @@
 
 using namespace std;
 
-// ============================== CONSTANTS ===============================================
-const double g = 9.81;			// Acceleration due to gravity (m/s^2)
-const int ArraySize = 16;
-const double airTempRef = C_TO_K + 20;		// Reference room temp [K] = 20 deg C
-const double SIGMA = 5.6704E-08;			// STEFAN-BOLTZMANN CONST (W/m^2/K^4)
-const double CpAir = 1005.7;				// specific heat of air [j/kg K]
 
 string strUppercase(string stringvar);
 int sgn(double sgnvar);
@@ -2652,30 +2648,4 @@ int matbs(double A[][ArraySize], double* b, double* x, int* rpvt, int* cpvt, int
 	}
 
 	return 0;
-}
-
-double saturationVaporPressure(double temp) {
-	//Coefficients for saturation vapor pressure over ice -100 to 0C. ASHRAE HoF.
-	const double C1 = -5.6745359E+03;
-	const double C2 = 6.3925247E+00;
-	const double C3 = -9.6778430E-03;
-	const double C4 = 6.2215701E-07;
-	const double C5 = 2.0747825E-09;
-	const double C6 = -9.4840240E-13;
-	const double C7 = 4.1635019E+00;
-
-	//Coefficients for saturation vapor pressure over liquid water 0 to 200C. ASHRAE HoF.
-	const double C8 = -5.8002206E+03;
-	const double C9 = 1.3914993E+00;
-	const double C10 = -4.8640239E-02;
-	const double C11 = 4.1764768E-05;
-	const double C12 = -1.4452093E-08;
-	const double C13 = 6.5459673E+00;
-
-	//Calculate Saturation Vapor Pressure, Equations 5 and 6 in 2009 ASHRAE HoF 1.2
-	if(temp <= C_TO_K){
-		return exp((C1/temp)+(C2)+(C3*temp)+(C4*pow(temp, 2))+(C5*pow(temp, 3))+(C6*pow(temp, 4))+(C7*log(temp)));
-	} else{
-		return exp((C8/temp)+(C9)+(C10*temp)+(C11*pow(temp, 2))+(C12*pow(temp, 3))+(C13*log(temp)));
-	}
 }
