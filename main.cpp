@@ -1,3 +1,4 @@
+#include <sstream>
 #include <iostream>
 #include <fstream>
 #include <iomanip>		// RAD: so far used only for setprecission() in cmd output
@@ -710,22 +711,31 @@ cout << "HumContType:" << HumContType << " LowMonths[1]" << LowMonths[1] << " Lo
 		}
 
 		// Determine weather file type and read in header
-		char first[20], second[100];
+		CSVRow row;					// row of data to read from TMY3 csv
+		weatherData begin, end;	// hourly weather data
 		bool tmyWeather;
-		weatherFile >> first >> second;
-		if(strtod(first, NULL) > 100) {		// TMY3
-			siteID = first;
-			siteName = second;
-			weatherFile >> state >> timeZone >> latitude >> longitude >> altitude;
+		weatherFile >> row;
+		if(row.size() > 2) {			// TMY3
+			//double siteID = row[0];
+			//string siteName = row[1];
+			//string State = row[2];
+			//int timeZone = row[3];
+			latitude = row[4];
+			//double longitude = row[5];
+			altitude = row[6];
+			cout << "ID=" << row[0] << " Name=" << row[1] << " State=" << row[2] << endl;
+			cout << "TZ=" << row[3] << " lat=" << latitude << " long=" << row[5] << " alt=" << altitude << endl;
+			weatherFile >> row;					// drop header
+			begin = readTMY3(weatherFile);		// duplicate first hour for interpolation of 0->1
+			end = begin;
 			tmyWeather = true;
-			cout << "TMY3! siteID=" << siteID << " siteName=" << siteName << endl;
-			return 0;
+			cout << "drybulb=" << begin.dryBulb << endl;
 		}
 		else {							// 1 minute data
-			latitude = strtod(first, NULL);
-			altitude = strtod(second, NULL);
+			latitude = row[0];
+			altitude = row[1];
 			tmyWeather = false;
-			cout << "1 minute!" << endl;
+			cout << "1 minute:" << "Lat:" << row[0] << " Alt:" << row[1] << endl;
 		}
 		// set 1 = air handler off, and house air temp below setpoint minus 0.5 degrees
 		// set 0 = air handler off, but house air temp above setpoint minus 0.5 degrees
@@ -1174,9 +1184,13 @@ cout << "HumContType:" << HumContType << " LowMonths[1]" << LowMonths[1] << " Lo
 					nonRivecVentSumIN = 0;				// Setting sum of non-RIVEC supply mechanical ventilation to zero
 					nonRivecVentSumOUT = 0;				// Setting sum of non-RIVEC exhaust mechanical ventilation to zero
 
-					// Read in 1-minute Weather Data
-					if(!tmyWeather)
+					// Read in or interpolate weather data
+					if(!tmyWeather) {
 						weather = readOneMinuteWeather(weatherFile);
+					}
+					else {
+						weather = interpWeather(begin, end, minute);
+					}
 					weather.windSpeed *= windSpeedCorrection;		// Correct met wind speed to speed at building eaves height [m/s]
 					if(weather.windSpeed < 1)					// Minimum wind velocity allowed is 1 m/s to account for non-zero start up velocity of anenometers
 						weather.windSpeed = 1;					// Wind speed is never zero
@@ -3228,6 +3242,8 @@ cout << "HumContType:" << HumContType << " LowMonths[1]" << LowMonths[1] << " Lo
 					if(minuteYear > (365 * 1440))
 						break;
 				}     // end of minute loop
+				begin = end;
+				end = readTMY3(weatherFile);
 			}        // end of hour loop
 		}           // end of day loop
 		//} while (weatherFile);			// Run until end of weather file

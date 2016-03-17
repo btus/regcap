@@ -1,11 +1,10 @@
 #include "constants.h"
 #include "psychro.h"
-
 #ifdef __APPLE__
    #include <cmath>        // needed for mac g++
 #endif
 
-using namespace std;
+// using namespace std;
 
 double saturationVaporPressure(double temp) {
 	//Coefficients for saturation vapor pressure over ice -100 to 0C. ASHRAE HoF.
@@ -31,4 +30,9 @@ double saturationVaporPressure(double temp) {
 	} else{
 		return exp((C8/temp)+(C9)+(C10*temp)+(C11*pow(temp, 2))+(C12*pow(temp, 3))+(C13*log(temp)));
 	}
+}
+
+double calcHumidityRatio(double dewpoint, double pressure) {
+	double pws = saturationVaporPressure(dewpoint);
+	return 0.621945 * (pws / (pressure - pws));
 }

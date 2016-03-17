@@ -17,6 +17,42 @@ struct weatherData {
 	double skyCover;				// Total sky cover (fraction)
 };
 
+// Modified to use double instead of string from:
+// http://stackoverflow.com/questions/1120140/how-can-i-read-and-parse-csv-files-in-c
+class CSVRow
+{
+    public:
+        double const& operator[](std::size_t index) const
+        {
+            return m_data[index];
+        }
+        std::size_t size() const
+        {
+            return m_data.size();
+        }
+        void readNextRow(std::istream& str)
+        {
+            std::string         line;
+            std::getline(str,line);
+
+            std::stringstream   lineStream(line);
+            std::string         cell;
+
+            m_data.clear();
+            while(std::getline(lineStream,cell,','))
+            {
+                m_data.push_back(atof(cell.c_str()));
+            }
+        }
+    private:
+        std::vector<double>    m_data;
+};
+
+std::istream& operator>>(std::istream& str,CSVRow& data);
+double interpolate(double begin, double end, int step);
+weatherData interpolateWind(weatherData begin, weatherData end, int step);
+weatherData interpWeather(weatherData begin, weatherData end, int minute);
+weatherData readTMY3(ifstream& file);
 weatherData readOneMinuteWeather(ifstream& file);
 
 #endif
