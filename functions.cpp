@@ -57,6 +57,8 @@ void f_soffitFlow(double& airDensityOUT, double& airDensityATTIC, double& CP, do
 
 void f_atticFanFlow(fan_struct& atticFan, double& airDensityOUT, double& airDensityATTIC);
 
+double heatTranCoef(double temp1, double temp2, double velocity);
+
 // ----- MatSEqn forward declarations -----
 /*
 ===================================================================
@@ -426,68 +428,45 @@ void sub_heat (
 		}
 
 		// inner north sheathing
-		Hnat2 = 3.2 * pow(abs(tempOld[1] - tempOld[0]), (1 / 3.0));
-		tfilm2 = (tempOld[1] + tempOld[0]) / 2;
-		Hforced2 = (18.192 - .0378 * tfilm2) * pow(u, .8);
-		H2 = pow((pow(Hnat2, 3) + pow(Hforced2, 3)), .333333);
+		H2 = heatTranCoef(tempOld[1], tempOld[0], u);
 
 		// outer north sheathing
-		Hnat3 = 3.2 * pow(abs(tempOld[2] - tempOut), (1 / 3.0));
-		tfilm3 = (tempOld[2] + tempOut) / 2;
-		Hforced3 = (18.192 - .0378 * tfilm3) * pow(windSpeed, .8);
-		H3 = pow((pow(Hnat3, 3) + pow(Hforced3, 3)), .333333);   		// ATTIC INTERNAL CONV COEF
+		H3 = heatTranCoef(tempOld[2], tempOut, windSpeed);
 
 		// inner south sheathing
-		Hnat4 = 3.2 * pow(abs(tempOld[3] - tempOld[0]), (1 / 3.0)); 	// Natural convection from Ford
-		tfilm4 = (tempOld[3] + tempOld[0]) / 2;                			// film temperature
-		Hforced4 = (18.192 - .037 * tfilm4) * pow(u, .8);    			// force convection from Ford
-		H4 = pow((pow(Hnat4, 3) + pow(Hforced4, 3)), .333333);       	// ATTIC INTERNAL CONV COEF
+		H4 = heatTranCoef(tempOld[3], tempOld[0], u);
 
 		// outer north sheathing
-		Hnat5 = 3.2 * pow(abs(tempOld[4] - tempOut), (1 / 3.0));
-		tfilm5 = (tempOld[4] + tempOut) / 2;
-		Hforced5 = (18.192 - .0378 * tfilm5) * pow(windSpeed, .8);
-		H5 = pow((pow(Hnat5, 3) + pow(Hforced5, 3)), .333333);   		// ATTIC INTERNAL CONV COEF
+		H5 = heatTranCoef(tempOld[4], tempOut, windSpeed);
 
 		// Wood (joists,truss,etc.)
-		Hnat6 = 3.2 * pow(abs(tempOld[5] - tempOld[0]), (1 / 3.0));
-		tfilm6 = (tempOld[5] + tempOld[0]) / 2;
-		Hforced6 = (18.192 - .0378 * (tfilm6)) * pow(u, .8);
-		H6 = pow((pow(Hnat6, 3) + pow(Hforced6, 3)), .333333);
+		H6 = heatTranCoef(tempOld[5], tempOld[0], u);
 
 		// Underside of Ceiling
 		// modified to use fixed numbers from ASHRAE Fundamentals ch.3
 		//  on 05/18/2000
-		H7 = 6;
-		if(AHflag != 0) {
+		if(AHflag != 0)
 			H7 = 9;
-		}
+		else
+			H7 = 6;
 
 		// House Mass
 		// uses ceiling heat transfer coefficient as rest for house heat transfer coefficient	
 		H13 = H7;
 
 		// Attic Floor
-		Hnat8 = 3.2 * pow(abs(tempOld[7] - tempOld[0]), (1 / 3.0));
-		tfilm8 = (tempOld[7] + tempOld[0]) / 2;
-		Hforced8 = (18.192 - .0378 * (tfilm8)) * pow(u, .8);
-		H8 = pow((pow(Hnat8, 3) + pow(Hforced8, 3)), .333333);
+		H8 = heatTranCoef(tempOld[7], tempOld[0], u);
 
 		// Inner side of gable endwalls (lumped together)
-		Hnat9 = 3.2 * pow(abs(tempOld[8] - tempOld[0]), (1 / 3.0));
-		tfilm9 = (tempOld[8] + tempOld[0]) / 2;
-		Hforced9 = (18.192 - .037 * (tfilm9)) * pow(u, .8);
-		H9 = pow((pow(Hnat9, 3) + pow(Hforced9, 3)), .333333);
+		H9 = heatTranCoef(tempOld[8], tempOld[0], u);
 
 		// Outer side of gable ends
-		tfilm10 = (tempOld[9] + tempOut) / 2;
-		H10 = (18.192 - .0378 * (tfilm10)) * pow(windSpeed, .8);
+		//tfilm10 = (tempOld[9] + tempOut) / 2;
+		//H10 = (18.192 - .0378 * (tfilm10)) * pow(windSpeed, .8);
+		H10 = heatTranCoef(tempOld[9], tempOut, windSpeed);
 
 		// Outer Surface of Return Ducts
-		Hnat11 = 3.2 * pow(abs(tempOld[10] - tempOld[0]), (1 / 3.0));
-		tfilm11 = (tempOld[10] + tempOld[0]) / 2;
-		Hforced11 = (18.192 - .0378 * (tfilm11)) * pow(u, .8);
-		H11 = pow((pow(Hnat11, 3) + pow(Hforced11, 3)), .333333);
+		H11 = heatTranCoef(tempOld[10], tempOld[0], u);
 
 		// Inner Surface of Return Ducts
 		// from Holman   Nu(D) = 0.023*Re(D)^0.8*Pr(D)^0.4
@@ -498,10 +477,7 @@ void sub_heat (
 			HI11 = H11;
 
 		// Outer Surface of Supply Ducts
-		Hnat14 = 3.2 * pow(abs(tempOld[13] - tempOld[0]), (1 / 3.0));
-		tfilm14 = (tempOld[13] + tempOld[0]) / 2;
-		Hforced14 = (18.192 - .0378 * (tfilm14)) * pow(u, .8);
-		H14 = pow((pow(Hnat14, 3) + pow(Hforced14, 3)), .333333);
+		H14 = heatTranCoef(tempOld[13], tempOld[0], u);
 
 		// Inner Surface of Supply Ducts
 		// from Holman   Nu(D) = 0.023*Re(D)^0.8*Pr(D)^0.4
@@ -2648,4 +2624,11 @@ int matbs(double A[][ArraySize], double* b, double* x, int* rpvt, int* cpvt, int
 	}
 
 	return 0;
+}
+
+double heatTranCoef(double temp1, double temp2, double velocity) {
+	double hNatural = 3.2 * pow(abs(temp1 - temp2), 1.0 / 3.0); 		// Natural convection from Ford
+	double tFilm = (temp1 + temp2) / 2;                					// film temperature
+	double hForced = (18.192 - .0378 * tFilm) * pow(velocity, 0.8);   // force convection from Ford
+	return pow((pow(hNatural, 3) + pow(hForced, 3)), 1.0 / 3.0);      // combine using cube
 }
