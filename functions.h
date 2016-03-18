@@ -103,7 +103,7 @@ void sub_heat (
 	double& retVel, 
 	double& suprho, 
 	double& retrho, 
-	double& pRef, 
+	int& pRef, 
 	double& HROUT, 
 	double& diffuse, 
 	double& UA, 
@@ -196,7 +196,7 @@ void sub_houseLeak (
 	int& AHflag,
 	double& flag, 
 	double& U, 
-	double& windAngle, 
+	int& windAngle, 
 	double& tempHouse, 
 	double& tempAttic, 
 	double& tempOut, 
@@ -261,7 +261,7 @@ void sub_houseLeak (
 void sub_atticLeak ( 
 	double& flag, 
 	double& U, 
-	double& windAngle, 
+	int& windAngle, 
 	double& tempHouse, 
 	double& tempOut, 
 	double& tempAttic, 
@@ -319,5 +319,7 @@ void sub_filterLoading (
 	double& qAH_cool0,
 	double& qAH_low
 	);
+
+double saturationVaporPressure (double temp);
 
 #endif
