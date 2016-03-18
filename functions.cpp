@@ -59,6 +59,8 @@ void f_atticFanFlow(fan_struct& atticFan, double& airDensityOUT, double& airDens
 
 double heatTranCoef(double temp1, double temp2, double velocity);
 
+double radTranCoef(double emissivity, double temp1, double temp2, double shapeFactor, double areaRatio);
+
 // ----- MatSEqn forward declarations -----
 /*
 ===================================================================
@@ -203,10 +205,10 @@ void sub_heat (
 	double Rshingles;
 	double Rval2, Rval3, Rval4, Rval5, Rval7, Rval8, Rval9, Rval10, Rval11, Rval14;
 	double u;
-	double Hnat2, Hnat3, Hnat4, Hnat5, Hnat6, Hnat8, Hnat9, Hnat11, Hnat14;
+	//double Hnat2, Hnat3, Hnat4, Hnat5, Hnat6, Hnat8, Hnat9, Hnat11, Hnat14;
 	double H2, H3, H4, H5, H6, H7, H8, H9, H10, H11, H13, H14;
-	double tfilm2, tfilm3, tfilm4, tfilm5, tfilm6, tfilm8, tfilm9, tfilm10, tfilm11, tfilm14;
-	double Hforced2, Hforced3, Hforced4, Hforced5, Hforced6, Hforced8, Hforced9, Hforced11, Hforced14;
+	//double tfilm2, tfilm3, tfilm4, tfilm5, tfilm6, tfilm8, tfilm9, tfilm10, tfilm11, tfilm14;
+	//double Hforced2, Hforced3, Hforced4, Hforced5, Hforced6, Hforced8, Hforced9, Hforced11, Hforced14;
 	double HI11, HI14;
 	double F8t2, F8t4, F8t11, F8t14;
 	double F2t4, F2t8, F2t11, F2t14;
@@ -218,17 +220,16 @@ void sub_heat (
 	double HR8t4, HR8t2;
 	double HR11t2, HR11t4;
 	double HR14t2, HR14t4;
-	double R2t4, R2t8, R2t11, R2t14;
-	double R4t2, R4t8, R4t11, R4t14;
-	double R8t2, R8t4;
-	double R11t2, R11t4;
-	double R14t2, R14t4;
+	//double R2t4, R2t8, R2t11, R2t14;
+	//double R4t2, R4t8, R4t11, R4t14;
+	//double R8t2, R8t4;
+	//double R11t2, R11t4;
+	//double R14t2, R14t4;
 	double EPS1, epsshingles;	
 	double hr7;
 	double HRG3, HRG5, HRS3, HRS5;
-	double FRS, FG3, FG5;
-	double R7, RG3, RG5, RS3, RS5;
-	double Beta;	
+	double FRS, FG;
+	//double R7, RG3, RG5, RS3, RS5;
 	double TGROUND;
 	double alpha3, alpha5;
 	double phi, sphi, cphi, cphi2;
@@ -549,24 +550,17 @@ void sub_heat (
 			EPS1 = .9;         										// Emissivity of building materials
 			epsshingles = .9;  										// this should be a user input
 
-			// make a loop to do this
 			// North Sheathing
-			R2t4 = (1 - EPS1) / EPS1 + 1 / F2t4 + (1 - EPS1) / EPS1 * (A2 / A4);
-			R2t8 = (1 - EPS1) / EPS1 + 1 / F2t8 + (1 - EPS1) / EPS1 * (A2 / A8);
-			HR2t4 = SIGMA * (tempOld[1] + tempOld[3]) * (pow(tempOld[1], 2) + pow(tempOld[3], 2)) / R2t4;
-			HR2t8 = SIGMA * (tempOld[1] + tempOld[7]) * (pow(tempOld[1], 2) + pow(tempOld[7], 2)) / R2t8;
+			HR2t4 = radTranCoef(EPS1, tempOld[1], tempOld[3], F2t4, A2/A4);
+			HR2t8 = radTranCoef(EPS1, tempOld[1], tempOld[7], F2t8, A2/A8);
 
 			// South Sheathing
-			R4t2 = (1 - EPS1) / EPS1 + 1 / F4t2 + (1 - EPS1) / EPS1 * (A4 / A2);
-			R4t8 = (1 - EPS1) / EPS1 + 1 / F4t8 + (1 - EPS1) / EPS1 * (A4 / A8);
-			HR4t2 = SIGMA * (tempOld[3] + tempOld[1]) * (pow(tempOld[3], 2) + pow(tempOld[1], 2)) / R4t2;
-			HR4t8 = SIGMA * (tempOld[3] + tempOld[7]) * (pow(tempOld[3], 2) + pow(tempOld[7], 2)) / R4t8;
+			HR4t2 = radTranCoef(EPS1, tempOld[3], tempOld[1], F4t2, A4/A2);
+			HR4t8 = radTranCoef(EPS1, tempOld[3], tempOld[7], F4t8, A4/A8);
 
 			// Attic Floor
-			R8t4 = (1 - EPS1) / EPS1 + 1 / F8t4 + (1 - EPS1) / EPS1 * (A8 / A4);
-			R8t2 = (1 - EPS1) / EPS1 + 1 / F8t2 + (1 - EPS1) / EPS1 * (A8 / A2);
-			HR8t4 = SIGMA * (tempOld[7] + tempOld[3]) * (pow(tempOld[7], 2) + pow(tempOld[3], 2)) / R8t4;
-			HR8t2 = SIGMA * (tempOld[7] + tempOld[1]) * (pow(tempOld[7], 2) + pow(tempOld[1], 2)) / R8t2;
+			HR8t4 = radTranCoef(EPS1, tempOld[7], tempOld[3], F8t4, A8/A4);
+			HR8t2 = radTranCoef(EPS1, tempOld[7], tempOld[1], F8t2, A8/A2);
 
 		} else {
 			// ducts in the attic
@@ -612,71 +606,43 @@ void sub_heat (
 				epsshingles = .9;
 			}
 
-			// make a loop to do this
 			// North Sheathing
-			R2t4 = (1 - EPS1) / EPS1 + 1 / F2t4 + (1 - EPS1) / EPS1 * (A2 / A4);
-			R2t8 = (1 - EPS1) / EPS1 + 1 / F2t8 + (1 - EPS1) / EPS1 * (A2 / A8);
-			R2t11 = (1 - EPS1) / EPS1 + 1 / F2t11 + (1 - EPS1) / EPS1 * (A2 / (A11 / 3));
-			R2t14 = (1 - EPS1) / EPS1 + 1 / F2t14 + (1 - EPS1) / EPS1 * (A2 / (A14 / 3));
-
-			HR2t4 = SIGMA * (tempOld[1] + tempOld[3]) * (pow(tempOld[1], 2) + pow(tempOld[3], 2)) / R2t4;
-			HR2t8 = SIGMA * (tempOld[1] + tempOld[7]) * (pow(tempOld[1], 2) + pow(tempOld[7], 2)) / R2t8;
-			HR2t11 = SIGMA * (tempOld[1] + tempOld[10]) * (pow(tempOld[1], 2) + pow(tempOld[10], 2)) / R2t11;
-			HR2t14 = SIGMA * (tempOld[1] + tempOld[13]) * (pow(tempOld[1], 2) + pow(tempOld[13], 2)) / R2t14;
+			HR2t4 = radTranCoef(EPS1, tempOld[1], tempOld[3], F2t4, A2/A4);
+			HR2t8 = radTranCoef(EPS1, tempOld[1], tempOld[7], F2t8, A2/A8);
+			HR2t11 = radTranCoef(EPS1, tempOld[1], tempOld[10], F2t11, A2/(A11/3));
+			HR2t14 = radTranCoef(EPS1, tempOld[1], tempOld[13], F2t14, A2/(A14/3));
 
 			// South Sheathing
-			R4t2 = (1 - EPS1) / EPS1 + 1 / F4t2 + (1 - EPS1) / EPS1 * (A4 / A2);
-			R4t8 = (1 - EPS1) / EPS1 + 1 / F4t8 + (1 - EPS1) / EPS1 * (A4 / A8);
-			R4t11 = (1 - EPS1) / EPS1 + 1 / F4t11 + (1 - EPS1) / EPS1 * (A4 / (A11 / 3));
-			R4t14 = (1 - EPS1) / EPS1 + 1 / F4t14 + (1 - EPS1) / EPS1 * (A4 / (A14 / 3));
-
-			HR4t2 = SIGMA * (tempOld[3] + tempOld[1]) * (pow(tempOld[3], 2) + pow(tempOld[1], 2)) / R4t2;
-			HR4t8 = SIGMA * (tempOld[3] + tempOld[7]) * (pow(tempOld[3], 2) + pow(tempOld[7], 2)) / R4t8;
-			HR4t11 = SIGMA * (tempOld[3] + tempOld[10]) * (pow(tempOld[3], 2) + pow(tempOld[10], 2)) / R4t11;
-			HR4t14 = SIGMA * (tempOld[3] + tempOld[13]) * (pow(tempOld[3], 2) + pow(tempOld[13], 2)) / R4t14;
+			HR4t2 = radTranCoef(EPS1, tempOld[3], tempOld[1], F4t2, A4/A2);
+			HR4t8 = radTranCoef(EPS1, tempOld[3], tempOld[7], F4t8, A4/A8);
+			HR4t11 = radTranCoef(EPS1, tempOld[3], tempOld[10], F4t11, A4/(A11/3));
+			HR4t14 = radTranCoef(EPS1, tempOld[3], tempOld[13], F4t14, A4/(A14/3));
 
 			// Attic Floor
-			R8t4 = (1 - EPS1) / EPS1 + 1 / F8t4 + (1 - EPS1) / EPS1 * (A8 / A4);
-			R8t2 = (1 - EPS1) / EPS1 + 1 / F8t2 + (1 - EPS1) / EPS1 * (A8 / A2);
-			
-			HR8t4 = SIGMA * (tempOld[7] + tempOld[3]) * (pow(tempOld[7], 2) + pow(tempOld[3], 2)) / R8t4;
-			HR8t2 = SIGMA * (tempOld[7] + tempOld[1]) * (pow(tempOld[7], 2) + pow(tempOld[1], 2)) / R8t2;
+			HR8t4 = radTranCoef(EPS1, tempOld[7], tempOld[3], F8t4, A8/A4);
+			HR8t2 = radTranCoef(EPS1, tempOld[7], tempOld[1], F8t2, A8/A2);
 			
 			// Return Ducts (note, No radiative exchange w/ supply ducts)
-			R11t4 = (1 - EPS1) / EPS1 + 1 / F11t4 + (1 - EPS1) / EPS1 * (A11 / A4);
-			R11t2 = (1 - EPS1) / EPS1 + 1 / F11t2 + (1 - EPS1) / EPS1 * (A11 / A2);
-
-			HR11t4 = SIGMA * (tempOld[10] + tempOld[3]) * (pow(tempOld[10], 2) + pow(tempOld[3], 2)) / R11t4;
-			HR11t2 = SIGMA * (tempOld[10] + tempOld[1]) * (pow(tempOld[10], 2) + pow(tempOld[1], 2)) / R11t2;
+			HR11t4 = radTranCoef(EPS1, tempOld[10], tempOld[3], F11t4, A11/A4);
+			HR11t2 = radTranCoef(EPS1, tempOld[10], tempOld[1], F11t2, A11/A2);
 
 			// Supply Ducts (note, No radiative exchange w/ return ducts)
-			R14t4 = (1 - EPS1) / EPS1 + 1 / F14t4 + (1 - EPS1) / EPS1 * (A14 / A4);
-			R14t2 = (1 - EPS1) / EPS1 + 1 / F14t2 + (1 - EPS1) / EPS1 * (A14 / A2);
-
-			HR14t4 = SIGMA * (tempOld[13] + tempOld[3]) * (pow(tempOld[13], 2) + pow(tempOld[3], 2)) / R14t4;
-			HR14t2 = SIGMA * (tempOld[13] + tempOld[1]) * (pow(tempOld[13], 2) + pow(tempOld[1], 2)) / R14t2;		
+			HR14t4 = radTranCoef(EPS1, tempOld[13], tempOld[3], F14t4, A14/A4);
+			HR14t2 = radTranCoef(EPS1, tempOld[13], tempOld[1], F14t2, A14/A2);
 		}
 
-		// left overs
 		// underside of ceiling
-		R7 = (1 - EPS1) / EPS1 + 1 + (1 - EPS1) / EPS1 * (A7 / A13);
+		hr7 = radTranCoef(EPS1, tempOld[6], tempOld[12], 1, A7/A13);
 
-		// FOR RAD COEF LAST HOUSE TEMP USED AS INITIAL ESTIMATE OF CEIL TEMP
-		hr7 = SIGMA * (tempOld[6] + tempOld[12] * (pow(tempOld[6], 2) + pow(tempOld[12], 2)) / R7);
-		Beta = roofPitch;                                				// ROOF PITCH
-		FRS = (1 - sc) * (180 - Beta) / 180;      					// ROOF-SKY SHAPE FACTOR
-
+		FRS = (1 - sc) * (180 - roofPitch) / 180;      			// ROOF-SKY SHAPE FACTOR
+		FG = 1 - FRS;                            					// ROOF-GROUND SHAPE FACTOR
+		TGROUND = tempOut;                           			// ASSUMING GROUND AT AIR TEMP
 		if(sc < 1) {
-			RS5 = (1 - epsshingles) / epsshingles + 1 / FRS;
-			HRS5 = SIGMA * (tempOld[4] + TSKY) * (pow(tempOld[4], 2) + pow(TSKY, 2)) / RS5;
+			HRS5 = radTranCoef(epsshingles, tempOld[4], TSKY, FRS, 0);
 		} else {
 			HRS5 = 0;
 		}
-
-		FG5 = 1 - FRS;                            					// ROOF-GROUND SHAPE FACTOR
-		TGROUND = tempOut;                           					// ASSUMING GROUND AT AIR TEMP
-		RG5 = (1 - epsshingles) / epsshingles + 1 / FG5;
-		HRG5 = SIGMA * (tempOld[4] + TGROUND) * (pow(tempOld[4], 2) + pow(TGROUND, 2)) / RG5;
+		HRG5 = radTranCoef(epsshingles, tempOld[4], TGROUND, FG, 0);
 
 		// asphalt shingles
 		if(roofType == 1) {
@@ -698,15 +664,11 @@ void sub_heat (
 
 		// South Sheathing
 		if(sc < 1) {
-			RS3 = (1 - epsshingles) / epsshingles + 1 / FRS;
-			HRS3 = SIGMA * (tempOld[2] + TSKY) * (pow(tempOld[2], 2) + pow(TSKY, 2)) / RS3;
+			HRS3 = radTranCoef(epsshingles, tempOld[2], TSKY, FRS, 0);
 		} else {
 			HRS3 = 0;
 		}
-
-		FG3 = 1 - FRS;                            					// ROOF-GROUND SHAPE FACTOR
-		RG3 = (1 - epsshingles) / epsshingles + 1 / FG3;
-		HRG3 = SIGMA * (tempOld[2] + TGROUND) * (pow(tempOld[2], 2) + pow(TGROUND, 2)) / RG3;
+		HRG3 = radTranCoef(epsshingles, tempOld[2], TGROUND, FG, 0);
 		
 		// NODE 1 IS ATTIC AIR
 		if(mCeiling >= 0) {
@@ -2631,4 +2593,9 @@ double heatTranCoef(double temp1, double temp2, double velocity) {
 	double tFilm = (temp1 + temp2) / 2;                					// film temperature
 	double hForced = (18.192 - .0378 * tFilm) * pow(velocity, 0.8);   // force convection from Ford
 	return pow((pow(hNatural, 3) + pow(hForced, 3)), 1.0 / 3.0);      // combine using cube
+}
+
+double radTranCoef(double emissivity, double temp1, double temp2, double shapeFactor, double areaRatio) {
+	double rT = (1 - emissivity) / emissivity + 1 / shapeFactor + (1 - emissivity) / emissivity * areaRatio;
+	return SIGMA * (temp1 + temp2) * (pow(temp1, 2) + pow(temp2, 2)) / rT;
 }

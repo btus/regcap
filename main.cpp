@@ -1216,9 +1216,9 @@ cout << "HumContType:" << HumContType << " LowMonths[1]" << LowMonths[1] << " Lo
 					double airDensitySUP = airDensityRef * airTempRef / tempSupply;		// Supply Duct Air Density
 					double airDensityRET = airDensityRef * airTempRef / tempReturn;		// Return Duct Air Density
 
-					int NOONMIN = 720 - ((hour * 60) + minute);
-					double HA = M_PI * .25 * NOONMIN / 180;			// Hour Angle
-					double L = M_PI * latitude / 180;					// LATITUDE
+					int noonMin = 720 - ((hour * 60) + minute);
+					double HA = M_PI * 0.25 * noonMin / 180.0;			// Hour Angle
+					double L = M_PI * latitude / 180.0;					// Latitude in radians
 
 					double SBETA = cos(L) * cos(dec) * cos(HA) + sin(L) * sin(dec);
 					double CBETA = sqrt(1 - pow(SBETA, 2));
