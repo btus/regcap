@@ -127,7 +127,6 @@ void sub_heat (
 	double& retrho, 
 	int& pRef, 
 	double& HROUT, 
-	double& diffuse, 
 	double& UA, 
 	double& matticenvin, 
 	double& matticenvout, 
@@ -137,10 +136,7 @@ void sub_heat (
 	double& mSupAHoff, 
 	double& mRetAHoff, 
 	double& solgain, 
-	double& windowS, 
-	double& windowN, 
-	double& windowWE, 
-	double& winShadingCoef, 
+	double& tsolair, 
 	double& mFanCycler, 
 	double& roofPeakHeight, 
 	double& h, 
@@ -161,12 +157,6 @@ void sub_heat (
 	double& mHRV,
 	double& HRV_ASE,
 	double& mHRV_AH,
-	double& SBETA,
-	double& CBETA,
-	double& L,
-	double& dec,
-	double& Csol,
-	int& idirect,
 	double& capacityc,
 	double& capacityh,
 	double& evapcap,
@@ -232,12 +222,12 @@ void sub_heat (
 	//double R7, RG3, RG5, RS3, RS5;
 	double TGROUND;
 	double alpha3, alpha5;
-	double phi, sphi, cphi, cphi2;
-	double incsolarS, incsolarW, incsolarN, incsolarE, incsolarvar;
-	double S;
-	double Gamma;
-	double ct;
-	double tsolair;
+	//double phi, sphi, cphi, cphi2;
+	//double incsolarS, incsolarW, incsolarN, incsolarE, incsolarvar;
+	//double S;
+	//double Gamma;
+	//double ct;
+	//double tsolair;
 
 
 	// Node Identification (NOTE: The C++ array indices are one less than the node number e.g. node 1 = 0, node 2 = 1 etc.)
@@ -826,7 +816,7 @@ void sub_heat (
 		// with the house air to increase its effective thermal mass
 		// August 99, 95% of solar gain goes to house mass, 5% to house air now
 		// Solar gain also calculate more carefully
-
+/*
 		for(int i=0; i < 4; i++) {
 			S = ((i+1) - 1) * M_PI / 2;
 			cphi = (SBETA * sin(L) - sin(dec)) / CBETA / cos(L);
@@ -856,7 +846,7 @@ void sub_heat (
 			if(ct <= -.2) {
 				incsolar[i] = Csol * idirect * .45;
 			} else {
-				incsolar[i] = Csol * idirect * (.55 + .437 * CBETA + .313 * pow(CBETA, 2));
+				incsolar[i] = Csol * idirect * (.55 + .437 * ct + .313 * pow(ct, 2));
 			}
 		}
 
@@ -869,7 +859,7 @@ void sub_heat (
 
 		// incident solar radiations averaged for solair temperature
 		incsolarvar = (incsolarN + incsolarS + incsolarE + incsolarW) / 4;
-		
+*/		
 		A[12][12] = M13 * cp13 / dtau + H13 * A13 + hr7 * A7;
 		A[12][15] = -H13 * A13;
 		A[12][6] = -hr7 * A7;
@@ -910,7 +900,7 @@ void sub_heat (
 		// NODE 16 AIR IN HOUSE
 		// use solair tmeperature for house UA
 		// the .03 is from 1993 AHSRAE Fund. SI 26.5
-		tsolair = incsolarvar * .03 + tempOut;
+		//tsolair = incsolarvar * .03 + tempOut;
 
 		if(mCeiling >= 0) {
 			// flow from attic to house

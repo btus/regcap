@@ -256,13 +256,10 @@ int main(int argc, char *argv[], char* envp[])
 		double RHtot70 = 0; //cumulative sum of index value (0 or 1) if RHhouse > 70
 		double RHexcAnnual70 = 0; //annual fraction of the year where RHhouse > 70
 		double hret = 28;				// Initial number for hret in Btu/lb
-		double latitude; 
-		double altitude;
-		string siteID;
-		string siteName;
-		string state;
-		int timeZone;
+		double latitude;
 		double longitude;
+		int timeZone;
+		double altitude;
 
 		// Open moisture output file
 		ofstream moistureFile;
@@ -718,24 +715,24 @@ cout << "HumContType:" << HumContType << " LowMonths[1]" << LowMonths[1] << " Lo
 			//double siteID = row[0];
 			//string siteName = row[1];
 			//string State = row[2];
-			//int timeZone = row[3];
+			timeZone = row[3];
 			latitude = row[4];
-			//double longitude = row[5];
+			longitude = row[5];
 			altitude = row[6];
-			cout << "ID=" << row[0] << " Name=" << row[1] << " State=" << row[2] << endl;
-			cout << "TZ=" << row[3] << " lat=" << latitude << " long=" << row[5] << " alt=" << altitude << endl;
+			cout << "ID=" << row[0] << "TZ=" << timeZone << " lat=" << latitude << " long=" << longitude << " alt=" << altitude << endl;
 			weatherFile >> row;					// drop header
-			begin = readTMY3(weatherFile);		// duplicate first hour for interpolation of 0->1
+			begin = readTMY3(weatherFile);	// duplicate first hour for interpolation of 0->1
 			end = begin;
 			tmyWeather = true;
 		}
 		else {							// 1 minute data
 			weatherFile.close();
 			weatherFile.open(weatherFileName);
-			weatherFile >> latitude >> altitude;
+			weatherFile >> latitude >> longitude >> timeZone >> altitude;
 			tmyWeather = false;
 			cout << "1 minute:" << "Lat:" << latitude << " Alt:" << altitude << endl;
 		}
+		latitude = M_PI * latitude / 180.0;					// convert to radians
 		// set 1 = air handler off, and house air temp below setpoint minus 0.5 degrees
 		// set 0 = air handler off, but house air temp above setpoint minus 0.5 degrees
 		int set = 0;
@@ -976,7 +973,8 @@ cout << "HumContType:" << HumContType << " LowMonths[1]" << LowMonths[1] << " Lo
 		double mAtticOUT = 0;
 		double TSKY = 0;
 		double w = 0;
-		double solgain = 0;
+		double solgain;
+		double tsolair;
 		double mHouse = 0;
 		double qHouse = 0;
 		double houseACH = 0;
@@ -1042,69 +1040,73 @@ cout << "HumContType:" << HumContType << " LowMonths[1]" << LowMonths[1] << " Lo
 			else
 				weekend = 0;
 
-			// Finding the month for solar radiation calculations
-			// SOLAR DECLINATION FROM ASHRAE P.27.2, 27.9IP  BASED ON 21ST OF EACH MONTH
+			// Solar declination and equation of time from ASHRAE HOF 2009 SI ch14
+			double dec = 23.45 * sin(360 * (day + 284) / 365 * M_PI / 180) * M_PI / 180;
+			double gamma = 360 * (day - 1) / 365 * M_PI / 180;
+			double equationOfTime = 2.2918 * (0.0075 + 0.1868 * cos(gamma) - 3.2077 * sin(gamma)
+										 - 1.4615 * cos(2 * gamma) - 4.089 * sin(2 * gamma));
+			double timeCorrection = equationOfTime / 60 + (longitude - 15 * timeZone) / 15;
+			// month used for humidity control. Csol for calculating diffuse - need to change
 			int month;
-			double dec;
 			double Csol;
 			if(day <= 31) {
 				month = 1;
-				dec = -20 * M_PI / 180;
+				//dec = -20 * M_PI / 180;
 				Csol = .103;
 			}
 			if(day > 31 && day <= 59) {
 				month = 2;
-				dec = -10.8 * M_PI / 180;
+				//dec = -10.8 * M_PI / 180;
 				Csol = .104;
 			}
 			if(day > 60 && day <= 90) {
 				month = 3;
-				dec = 0;
+				//dec = 0;
 				Csol = .109;
 			}
 			if(day > 91 && day <= 120) {
 				month = 4;
-				dec = 11.6 * M_PI / 180;
+				//dec = 11.6 * M_PI / 180;
 				Csol = .12;
 			}
 			if(day > 121 && day <= 151) {
 				month = 5;
-				dec = 20 * M_PI / 180;
+				//dec = 20 * M_PI / 180;
 				Csol = .13;
 			}
 			if(day > 152 && day <= 181) {
 				month = 6;
-				dec = 23.45 * M_PI / 180;
+				//dec = 23.45 * M_PI / 180;
 				Csol = .137;
 			}
 			if(day > 182 && day <= 212) {
 				month = 7;
-				dec = 20.6 * M_PI / 180;
+				//dec = 20.6 * M_PI / 180;
 				Csol = .138;
 			}
 			if(day > 213 && day <= 243) {
 				month = 8;
-				dec = 12.3 * M_PI / 180;
+				//dec = 12.3 * M_PI / 180;
 				Csol = .134;
 			}
 			if(day > 244 && day <= 273) {
 				month = 9;
-				dec = 0;
+				//dec = 0;
 				Csol = .121;
 			}
 			if(day > 274 && day <= 304) {
 				month = 10;
-				dec = -10.5 * M_PI / 180;
+				//dec = -10.5 * M_PI / 180;
 				Csol = .111;
 			}
 			if(day > 305 && day <= 334) {
 				month = 11;
-				dec = -19.8 * M_PI / 180;
+				//dec = -19.8 * M_PI / 180;
 				Csol = .106;
 			}
 			if(day > 335) {
 				month = 12;
-				dec = -23.45 * M_PI / 180;
+				//dec = -23.45 * M_PI / 180;
 				Csol = .103;
 			}
 
@@ -1216,35 +1218,58 @@ cout << "HumContType:" << HumContType << " LowMonths[1]" << LowMonths[1] << " Lo
 					double airDensitySUP = airDensityRef * airTempRef / tempSupply;		// Supply Duct Air Density
 					double airDensityRET = airDensityRef * airTempRef / tempReturn;		// Return Duct Air Density
 
-					int noonMin = 720 - ((hour * 60) + minute);
-					double HA = M_PI * 0.25 * noonMin / 180.0;			// Hour Angle
-					double L = M_PI * latitude / 180.0;					// Latitude in radians
+					//int noonMin = 720 - ((hour * 60) + minute);
+					//double HA = M_PI * 0.25 * noonMin / 180.0;		// Hour Angle
+					double hourAngle = 15 * (hour + minute / 60.0 + timeCorrection - 12) * M_PI / 180;
 
-					double SBETA = cos(L) * cos(dec) * cos(HA) + sin(L) * sin(dec);
-					double CBETA = sqrt(1 - pow(SBETA, 2));
-					double CTHETA = CBETA;
-
+					double sinBeta = cos(latitude) * cos(dec) * cos(hourAngle) + sin(latitude) * sin(dec);
+					double beta = asin(sinBeta);
+					double cosBeta = cos(beta);  // just for passing to sub_heat for now
+					//double CBETA = sqrt(1 - pow(sinBeta, 2));
+					//double CTHETA = CBETA;
 					// accounting for slight difference in solar measured data from approximate geometry calcualtions
-					if(SBETA < 0)
-						SBETA = 0;
+					//if(sinBeta < 0)
+					//	sinBeta = 0;
 
-					double hdirect = SBETA * weather.directNormal;
+					double hdirect = sinBeta * weather.directNormal;
 					double diffuse = weather.globalHorizontal - hdirect;
 
 					// FOR SOUTH ROOF
-					double SIGMA = M_PI * roofPitch / 180;		//ROOF PITCH ANGLE
-					CTHETA = CBETA * 1 * sin(SIGMA) + SBETA * cos(SIGMA);
-					double ssolrad = weather.directNormal * CTHETA + diffuse;
+					double phi = acos((sinBeta * sin(latitude) - sin(dec)) / (cos(beta) * cos(latitude)));
+					//double phi = 0;
+					double sigma = M_PI * roofPitch / 180;				// roof tilt in radians
+					double cosTheta = cos(beta) * cos(phi - 0) * sin(sigma) + sinBeta * cos(sigma);
+					double ssolrad = weather.directNormal * cosTheta + diffuse;
 
 					// FOR NORTH ROOF
-					CTHETA = CBETA * -1 * sin(SIGMA) + SBETA * cos(SIGMA);
+					cosTheta = cos(beta) * cos(phi - M_PI) * sin(sigma) + sinBeta * cos(sigma);
 
-					if(CTHETA < 0)
-						CTHETA = 0;
+					if(cosTheta < 0)
+						cosTheta = 0;
 
-					double nsolrad = weather.directNormal * CTHETA + diffuse;
+					double nsolrad = weather.directNormal * cosTheta + diffuse;
+					
+					// calcs from sub_heat()
+					double totalSolar = 0;
+					double incsolar[4];
+					for(int i=0; i < 4; i++) {
+						double surfAz = i * M_PI / 2;
+			         cosTheta = cos(beta) * cos(phi - surfAz);
+						if(cosTheta <= -.2) {
+							incsolar[i] = Csol * weather.directNormal * .45;
+						} else {
+							incsolar[i] = Csol * weather.directNormal * (.55 + .437 * cosTheta + .313 * pow(cosTheta, 2));
+						}
+						totalSolar += incsolar[i];
+					}
+					solgain = winShadingCoef * (windowS * incsolar[0] + windowWE / 2 * incsolar[1] + windowN * incsolar[2] + windowWE / 2 * incsolar[3]);
+					double tsolair = totalSolar / 4 * .03 + weather.dryBulb;
 
-
+//if(diffuse < 0) {
+//	cout << "min=" << minuteYear << " lat=" << latitude << " dec=" << dec << " HA=" << hourAngle << " sinBeta=" << sinBeta;
+//	cout << "direct=" << weather.directNormal << " diffuse=" << diffuse << " ssol=" << ssolrad << " nsol=" << nsolrad << endl;
+//	cout << "cphi =" << cphi << " phi=" << phi << endl;
+//}
 					// 7 day outdoor temperature running average. If <= 60F we're heating. If > 60F we're cooling
 					if(runningAverageTemp <= (60 - 32) * 5.0 / 9.0)
 						hcFlag = 1;					// Heating
@@ -2953,9 +2978,9 @@ cout << "HumContType:" << HumContType << " LowMonths[1]" << LowMonths[1] << " Lo
 						sub_heat(weather.dryBulb, mCeiling, AL4, weather.windSpeed, ssolrad, nsolrad, tempOld, atticVolume, houseVolume, weather.skyCover, b, ERRCODE, TSKY,
 							floorArea, roofPitch, ductLocation, mSupReg, mRetReg, mRetLeak, mSupLeak, mAH, supRval, retRval, supDiameter,
 							retDiameter, supArea, retArea, supThickness, retThickness, supVolume, retVolume, supCp, retCp, supVel, retVel, suprho,
-							retrho, weather.pressure, weather.humidityRatio, diffuse, UA, matticenvin, matticenvout, mHouseIN, mHouseOUT, planArea, mSupAHoff,
-							mRetAHoff, solgain, windowS, windowN, windowWE, winShadingCoef, mFanCycler, roofPeakHeight, h, retLength, supLength,
-							roofType, M1, M12, M15, M16, roofRval, rceil, AHflag, dtau, mERV_AH, ERV_SRE, mHRV, HRV_ASE, mHRV_AH, SBETA, CBETA, L, dec, Csol, weather.directNormal,
+							retrho, weather.pressure, weather.humidityRatio, UA, matticenvin, matticenvout, mHouseIN, mHouseOUT, planArea, mSupAHoff,
+							mRetAHoff, solgain, tsolair, mFanCycler, roofPeakHeight, h, retLength, supLength,
+							roofType, M1, M12, M15, M16, roofRval, rceil, AHflag, dtau, mERV_AH, ERV_SRE, mHRV, HRV_ASE, mHRV_AH,
 							capacityc, capacityh, evapcap, internalGains, bsize, airDensityIN, airDensityOUT, airDensityATTIC, airDensitySUP, airDensityRET, numStories, storyHeight);
 
 						if(abs(b[0] - tempAttic) < .2) {	// Testing for convergence
