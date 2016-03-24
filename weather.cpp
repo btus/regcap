@@ -109,3 +109,29 @@ weatherData readOneMinuteWeather(ifstream& file) {
 
 	return result;
 }
+
+double surfaceInsolation(double direct, double diffuse, double beta, double sigma, double gamma) {
+	double cosTheta;
+	double Y;
+	double Eb = 0;
+	double Ed;
+	double Er;
+	
+	if(sigma < M_PI /2) {	// roof
+		cosTheta = cos(beta) * cos(gamma);
+		Y = max(0.45,.55 + .437 * cosTheta + .313 * pow(cosTheta, 2));
+		if(abs(gamma) < M_PI / 2) {
+			Eb = cosTheta * direct;
+		}
+		Ed = diffuse * Y;
+	}
+	else {						// wall
+		if(abs(gamma) < M_PI / 2) {
+			cosTheta = cos(beta) * cos(gamma) * sin(sigma) + sin(beta) * cos(sigma);
+			Eb = cosTheta * direct;
+		}
+		Ed = diffuse * (1 + cos(sigma)) / 2;
+	}
+	Er = (direct * sin(beta) + diffuse) * 0.2 * (1 - cos(sigma)) / 2;
+	return Eb + Ed + Er;
+} 

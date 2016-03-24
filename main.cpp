@@ -1224,7 +1224,7 @@ cout << "HumContType:" << HumContType << " LowMonths[1]" << LowMonths[1] << " Lo
 
 					double sinBeta = cos(latitude) * cos(dec) * cos(hourAngle) + sin(latitude) * sin(dec);
 					double beta = asin(sinBeta);
-					double cosBeta = cos(beta);  // just for passing to sub_heat for now
+					double phi = copysign(acos((sinBeta * sin(latitude) - sin(dec)) / (cos(beta) * cos(latitude))),hourAngle);
 					//double CBETA = sqrt(1 - pow(sinBeta, 2));
 					//double CTHETA = CBETA;
 					// accounting for slight difference in solar measured data from approximate geometry calcualtions
@@ -1232,44 +1232,47 @@ cout << "HumContType:" << HumContType << " LowMonths[1]" << LowMonths[1] << " Lo
 					//	sinBeta = 0;
 
 					double hdirect = sinBeta * weather.directNormal;
-					double diffuse = weather.globalHorizontal - hdirect;
+					double diffuse = max(0.0,weather.globalHorizontal - hdirect);
 
 					// FOR SOUTH ROOF
-					double phi = acos((sinBeta * sin(latitude) - sin(dec)) / (cos(beta) * cos(latitude)));
 					//double phi = 0;
 					double sigma = M_PI * roofPitch / 180;				// roof tilt in radians
-					double cosTheta = cos(beta) * cos(phi - 0) * sin(sigma) + sinBeta * cos(sigma);
-					double ssolrad = weather.directNormal * cosTheta + diffuse;
+					//double cosTheta = cos(beta) * cos(phi - 0) * sin(sigma) + sinBeta * cos(sigma);
+					//double ssolrad = weather.directNormal * cosTheta + diffuse;
 
 					// FOR NORTH ROOF
-					cosTheta = cos(beta) * cos(phi - M_PI) * sin(sigma) + sinBeta * cos(sigma);
+					//cosTheta = cos(beta) * cos(phi - M_PI) * sin(sigma) + sinBeta * cos(sigma);
 
-					if(cosTheta < 0)
-						cosTheta = 0;
+					//if(cosTheta < 0)
+					//	cosTheta = 0;
 
-					double nsolrad = weather.directNormal * cosTheta + diffuse;
+					//double nsolrad = weather.directNormal * cosTheta + diffuse;
+					double ssolrad = surfaceInsolation(weather.directNormal, diffuse, beta, sigma, phi - 0);
+					double nsolrad = surfaceInsolation(weather.directNormal, diffuse, beta, sigma, phi - M_PI);
 					
 					// calcs from sub_heat()
 					double totalSolar = 0;
 					double incsolar[4];
 					for(int i=0; i < 4; i++) {
-						double surfAz = i * M_PI / 2;
-			         cosTheta = cos(beta) * cos(phi - surfAz);
+						double psi = i * M_PI / 2;
+			         /* cosTheta = cos(beta) * cos(phi - psi);
 						if(cosTheta <= -.2) {
 							incsolar[i] = Csol * weather.directNormal * .45;
 						} else {
 							incsolar[i] = Csol * weather.directNormal * (.55 + .437 * cosTheta + .313 * pow(cosTheta, 2));
-						}
+						} */
+						incsolar[i] = surfaceInsolation(weather.directNormal, diffuse, beta, M_PI/2, phi - psi);
 						totalSolar += incsolar[i];
 					}
 					solgain = winShadingCoef * (windowS * incsolar[0] + windowWE / 2 * incsolar[1] + windowN * incsolar[2] + windowWE / 2 * incsolar[3]);
 					double tsolair = totalSolar / 4 * .03 + weather.dryBulb;
-
-//if(diffuse < 0) {
-//	cout << "min=" << minuteYear << " lat=" << latitude << " dec=" << dec << " HA=" << hourAngle << " sinBeta=" << sinBeta;
-//	cout << "direct=" << weather.directNormal << " diffuse=" << diffuse << " ssol=" << ssolrad << " nsol=" << nsolrad << endl;
-//	cout << "cphi =" << cphi << " phi=" << phi << endl;
-//}
+/*
+cout << "time=" << day << ":" << hour << ":" << minute << ":";
+cout << " direct=" << weather.directNormal << " diffuse=" << diffuse << " ssol=" << ssolrad << " nsol=" << nsolrad;
+cout << " incS=" << incsolar[0] << " incW=" << incsolar[1] << " incN=" << incsolar[2] << " incE=" << incsolar[3];
+cout << " totalSolar=" << totalSolar << " solargain=" << solgain << " tsolair=" << tsolair << endl;
+if(minuteYear > 1000) return 0;
+*/
 					// 7 day outdoor temperature running average. If <= 60F we're heating. If > 60F we're cooling
 					if(runningAverageTemp <= (60 - 32) * 5.0 / 9.0)
 						hcFlag = 1;					// Heating
