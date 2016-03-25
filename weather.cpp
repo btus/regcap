@@ -110,28 +110,46 @@ weatherData readOneMinuteWeather(ifstream& file) {
 	return result;
 }
 
+/*
+* surfaceInsolation()
+*
+* Calculates solar irradiance incident on a surface from direct beam, diffuse, and reflected insolation
+* From ASHRAE HOF (2009 SI) chapter 14
+* @param direct - direct beam insolation (W/m2)
+* @param diffuse - total diffuse insolation (W/m2)
+* @param beta - solar altitude angle (radians)
+* @param sigma - tilt angle of surface (radians)
+* @param gamma - surface-solar azimuth angle (phi - psi) (radians)
+* @return surface solar insolation (W/m2)
+*/
+
 double surfaceInsolation(double direct, double diffuse, double beta, double sigma, double gamma) {
-	double cosTheta;
-	double Y;
-	double Eb = 0;
-	double Ed;
-	double Er;
+	double cosTheta;		// cosine of angle of incidence, eqn (22)
+	double Y;				// ratio of vertical surface to clear-sky diffuse, eqn (28)
+	double Eb = 0;			// direct beam component, eqn (26)
+	double Ed;				// diffuse component, 2001 IP, ch29, table 14
+	double Er;				// reflected component, eqn (31)
 	
-	if(sigma < M_PI /2) {	// roof
+	if(sigma < M_PI / 2) {	// roofs
+		if(abs(gamma) < M_PI / 2) {
+			cosTheta = cos(beta) * cos(gamma) * sin(sigma) + sin(beta) * cos(sigma);
+			Eb = cosTheta * direct;
+		}
+		// this is the diffuse component from the 2001 IP edition, pg 29.14.
+		// Equation (29) in 2009 results in multipliers greater than 1 which does not make sense.
+		Ed = diffuse * (1 + cos(sigma)) / 2;
+		Er = (direct * sin(beta) + diffuse) * 0.2 * (1 - cos(sigma)) / 2;
+		//cout << "Roof: Eb=" << Eb << " Ed=" << Ed << " Er=" << Er << endl;
+	}
+	else {						// walls
 		cosTheta = cos(beta) * cos(gamma);
 		Y = max(0.45,.55 + .437 * cosTheta + .313 * pow(cosTheta, 2));
 		if(abs(gamma) < M_PI / 2) {
 			Eb = cosTheta * direct;
 		}
 		Ed = diffuse * Y;
+		Er = (direct * sin(beta) + diffuse) * 0.2 * 0.5;
+		//cout << "Wall: Eb=" << Eb << " Ed=" << Ed << " Er=" << Er << endl;
 	}
-	else {						// wall
-		if(abs(gamma) < M_PI / 2) {
-			cosTheta = cos(beta) * cos(gamma) * sin(sigma) + sin(beta) * cos(sigma);
-			Eb = cosTheta * direct;
-		}
-		Ed = diffuse * (1 + cos(sigma)) / 2;
-	}
-	Er = (direct * sin(beta) + diffuse) * 0.2 * (1 - cos(sigma)) / 2;
 	return Eb + Ed + Er;
 } 

@@ -57,9 +57,9 @@ void f_soffitFlow(double& airDensityOUT, double& airDensityATTIC, double& CP, do
 
 void f_atticFanFlow(fan_struct& atticFan, double& airDensityOUT, double& airDensityATTIC);
 
-double heatTranCoef(double temp1, double temp2, double velocity);
+double heatTranCoef(double tempi, double tempa, double velocity);
 
-double radTranCoef(double emissivity, double temp1, double temp2, double shapeFactor, double areaRatio);
+double radTranCoef(double emissivity, double tempi, double tempj, double shapeFactor, double areaRatio);
 
 // ----- MatSEqn forward declarations -----
 /*
@@ -812,54 +812,9 @@ void sub_heat (
 		}
 
 		// node 13 is the mass of the structure of the house that interacts
-
 		// with the house air to increase its effective thermal mass
-		// August 99, 95% of solar gain goes to house mass, 5% to house air now
-		// Solar gain also calculate more carefully
-/*
-		for(int i=0; i < 4; i++) {
-			S = ((i+1) - 1) * M_PI / 2;
-			cphi = (SBETA * sin(L) - sin(dec)) / CBETA / cos(L);
-			cphi2 = pow(cphi, 2);
+		// 95% of solar gain goes to house mass, 5% to house air
 
-			if(cphi == 1) {
-				sphi = sqrt(1 - cphi2);
-			} else {
-				sphi = 0;
-			}
-
-			if(cphi == 0) {
-				if(sphi > 0) {
-					phi = M_PI / 2;
-				} else {
-					phi = -M_PI / 2;
-				}
-			} else if(cphi == 1) {
-				phi = 0;
-			} else {
-				phi = atan(sphi / cphi);
-			}
-
-			Gamma = phi - S;
-			ct = CBETA * cos(Gamma);
-
-			if(ct <= -.2) {
-				incsolar[i] = Csol * idirect * .45;
-			} else {
-				incsolar[i] = Csol * idirect * (.55 + .437 * ct + .313 * pow(ct, 2));
-			}
-		}
-
-		incsolarS = incsolar[0];
-		incsolarW = incsolar[1];
-		incsolarN = incsolar[2];
-		incsolarE = incsolar[3];
-
-		solgain = winShadingCoef * (windowS * incsolarS + windowWE / 2 * incsolarW + windowN * incsolarN + windowWE / 2 * incsolarE);
-
-		// incident solar radiations averaged for solair temperature
-		incsolarvar = (incsolarN + incsolarS + incsolarE + incsolarW) / 4;
-*/		
 		A[12][12] = M13 * cp13 / dtau + H13 * A13 + hr7 * A7;
 		A[12][15] = -H13 * A13;
 		A[12][6] = -hr7 * A7;
@@ -899,8 +854,6 @@ void sub_heat (
 
 		// NODE 16 AIR IN HOUSE
 		// use solair tmeperature for house UA
-		// the .03 is from 1993 AHSRAE Fund. SI 26.5
-		//tsolair = incsolarvar * .03 + tempOut;
 
 		if(mCeiling >= 0) {
 			// flow from attic to house
@@ -2578,14 +2531,38 @@ int matbs(double A[][ArraySize], double* b, double* x, int* rpvt, int* cpvt, int
 	return 0;
 }
 
-double heatTranCoef(double temp1, double temp2, double velocity) {
-	double hNatural = 3.2 * pow(abs(temp1 - temp2), 1.0 / 3.0); 		// Natural convection from Ford
-	double tFilm = (temp1 + temp2) / 2;                					// film temperature
-	double hForced = (18.192 - .0378 * tFilm) * pow(velocity, 0.8);   // force convection from Ford
+/*
+* heatTranCoef()
+*
+* Calculates heat transfer coefficient (hT) using combination of natural and forced convection from Ford
+* From Walker (1993) eqn 3-41, 3-55
+* @param tempi - surface temperature (deg K)
+* @param tempa - air temperature (deg K)
+* @param flow velocity - (m/s)
+* @return heat transfer coefficient (W/m2K)
+*/
+
+double heatTranCoef(double tempi, double tempa, double velocity) {
+	double hNatural = 3.2 * pow(abs(tempi - tempa), 1.0 / 3.0); 		// Natural convection from Ford
+	double tFilm = (tempi + tempa) / 2;                					// film temperature
+	double hForced = (18.192 - .0378 * tFilm) * pow(velocity, 0.8);   // forced convection from Ford
 	return pow((pow(hNatural, 3) + pow(hForced, 3)), 1.0 / 3.0);      // combine using cube
 }
 
-double radTranCoef(double emissivity, double temp1, double temp2, double shapeFactor, double areaRatio) {
+/*
+* radTranCoef()
+*
+* Calculates radiation heat transfer coefficient (hR) using linearized solution from Holman.
+* From Walker (1993) eqn 3-23
+* @param emissivity - surface emissivity
+* @param tempi - surface temperature of first surface (deg K)
+* @param tempj - surface temperature of second surface (deg K)
+* @param shapeFactor - view factor between surfaces Fi-j
+* @param areaRatio - ratio of surface areas (Ai/Aj)
+* @return heat transfer coefficient (W/m2K)
+*/
+
+double radTranCoef(double emissivity, double tempi, double tempj, double shapeFactor, double areaRatio) {
 	double rT = (1 - emissivity) / emissivity + 1 / shapeFactor + (1 - emissivity) / emissivity * areaRatio;
-	return SIGMA * (temp1 + temp2) * (pow(temp1, 2) + pow(temp2, 2)) / rT;
+	return SIGMA * (tempi + tempj) * (pow(tempi, 2) + pow(tempj, 2)) / rT;
 }
