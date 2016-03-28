@@ -3181,7 +3181,7 @@ if(minuteYear > 1000) return 0;
 
 					if(RHhouse >= 60){ //RHind60 and 70 count the minutes where high RH occurs
 						RHind60 = 1;
-						HumidityIndex = (RHhouse - 60) * (1 / (100 - 60));
+						HumidityIndex = (RHhouse - 60) * (1.0 / (100 - 60));
 					} else {
 						RHind60 = 0;
 						HumidityIndex = 0;
