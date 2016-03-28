@@ -227,9 +227,6 @@ int main(int argc, char *argv[], char* envp[])
 		int LowMonths[3];
 		double HiMonthDose;
 		double LowMonthDose;
-		double HumidityIndex = 0;
-		double HumidityIndex_Sum = 0;
-		double HumidityIndex_Avg = 0;
 		
 		// Zeroing the variables to create the sums for the .ou2 file
 		long int minuteYear = 1;
@@ -992,6 +989,9 @@ cout << "HumContType:" << HumContType << " LowMonths[1]" << LowMonths[1] << " Lo
 		double MAventLoad = 0; //Moist-air enthaply load [kJ/min]. Brennan added these elements for calculating ventilation loads.
 		double TotalDAventLoad = 0; //Brennan added these elements for calculating ventilation loads [kJ].
 		double TotalMAventLoad = 0; //Brennan added these elements for calculating ventilation loads [kJ].
+		double HumidityIndex = 0;
+		double HumidityIndex_Sum = 0;
+		double HumidityIndex_Avg = 0;
 
 		vector<double> averageTemp (0);	// Array to track the 7 day running average
 
