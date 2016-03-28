@@ -3179,18 +3179,19 @@ if(minuteYear > 1000) return 0;
 
 					//RHhouse = 100 * (pRef*(HR[3]/0.621945))/(1+(HR[3]/0.621945)) / (exp(77.345+(0.0057*tempHouse)-(7235/tempHouse))/(pow(tempHouse,8.2))); //This was Brennan's old rh calculation (used during smart ventilatoin humidity control), which was correct to within ~0.01% or less at possible house temperatures 15-30C. 
 
-					if(RHhouse >= 60) //RHind60 and 70 count the minutes where high RH occurs
+					if(RHhouse >= 60){ //RHind60 and 70 count the minutes where high RH occurs
 						RHind60 = 1;
 						HumidityIndex = (RHhouse - 60) * (1 / (100 - 60));
-					else
+					} else {
 						RHind60 = 0;
 						HumidityIndex = 0;
-
-					if(RHhouse >= 70)
+					}
+					
+					if(RHhouse >= 70){
 						RHind70 = 1;
-					else
+					} else {
 						RHind70 = 0;
-						
+					}	
 						
 
 					RHtot60 = RHtot60 + RHind60; //These are summed for the year and summarized in the output file. 
