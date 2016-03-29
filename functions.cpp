@@ -870,15 +870,7 @@ void sub_heat (
 
 		if(ductLocation == 1) {
 			// ducts in house
-			if(mCeiling >= 0) {
-				// flow from attic to house
-				A[15][15] = M16 * cp16 / dtau + H7 * A7 + A11 * H11 + A14 * H14 - mRetReg * cp16 - mHouseOUT * cp16 + H13 * A13 + UA;
-				b[15] = M16 * cp16 * tempOld[15] / dtau + (mHouseIN - mHRV) * cp16 * tempOut + mHRV * cp16 * ((1 - HRV_ASE) * tempOut + HRV_ASE * tempOld[15]) + UA * tsolair + .05 * solgain + mSupReg * cp1 * toldcur[14] + mCeiling * cp1 * toldcur[0] + mSupAHoff * cp15 * toldcur[14] + mRetAHoff * cp12 * toldcur[11];
-			} else {
-				// flow from house to attic
-				A[15][15] = M16 * cp16 / dtau + H7 * A7 + A11 * H11 + A14 * H14 - mCeiling * cp16 - mSupAHoff * cp16 - mRetAHoff * cp16 - mRetReg * cp16 - mHouseOUT * cp16 + H13 * A13 + UA;
-				b[15] = M16 * cp16 * tempOld[15] / dtau + (mHouseIN - mHRV) * cp16 * tempOut + mHRV * cp16 * ((1 - HRV_ASE) * tempOut + HRV_ASE * tempOld[15]) + UA * tsolair + .05 * solgain + mSupReg * cp1 * toldcur[14];
-			}
+			A[15][15] += A11 * H11 + A14 * H14;
 			A[15][10] = -A11 * H11;
 			A[15][13] = -A14 * H14;
 		}
