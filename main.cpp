@@ -148,8 +148,9 @@ int main(int argc, char *argv[], char* envp[])
 		double storyHeight;			// Story height (m)
 		double houseLength;			// Long side of house (m) NOT USED IN CODE
 		double houseWidth;			// Short side of house (m) NOT USED IN CODE
-		double UAh;						// Heating U-Value (Thermal Conductance)
-		double UAc;						// Cooling U-Value (Thermal Conductance)
+		double uaWall;					// UA of opaque wall elements (walls and doors) (W/K)
+		double uaFloor;				// UA of floor or slab (no solar gain, not used for cooling load) (W/K)
+		double uaWindow;				// UA of windows for conductive gain (W/K)
 		int numWinDoor;
 		int numFans;
 		double windowWE;
@@ -332,8 +333,9 @@ int main(int argc, char *argv[], char* envp[])
 		buildingFile >> storyHeight;
 		buildingFile >> houseLength;
 		buildingFile >> houseWidth;
-		buildingFile >> UAh;
-		buildingFile >> UAc;
+		buildingFile >> uaWall;
+		buildingFile >> uaFloor;
+		buildingFile >> uaWindow;
 
 		// ====================== Venting Inputs (Windows/Doors)====================
 		buildingFile >> numWinDoor;
@@ -888,15 +890,16 @@ cout << "HumContType:" << HumContType << " LowMonths[1]" << LowMonths[1] << " Lo
 		double mHRV_AH = 0;		// Mass flow of HRV unit integrated with the Air Handler
 		double mERV_AH = 0;		// Mass flow of stand-alone ERV unit
 		double fanHeat;
-		double ventSumIN;			// Sum of all ventilation flows into house
+		double ventSumIN;				// Sum of all ventilation flows into house
 		double ventSumOUT;			// Sum of all ventilation flows out from house
 		double turnoverOld;			// Turnover from the pervious time step
 		double relDoseOld;			// Relative Dose from the previous time step
 		double nonRivecVentSumIN;	// Ventilation flows into house not including the RIVEC device flow
 		double nonRivecVentSumOUT;	// Ventilation flows out from house not including the RIVEC device flow
 		double nonRivecVentSum;		// Equals the larger of nonRivecVentSumIN or nonRivecVentSumOUT
-		double qAH;					// Air flowrate of the Air Handler (m^3/s)
-		double UA;
+		double qAH;						// Air flowrate of the Air Handler (m^3/s)
+		double uaSolAir;
+		double uaTOut;
 		double rceil;
 		double econodt = 0;			// Temperature difference between inside and outside at which the economizer operates
 		double supVelAH;			// Air velocity in the supply ducts
@@ -1276,8 +1279,9 @@ if(minuteYear > 1000) return 0;
 					*/
 					// ====================== HEATING THERMOSTAT CALCULATIONS ============================
 					if(hcFlag == 1) {
-						qAH = qAH_heat;              // Heating Air Flow Rate [m3/s]
-						UA = UAh;					 // Thermal Conductance [W/K]
+						qAH = qAH_heat;            // Heating Air Flow Rate [m3/s]
+						uaSolAir = uaWall;
+						uaTOut = uaFloor + uaWindow;
 						rceil = ceilRval_heat;
 
 						if(tempOld[15] > (heatThermostat[hour] + .5))
@@ -1285,9 +1289,9 @@ if(minuteYear > 1000) return 0;
 
 						if(AHflag == 0 || AHflag == 100) {
 							if(tempOld[15] <= (heatThermostat[hour] - .5))
-								set = 1;				// Air handler off, and tin below setpoint - 0.5 degrees
+								set = 1;					// Air handler off, and tin below setpoint - 0.5 degrees
 							else
-								set = 0;				// Air handler off, but tin above setpoint - 0.5 degrees
+								set = 0;					// Air handler off, but tin above setpoint - 0.5 degrees
 						}
 
 						if(tempOld[15] < (heatThermostat[hour] - .5))
@@ -1310,7 +1314,8 @@ if(minuteYear > 1000) return 0;
 					} else {
 						hcap = 0;
 						qAH = qAH_cool;						// Cooling Air Flow Rate
-						UA = UAc;
+						uaSolAir = uaWall;
+						uaTOut = uaWindow;
 						rceil = ceilRval_cool;
 						endrunon = 0;
 						prerunon = 0;
@@ -2969,7 +2974,7 @@ if(minuteYear > 1000) return 0;
 						sub_heat(weather.dryBulb, mCeiling, AL4, weather.windSpeed, ssolrad, nsolrad, tempOld, atticVolume, houseVolume, weather.skyCover, b, ERRCODE, TSKY,
 							floorArea, roofPitch, ductLocation, mSupReg, mRetReg, mRetLeak, mSupLeak, mAH, supRval, retRval, supDiameter,
 							retDiameter, supArea, retArea, supThickness, retThickness, supVolume, retVolume, supCp, retCp, supVel, retVel, suprho,
-							retrho, weather.pressure, weather.humidityRatio, UA, matticenvin, matticenvout, mHouseIN, mHouseOUT, planArea, mSupAHoff,
+							retrho, weather.pressure, weather.humidityRatio, uaSolAir, uaTOut, matticenvin, matticenvout, mHouseIN, mHouseOUT, planArea, mSupAHoff,
 							mRetAHoff, solgain, tsolair, mFanCycler, roofPeakHeight, h, retLength, supLength,
 							roofType, M1, M12, M15, M16, roofRval, rceil, AHflag, dtau, mERV_AH, ERV_SRE, mHRV, HRV_ASE, mHRV_AH,
 							capacityc, capacityh, evapcap, internalGains, bsize, airDensityIN, airDensityOUT, airDensityATTIC, airDensitySUP, airDensityRET, numStories, storyHeight);

@@ -127,7 +127,8 @@ void sub_heat (
 	double& retrho, 
 	int& pRef, 
 	double& HROUT, 
-	double& UA, 
+	double& uaSolAir,
+	double& uaTOut, 
 	double& matticenvin, 
 	double& matticenvout, 
 	double& mHouseIN, 
@@ -857,12 +858,15 @@ void sub_heat (
 
 		if(mCeiling >= 0) {
 			// flow from attic to house
-			A[15][15] = M16 * cp16 / dtau + H7 * A7 - mRetReg * cp16 - mHouseOUT * cp16 + H13 * A13 + UA;
-			b[15] = M16 * cp16 * tempOld[15] / dtau + (mHouseIN - mHRV) * cp16 * tempOut + mHRV * cp16 * (( 1 - HRV_ASE) * tempOut + HRV_ASE * tempOld[15]) + UA * tsolair + .05 * solgain + mSupReg * cp1 * toldcur[14] + mCeiling * cp1 * toldcur[0] + mSupAHoff * cp15 * toldcur[14] + mRetAHoff * cp12 * toldcur[11] + internalGains;
+			A[15][15] = M16 * cp16 / dtau + H7 * A7 - mRetReg * cp16 - mHouseOUT * cp16 + H13 * A13 + uaSolAir + uaTOut;
+			b[15] = M16 * cp16 * tempOld[15] / dtau + (mHouseIN - mHRV) * cp16 * tempOut + mHRV * cp16 * (( 1 - HRV_ASE) 
+				* tempOut + HRV_ASE * tempOld[15]) + uaSolAir * tsolair + uaTOut * tempOut + .05 * solgain + mSupReg * cp1 * toldcur[14] 
+				+ mCeiling * cp1 * toldcur[0] + mSupAHoff * cp15 * toldcur[14] + mRetAHoff * cp12 * toldcur[11] + internalGains;
 		} else {
 			// flow from house to attic
-			A[15][15] = M16 * cp16 / dtau + H7 * A7 - mCeiling * cp16 - mSupAHoff * cp16 - mRetAHoff * cp16 - mRetReg * cp16 - mHouseOUT * cp16 + H13 * A13 + UA;
-			b[15] = M16 * cp16 * tempOld[15] / dtau + (mHouseIN - mHRV) * cp16 * tempOut + mHRV * cp16 * ((1 - HRV_ASE) * tempOut + HRV_ASE * tempOld[15]) + UA * tsolair + .05 * solgain + mSupReg * cp1 * toldcur[14] + internalGains;
+			A[15][15] = M16 * cp16 / dtau + H7 * A7 - mCeiling * cp16 - mSupAHoff * cp16 - mRetAHoff * cp16 - mRetReg * cp16 - mHouseOUT * cp16 + H13 * A13 + uaSolAir + uaTOut;
+			b[15] = M16 * cp16 * tempOld[15] / dtau + (mHouseIN - mHRV) * cp16 * tempOut + mHRV * cp16 * ((1 - HRV_ASE)
+				* tempOut + HRV_ASE * tempOld[15]) + uaSolAir * tsolair + uaTOut * tempOut + .05 * solgain + mSupReg * cp1 * toldcur[14] + internalGains;
 		}
 
 		A[15][6] = -H7 * A7;

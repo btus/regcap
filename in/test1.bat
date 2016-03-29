@@ -1,2 +1,3 @@
 regcap.cfg
-btest
+sim_1_duct
+sim_1
