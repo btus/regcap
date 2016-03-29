@@ -329,7 +329,7 @@ int main(int argc, char *argv[], char* envp[])
 		buildingFile >> houseVolume;
 		buildingFile >> floorArea;
 		buildingFile >> planArea;
-		// buildingFile >> storyHeight  // not currently in file
+		buildingFile >> storyHeight;  // not currently in file
 		buildingFile >> houseLength;
 		buildingFile >> houseWidth;
 		buildingFile >> UAh;
