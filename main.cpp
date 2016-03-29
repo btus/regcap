@@ -133,23 +133,23 @@ int main(int argc, char *argv[], char* envp[])
 		string occupancyFileName;
 		string shelterFileName;
 		double C;
-		double n;		// Envelope Pressure Exponent
-		double h;		// Eaves Height [m]
-		double R;		// Ceiling Floor Leakage Sum
-		double X;		// Ceiling Floor Leakage Difference
-		int numFlues;			// Number of flues/chimneys/passive stacks
+		double n;						// Envelope Pressure Exponent
+		double h;						// Eaves Height [m]
+		double R;						// Ceiling Floor Leakage Sum
+		double X;						// Ceiling Floor Leakage Difference
+		int numFlues;					// Number of flues/chimneys/passive stacks
 		double flueShelterFactor;	// Shelter factor at the top of the flue (1 if the flue is higher than surrounding obstacles
-		int numPipes;				// Number of passive vents but appears to do much the same as flues
+		int numPipes;					// Number of passive vents but appears to do much the same as flues
 		double Hfloor;
-		string rowOrIsolated;			// House in a row (R) or isolated (any string other than R)
-		double houseVolume;		// Conditioned volume of house (m3)
-		double floorArea;		// Conditioned floor area (m2)
-		double planArea;		// Footprint of house (m2)
-		double storyHeight = 2.5;				// Story height (m)
-		double houseLength;		// Long side of house (m) NOT USED IN CODE
-		double houseWidth;		// Short side of house (m) NOT USED IN CODE
-		double UAh;				// Heating U-Value (Thermal Conductance)
-		double UAc;				// Cooling U-Value (Thermal Conductance)
+		string rowOrIsolated;		// House in a row (R) or isolated (any string other than R)
+		double houseVolume;			// Conditioned volume of house (m3)
+		double floorArea;				// Conditioned floor area (m2)
+		double planArea;				// Footprint of house (m2)
+		double storyHeight;			// Story height (m)
+		double houseLength;			// Long side of house (m) NOT USED IN CODE
+		double houseWidth;			// Short side of house (m) NOT USED IN CODE
+		double UAh;						// Heating U-Value (Thermal Conductance)
+		double UAc;						// Cooling U-Value (Thermal Conductance)
 		int numWinDoor;
 		int numFans;
 		double windowWE;
@@ -175,8 +175,8 @@ int main(int argc, char *argv[], char* envp[])
 		double retThickness;
 		double supRval;
 		double retRval;
-		double supLF0;						//Supply duct leakage fraction (e.g., 0.01 = 1% leakage).					
-		double retLF0;						//Return duct leakage fraction (e.g., 0.01 = 1% leakage)
+		double supLF0;					//Supply duct leakage fraction (e.g., 0.01 = 1% leakage).					
+		double retLF0;					//Return duct leakage fraction (e.g., 0.01 = 1% leakage)
 		double supLength;
 		double retLength;
 		double supDiameter;
@@ -191,9 +191,9 @@ int main(int argc, char *argv[], char* envp[])
 		double capacityraw;
 		double capacityari;
 		double EERari;
-		double hcapacity;		// Heating capacity [kBtu/h]
-		double fanPower_heating0;		// Heating fan power [W]
-		double fanPower_cooling0;		// Cooling fan power [W]
+		double hcapacity;				// Heating capacity [kBtu/h]
+		double fanPower_heating0;	// Heating fan power [W]
+		double fanPower_cooling0;	// Cooling fan power [W]
 		double charge;
 		double AFUE;				// Annual Fuel Utilization Efficiency for the furnace
 		int bathroomSchedule;	// Bathroom schedule file to use (1, 2 or 3)
@@ -329,7 +329,7 @@ int main(int argc, char *argv[], char* envp[])
 		buildingFile >> houseVolume;
 		buildingFile >> floorArea;
 		buildingFile >> planArea;
-		// buildingFile >> storyHeight  // not currently in file
+		buildingFile >> storyHeight;
 		buildingFile >> houseLength;
 		buildingFile >> houseWidth;
 		buildingFile >> UAh;
