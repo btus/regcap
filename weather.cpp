@@ -131,8 +131,8 @@ double surfaceInsolation(double direct, double diffuse, double beta, double sigm
 	double Er;				// reflected component, eqn (31)
 	
 	if(sigma < M_PI / 2) {	// roofs
-		if(abs(gamma) < M_PI / 2) {
-			cosTheta = cos(beta) * cos(gamma) * sin(sigma) + sin(beta) * cos(sigma);
+		cosTheta = cos(beta) * cos(gamma) * sin(sigma) + sin(beta) * cos(sigma);
+		if(acos(cosTheta) < M_PI / 2) {
 			Eb = cosTheta * direct;
 		}
 		// this is the diffuse component from the 2001 IP edition, pg 29.14.
@@ -144,7 +144,7 @@ double surfaceInsolation(double direct, double diffuse, double beta, double sigm
 	else {						// walls
 		cosTheta = cos(beta) * cos(gamma);
 		Y = max(0.45,.55 + .437 * cosTheta + .313 * pow(cosTheta, 2));
-		if(abs(gamma) < M_PI / 2) {
+		if(acos(cosTheta) < M_PI / 2) {
 			Eb = cosTheta * direct;
 		}
 		Ed = diffuse * Y;
