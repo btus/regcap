@@ -1050,68 +1050,43 @@ cout << "HumContType:" << HumContType << " LowMonths[1]" << LowMonths[1] << " Lo
 			double equationOfTime = 2.2918 * (0.0075 + 0.1868 * cos(gamma) - 3.2077 * sin(gamma)
 										 - 1.4615 * cos(2 * gamma) - 4.089 * sin(2 * gamma));
 			double timeCorrection = equationOfTime / 60 + (longitude - 15 * timeZone) / 15;
-			// month used for humidity control. Csol for calculating diffuse - need to change
+			// month used for humidity control.
 			int month;
-			double Csol;
 			if(day <= 31) {
 				month = 1;
-				//dec = -20 * M_PI / 180;
-				Csol = .103;
 			}
 			if(day > 31 && day <= 59) {
 				month = 2;
-				//dec = -10.8 * M_PI / 180;
-				Csol = .104;
 			}
 			if(day > 60 && day <= 90) {
 				month = 3;
-				//dec = 0;
-				Csol = .109;
 			}
 			if(day > 91 && day <= 120) {
 				month = 4;
-				//dec = 11.6 * M_PI / 180;
-				Csol = .12;
 			}
 			if(day > 121 && day <= 151) {
 				month = 5;
-				//dec = 20 * M_PI / 180;
-				Csol = .13;
 			}
 			if(day > 152 && day <= 181) {
 				month = 6;
-				//dec = 23.45 * M_PI / 180;
-				Csol = .137;
 			}
 			if(day > 182 && day <= 212) {
 				month = 7;
-				//dec = 20.6 * M_PI / 180;
-				Csol = .138;
 			}
 			if(day > 213 && day <= 243) {
 				month = 8;
-				//dec = 12.3 * M_PI / 180;
-				Csol = .134;
 			}
 			if(day > 244 && day <= 273) {
 				month = 9;
-				//dec = 0;
-				Csol = .121;
 			}
 			if(day > 274 && day <= 304) {
 				month = 10;
-				//dec = -10.5 * M_PI / 180;
-				Csol = .111;
 			}
 			if(day > 305 && day <= 334) {
 				month = 11;
-				//dec = -19.8 * M_PI / 180;
-				Csol = .106;
 			}
 			if(day > 335) {
 				month = 12;
-				//dec = -23.45 * M_PI / 180;
-				Csol = .103;
 			}
 
 			// =================================== HOUR LOOP ================================	

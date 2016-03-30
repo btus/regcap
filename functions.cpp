@@ -881,7 +881,7 @@ void sub_heat (
 
 		asize = sizeof(A)/sizeof(A[0]);
 		asize2 = sizeof(A[0])/sizeof(A[0][0]);
-		
+
 		ERRCODE = MatSEqn(A, b, asize, asize2, bsize);
 
 		if(abs(b[0] - toldcur[0]) < .1) {
