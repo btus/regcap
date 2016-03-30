@@ -40,6 +40,7 @@ std::istream& safeGetline(std::istream& is, std::string& t)
 }
 int main (int argc, char** argv) {
 	
+	double A[16][16] = {0};
 	string batchFileName = "";
 	string test = "";
 	if ( (argc <= 1) || (argv[argc-1] == NULL) || (argv[argc-1][0] == '-') ) {  // there is NO input...
@@ -64,4 +65,8 @@ int main (int argc, char** argv) {
 	cout << endl;
 	cout << "Here is PI:";
 	cout << M_PI -3.14159 << endl;
+	
+	cout << "asize =" << sizeof(A)/sizeof(A[0]);
+	cout << " asize2 =" << sizeof(A[0])/sizeof(A[0][0]) << endl;
+
 }

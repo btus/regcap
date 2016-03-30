@@ -78,9 +78,9 @@ make the routines less sensitive to singularity.
 const float feps = .00001f;
 const double deps = .00000000001;
 
-int MatSEqn(double A[][ArraySize], double* b, int asize, int asize2, int bsize);
-int matlu(double A[][ArraySize], int* rpvt, int* cpvt, int asize, int asize2, int& continuevar);
-int matbs(double A[][ArraySize], double* b, double* x, int* rpvt, int* cpvt, int asize);
+int MatSEqn(double A[][ArraySize], double* b);
+int matlu(double A[][ArraySize], int* rpvt, int* cpvt, int& continuevar);
+int matbs(double A[][ArraySize], double* b, double* x, int* rpvt, int* cpvt);
 
 //**********************************
 // Functions definitions...
@@ -162,7 +162,7 @@ void sub_heat (
 	double& capacityh,
 	double& evapcap,
 	double& internalGains,
-	int bsize,
+	//int bsize,
 	double& airDensityIN,
 	double& airDensityOUT,
 	double& airDensityATTIC,
@@ -176,8 +176,8 @@ void sub_heat (
 	int rhoWood;
 	int rhoDrywall;
 	int heatIterations;
-	int asize;
-	int asize2;
+	//int asize;
+	//int asize2;
 	int cpShingles;
 	
 	double incsolar[4] = {0,0,0,0};
@@ -758,10 +758,10 @@ void sub_heat (
 			A[15][13] = -A14 * H14;
 		}
 
-		asize = sizeof(A)/sizeof(A[0]);
-		asize2 = sizeof(A[0])/sizeof(A[0][0]);
+		//asize = sizeof(A)/sizeof(A[0]);
+		//asize2 = sizeof(A[0])/sizeof(A[0][0]);
 
-		ERRCODE = MatSEqn(A, b, asize, asize2, bsize);
+		ERRCODE = MatSEqn(A, b);
 
 		if(abs(b[0] - toldcur[0]) < .1) {
 			break;
@@ -2194,7 +2194,7 @@ void f_atticFanFlow(fan_struct& atticFan, double& airDensityOUT, double& airDens
 
 // ----- MatSEqn definitions -----
 
-int MatSEqn(double A[][ArraySize], double* b, int asize, int asize2, int bsize) {
+int MatSEqn(double A[][ArraySize], double* b) {
 	// Error codes returned:
 	//      0  no error                     -1  matrix not invertible
 	//     -2  matrix not square            -3  inner dimensions different
@@ -2204,21 +2204,22 @@ int MatSEqn(double A[][ArraySize], double* b, int asize, int asize2, int bsize) 
 	// -------------------------------------------------------------------
 	
 	int errcode = 0;
-	int bserrcode = 0;
-	int ERR = 0;
+	//int bserrcode = 0;
+	//int ERR = 0;
 		
 	int continuevar = 0;
 	
-	double x[ArraySize];
-	int rpvt[ArraySize], cpvt[ArraySize];
+	double x[ArraySize] = {0};
+	int rpvt[ArraySize] = {0};
+	int cpvt[ArraySize] = {0};
 	
-	for(int i=0; i < ArraySize; i++) {
-		x[i] = 0;
-		rpvt[i] = 0;
-		cpvt[i] = 0;
-	}
+	//for(int i=0; i < ArraySize; i++) {
+	//	x[i] = 0;
+	//	rpvt[i] = 0;
+	//	cpvt[i] = 0;
+	//}
 	
-	errcode = matlu(A, rpvt, cpvt, asize, asize2, continuevar);			// Get LU matrix
+	errcode = matlu(A, rpvt, cpvt, continuevar);			// Get LU matrix
 
 	if(continuevar != -1) {
 		errcode = (errcode + 5) % 200 - 5;
@@ -2227,16 +2228,16 @@ int MatSEqn(double A[][ArraySize], double* b, int asize, int asize2, int bsize) 
 	}
 	
 	// check dimension of b
-	if(asize != bsize) {
-		ERR = 197;
-		errcode = (ERR + 5) % 200 - 5;
-		cout << "\nMatSeqn size error: " << errcode << endl;
-		return errcode;
-	}
+	//if(asize != bsize) {
+	//	ERR = 197;
+	//	errcode = (ERR + 5) % 200 - 5;
+	//	cout << "\nMatSeqn size error: " << errcode << endl;
+	//	return errcode;
+	//}
 	
-	bserrcode = matbs(A, b, x, rpvt, cpvt, asize);						// Backsolve system
+	errcode = matbs(A, b, x, rpvt, cpvt);						// Backsolve system
 	
-	for(int i=0; i < asize; i++) {
+	for(int i=0; i < ArraySize; i++) {
 	   b[i] = x[i];														// Put solution in b for return
 	}
 
@@ -2246,16 +2247,15 @@ int MatSEqn(double A[][ArraySize], double* b, int asize, int asize2, int bsize) 
 		return errcode;
 	}
 	
-	errcode = (ERR + 5) % 200 - 5;
+	//errcode = (ERR + 5) % 200 - 5;
 	return errcode;	
 }
 
-int matlu(double A[][ArraySize], int* rpvt, int* cpvt, int asize, int asize2, int& continuevar) {
+int matlu(double A[][ArraySize], int* rpvt, int* cpvt, int& continuevar) {
 	int errcode = 0;
 	int tempswap;
-	int count;
+	//int count;
 	int r;
-
 	int c;
 	int bestrow;
 	int bestcol;
@@ -2268,22 +2268,22 @@ int matlu(double A[][ArraySize], int* rpvt, int* cpvt, int asize, int asize2, in
 	double oldmax;
 
 	// Checks if A is square, returns error code if not
-	if(asize != asize2) {
-		errcode = 198;
-		continuevar = 0;
-		cout << "\nMatlu error: " << errcode << endl;
-		return errcode;
-	}
+	//if(asize != asize2) {
+	//	errcode = 198;
+	//	continuevar = 0;
+	//	cout << "\nMatlu error: " << errcode << endl;
+	//	return errcode;
+	//}
 
-	count = 0;														// initialize count, continue
+	//count = 0;														// initialize count, continue
 	continuevar = -1;
 	
-	for(int row = 0; row < asize; row++) {							// initialize rpvt and cpvt
+	for(int row = 0; row < ArraySize; row++) {							// initialize rpvt and cpvt
 		rpvt[row] = row;
 		cpvt[row] = row;
 		rownorm[row] = 0;                							// find the row norms of A()
 
-		for(int col = 0; col < asize; col++) {
+		for(int col = 0; col < ArraySize; col++) {
 			rownorm[row] = rownorm[row] + abs(A[row][col]);
 		}
 
@@ -2296,15 +2296,15 @@ int matlu(double A[][ArraySize], int* rpvt, int* cpvt, int asize, int asize2, in
 		}
 	}
 	
-	for(int pvt = 0; pvt < (asize-1); pvt++) {
+	for(int pvt = 0; pvt < (ArraySize-1); pvt++) {
 		// Find best available pivot
 		// checks all values in rows and columns not already used for pivoting
 		// and finds the number largest in absolute value relative to its row norm
 		max = 0;
 		
-		for(int row = pvt; row < asize; row++) {
+		for(int row = pvt; row < ArraySize; row++) {
 			r = rpvt[row];
-			for(int col = pvt; col < asize; col++) {
+			for(int col = pvt; col < ArraySize; col++) {
 				c = cpvt[col];
 				temp = abs(A[r][c]) / rownorm[r];
 				if(temp > max) {
@@ -2330,7 +2330,7 @@ int matlu(double A[][ArraySize], int* rpvt, int* cpvt, int asize, int asize2, in
 		// if a row or column pivot is necessary, count it and permute rpvt or cpvt.
 		// Note: the rows and columns are not actually switched, only the order in which they are used.		
 		if(rpvt[pvt] != rpvt[bestrow]) {
-			count = count + 1;
+			//count = count + 1;
 			
 			tempswap = rpvt[pvt];
 			rpvt[pvt] = rpvt[bestrow];
@@ -2338,7 +2338,7 @@ int matlu(double A[][ArraySize], int* rpvt, int* cpvt, int asize, int asize2, in
 		}    
 		
 		if(cpvt[pvt] != cpvt[bestcol]) {
-			count = count + 1;
+			//count = count + 1;
 			
 			tempswap = cpvt[pvt];
 			cpvt[pvt] = cpvt[bestcol];
@@ -2349,11 +2349,11 @@ int matlu(double A[][ArraySize], int* rpvt, int* cpvt, int asize, int asize2, in
 		rp = rpvt[pvt];
 		cp = cpvt[pvt];
 
-		for(int row = (pvt+1); row < asize; row++) {
+		for(int row = (pvt+1); row < ArraySize; row++) {
 			r = rpvt[row];
 			A[r][cp] = -A[r][cp] / A[rp][cp];						// save multipliers
 			
-			for(int col = (pvt+1); col < asize; col++) {
+			for(int col = (pvt+1); col < ArraySize; col++) {
 				c = cpvt[col];										// complete row operations
 				A[r][c] = A[r][c] + A[r][cp] * A[rp][c];				
 			}
@@ -2362,12 +2362,12 @@ int matlu(double A[][ArraySize], int* rpvt, int* cpvt, int asize, int asize2, in
 	}
 	
 	// if last pivot is zero or pivot drop is too large, A is singular, send back error
-	if(A[rpvt[asize-1]][cpvt[asize-1]] == 0) {
+	if(A[rpvt[ArraySize-1]][cpvt[ArraySize-1]] == 0) {
 		errcode = 199;
 		continuevar = 0;
 		cout << "\nMatlu error: " << errcode << endl;
 		return errcode;
-	} else if(((abs(A[rpvt[asize-1]][cpvt[asize-1]])) / rownorm[rpvt[asize-1]]) < (deps * oldmax)) {
+	} else if(((abs(A[rpvt[ArraySize-1]][cpvt[ArraySize-1]])) / rownorm[rpvt[ArraySize-1]]) < (deps * oldmax)) {
 		// if pivot is not identically zero then continue remains TRUE
 		errcode = 199;
 	}
@@ -2379,25 +2379,25 @@ int matlu(double A[][ArraySize], int* rpvt, int* cpvt, int asize, int asize2, in
 	return errcode;
 }
 
-int matbs(double A[][ArraySize], double* b, double* x, int* rpvt, int* cpvt, int asize) {
+int matbs(double A[][ArraySize], double* b, double* x, int* rpvt, int* cpvt) {
 
 	int c, r;
 
 	// do row operations on b using the multipliers in L to find Lb
-	for(int pvt = 0; pvt < (asize-1); pvt++) {
+	for(int pvt = 0; pvt < (ArraySize-1); pvt++) {
 		c = cpvt[pvt];		
-		for(int row = pvt+1 ; row < asize; row++) {
+		for(int row = pvt+1 ; row < ArraySize; row++) {
 			r = rpvt[row];
 			b[r] = b[r] + A[r][c] * b[rpvt[pvt]];
 		}
 	}
 
 	// backsolve Ux=Lb to find x
-	for(int row = asize-1; row >= 0; row--) {
+	for(int row = ArraySize-1; row >= 0; row--) {
 		c = cpvt[row];
 		r = rpvt[row];
 		x[c] = b[r];
-		for(int col = (row+1); col < asize; col++) {
+		for(int col = (row+1); col < ArraySize; col++) {
 			x[c] = x[c] - A[r][cpvt[col]] * x[cpvt[col]];		
 		}
 		x[c] = x[c] / A[r][c];

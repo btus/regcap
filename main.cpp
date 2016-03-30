@@ -234,7 +234,7 @@ int main(int argc, char *argv[], char* envp[])
 		int endrunon = 0;
 		int prerunon = 0;
 		//int timeSteps = 0;
-		int bsize = 0;
+		//int bsize = 0;
 		double Mcoil = 0;
 		double SHR = 0;		
 		double meanOutsideTemp = 0;
@@ -2943,7 +2943,7 @@ if(minuteYear > 1000) return 0;
 						// adding fan heat for supply fans, internalGains1 is from input file, fanHeat reset to zero each minute, internalGains is common
 						internalGains = internalGains1 + fanHeat;
 
-						bsize = sizeof(b)/sizeof(b[0]);
+						//bsize = sizeof(b)/sizeof(b[0]);
 
 						// Call heat subroutine to calculate heat exchange
 						sub_heat(weather.dryBulb, mCeiling, AL4, weather.windSpeed, ssolrad, nsolrad, tempOld, atticVolume, houseVolume, weather.skyCover, b, ERRCODE, TSKY,
@@ -2952,7 +2952,7 @@ if(minuteYear > 1000) return 0;
 							retrho, weather.pressure, weather.humidityRatio, uaSolAir, uaTOut, matticenvin, matticenvout, mHouseIN, mHouseOUT, planArea, mSupAHoff,
 							mRetAHoff, solgain, tsolair, mFanCycler, roofPeakHeight, h, retLength, supLength,
 							roofType, M1, M12, M15, M16, roofRval, rceil, AHflag, dtau, mERV_AH, ERV_SRE, mHRV, HRV_ASE, mHRV_AH,
-							capacityc, capacityh, evapcap, internalGains, bsize, airDensityIN, airDensityOUT, airDensityATTIC, airDensitySUP, airDensityRET, numStories, storyHeight);
+							capacityc, capacityh, evapcap, internalGains, airDensityIN, airDensityOUT, airDensityATTIC, airDensitySUP, airDensityRET, numStories, storyHeight);
 
 						if(abs(b[0] - tempAttic) < .2) {	// Testing for convergence
 

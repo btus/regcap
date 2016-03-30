@@ -140,7 +140,7 @@ void sub_heat (
 	double& capacityh,
 	double& evapcap,
 	double& internalGains,
-	int bsize,
+	//int bsize,
 	double& airDensityIN,
 	double& airDensityOUT,
 	double& airDensityATTIC,
