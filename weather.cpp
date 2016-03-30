@@ -73,20 +73,18 @@ weatherData readTMY3(ifstream& file) {
 	CSVRow row;
 	weatherData result;
 	file >> row;
-	if(row.size() < 68) {
-		cout << "Bad record in TMY3 file" << endl;
-		exit(1);
+	if(row.size() >= 68) {							// don't set if at EOF
+		result.directNormal = row[7];
+		result.globalHorizontal = row[4];
+		result.dryBulb = row[31] + C_TO_K;		// convert from C to K
+		result.dewPoint = row[34] + C_TO_K;		// convert from C to K
+		result.relativeHumidity = row[37];
+		result.windSpeed = row[46];
+		result.windDirection = row[43];
+		result.pressure = row[40] * 100;			// convert from mbar to Pa
+		result.skyCover = row[25] / 10;			// convert to decimal fraction
+		result.humidityRatio = calcHumidityRatio(result.dewPoint, result.pressure);
 	}
-	result.directNormal = row[7];
-	result.globalHorizontal = row[4];
-	result.dryBulb = row[31] + C_TO_K;		// convert from C to K
-	result.dewPoint = row[34] + C_TO_K;		// convert from C to K
-	result.relativeHumidity = row[37];
-	result.windSpeed = row[46];
-	result.windDirection = row[43];
-	result.pressure = row[40] * 100;			// convert from mbar to Pa
-	result.skyCover = row[25] / 10;			// convert to decimal fraction
-	result.humidityRatio = calcHumidityRatio(result.dewPoint, result.pressure);
 	return result;
 }	
 
