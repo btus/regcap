@@ -1582,7 +1582,7 @@ if(minuteYear > 1000) return 0;
 									rivecOn = 0;
 								} 
 							} else { //Low ventilation months with net-humidity transport from outside to inside.
-								if(relExp >= 2.5 || relDose > 1.5) {
+								if(relExp >= 2.5 || relDose > HiDose) { //Brennan changed from fixed 1.5 to variable HiDose value.
 									rivecOn = 1;
 								} else {
 									rivecOn = 0;
@@ -1615,8 +1615,8 @@ if(minuteYear > 1000) return 0;
 						// targeting dose = 1.5 during low-ventilation months, targeting annual dose of 0.98. 
 						if(HumContType == 8) {
 							if(month <= FirstCut || month >= SecondCut) { //High ventilation months with net-humidity transport from inside to outside.
-								if(hour >= 3 && hour <= 7) { //Maybe change this to the warmest hours of the day.
-									rivecOn = 1;
+								if(hour >= 3 && hour <= 7) { //Was 3 and 7. Maybe change this to the warmest hours of the day.
+									rivecOn = 0; //Brennan changed from 1 to 0. 
 								} else {
 									if(relDose > doseTarget) {
 										rivecOn = 1;
@@ -1625,12 +1625,12 @@ if(minuteYear > 1000) return 0;
 									} 
 								}
 							} else { //Low ventilation months with net-humidity transport from outside to inside.
-								if(hour >= 8 && hour <= 11) {
-									rivecOn = 0;
-								} if(hour >= 15 && hour <=18) {
+								if(hour >= 14 && hour <= 18) { //Brennan changed from 12 and 6, to 14 to 18. Always vent during peak cooling period.
 									rivecOn = 1;
+								//} if(hour >= 15 && hour <=18) {
+									//rivecOn = 1;
 								} else {
-									if(relExp >= 2.5 || relDose > 1.5) {
+									if(relExp >= 2.5 || relDose > HiDose) {
 										rivecOn = 1;
 									} else {
 										rivecOn = 0;
@@ -1687,11 +1687,11 @@ if(minuteYear > 1000) return 0;
 							} else if(month == LowMonths[0] || month == LowMonths[1]  || month == LowMonths[2]) {
 								doseTargetTmp = LowMonthDose;
 							} else if(month > FirstCut && month < SecondCut) {
-								doseTargetTmp = 1.5;
+								doseTargetTmp = HiDose; //Brennan changed from fixed 1.5 to HiDose.
 							} else {
 								doseTargetTmp = doseTarget;
 							}
-							if(doseTargetTmp >= 1.5) {
+							if(doseTargetTmp >= HiDose) {
 								if(relExp >= 2.5 || relDose > doseTargetTmp) {
 									rivecOn = 1; 
 								} else {
@@ -1715,11 +1715,11 @@ if(minuteYear > 1000) return 0;
 							if(month <= FirstCut || month >= SecondCut) {
 								doseTargetTmp = doseTarget;
 							} else {
-								doseTargetTmp = 1.5;
+								doseTargetTmp = HiDose;
 							}
 							if(AHflag == 2) {
 									rivecOn = 1;
-							} else if(doseTargetTmp >= 1.5) {
+							} else if(doseTargetTmp >= HiDose) {
 								if(relExp >= 2.5 || relDose > doseTargetTmp) {
 									rivecOn = 1; 
 								} else {
