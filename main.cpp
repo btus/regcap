@@ -120,7 +120,6 @@ int main(int argc, char *argv[], char* envp[])
 		double mechVentPower;
 		double b[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 		double tempOld[16];
-		double hrold[5];
 		double HR[5];		
 		double heatThermostat[24];
 		double coolThermostat[24];
@@ -1195,7 +1194,6 @@ cout << "HumContType:" << HumContType << " LowMonths[1]" << LowMonths[1] << " Lo
 
 					if(minuteYear == 1) {				// Setting initial humidity conditions
 						for(int i = 0; i < 5; i++) {
-							hrold[i] = weather.humidityRatio;
 							HR[i] = weather.humidityRatio;
 						}
 					}
@@ -2880,12 +2878,9 @@ if(minuteYear > 1000) return 0;
 					// [END] Equipment Model ======================================================================================================================================
 
 					// [START] Moisture Balance ===================================================================================================================================
-					for(int i=0; i < 5; i++) {
-						hrold[i] = HR[i];
-					}
 
 					// Call moisture subroutine
-					sub_moisture(HR, hrold, M1, M12, M15, M16, Mw5, dtau, matticenvout, mCeiling, mSupAHoff, mRetAHoff,
+					sub_moisture(HR, M1, M12, M15, M16, Mw5, dtau, matticenvout, mCeiling, mSupAHoff, mRetAHoff,
 						matticenvin, weather.humidityRatio, mSupLeak, mAH, mRetReg, mRetLeak, mSupReg, latcap, mHouseIN, mHouseOUT,
 						latentLoad, mFanCycler, mHRV_AH, mERV_AH, ERV_TRE, MWha, airDensityIN, airDensityOUT);
 

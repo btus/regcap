@@ -775,7 +775,6 @@ void sub_heat (
 
 void sub_moisture ( 
 	double* HR, 
-	double* hrold, 
 	double& Mw1, 
 	double& Mw2, 
 	double& Mw3, 
@@ -805,8 +804,9 @@ void sub_moisture (
 	double& airDensityIN,
 	double& airDensityOUT
 	) {
-		double Q[5];
-		double R[5];
+		double Q;
+		double R;
+		double hrold[5];
 
 		// 5 nodes
 		// Node 1 is attic air (Node HR[0])
@@ -814,54 +814,59 @@ void sub_moisture (
 		// Node 3 is supply air (Node HR[2])
 		// Node 4 is house air (Node HR[3])
 		// Node 5 is house materials that interact with house air only (Node HR[4])
-
 		// this routine takes humidity ratios and mass flows and calculates W in each zone
 
-		// Attic Air
+		for(int i=0; i < 5; i++) {
+			hrold[i] = HR[i];
+		}
+
+		// Node 1 - Attic Air
 		if(mCeiling >= 0) {
 			// flow from attic to house
-			Q[0] = Mw1 / dtau - matticenvout - mRetLeak + mCeiling + mSupAHoff + mRetAHoff;
-			R[0] = Mw1 * hrold[0] / dtau + matticenvin * HROUT + mSupLeak * hrold[2];
+			Q = Mw1 / dtau - matticenvout - mRetLeak + mCeiling + mSupAHoff + mRetAHoff;
+			R = Mw1 * hrold[0] / dtau + matticenvin * HROUT + mSupLeak * hrold[2];
 		} else {
 			// flow from house to attic
-			Q[0] = Mw1 / dtau - matticenvout - mRetLeak;
-			R[0] = Mw1 * hrold[0] / dtau + matticenvin * HROUT + mSupLeak * hrold[2] - mCeiling * hrold[3] - mSupAHoff * hrold[2] - mRetAHoff * hrold[1];
+			Q = Mw1 / dtau - matticenvout - mRetLeak;
+			R = Mw1 * hrold[0] / dtau + matticenvin * HROUT + mSupLeak * hrold[2] - mCeiling * hrold[3] - mSupAHoff * hrold[2] - mRetAHoff * hrold[1];
 		}
+		HR[0] = R / Q;
 
-		// Return Air
+		// Node 2 - Return Air
 		if(mCeiling >= 0) { // flow from attic to house
-			Q[1] = Mw2 / dtau + mAH + mRetAHoff;
-			R[1] = Mw2 * hrold[1] / dtau - mRetLeak * hrold[0] + mRetAHoff * hrold[0] - mRetReg * hrold[3] - mFanCycler * HROUT - mERV_AH * ((1-ERV_TRE) * HROUT + ERV_TRE * hrold[3]) - mHRV_AH * HROUT; 
+			Q = Mw2 / dtau + mAH + mRetAHoff;
+			R = Mw2 * hrold[1] / dtau - mRetLeak * hrold[0] + mRetAHoff * hrold[0] - mRetReg * hrold[3] - mFanCycler * HROUT - mERV_AH * ((1-ERV_TRE) * HROUT + ERV_TRE * hrold[3]) - mHRV_AH * HROUT; 
 		} else { // flow from house to attic
-			Q[1] = Mw2 / dtau - mRetAHoff + mAH;
-			R[1] = Mw2 * hrold[1] / dtau - mRetAHoff * hrold[3] - mRetLeak * hrold[0] - mRetReg * hrold[3] - mFanCycler * HROUT - mERV_AH * ((1-ERV_TRE) * HROUT + ERV_TRE * hrold[3]) - mHRV_AH * HROUT;
+			Q = Mw2 / dtau - mRetAHoff + mAH;
+			R = Mw2 * hrold[1] / dtau - mRetAHoff * hrold[3] - mRetLeak * hrold[0] - mRetReg * hrold[3] - mFanCycler * HROUT - mERV_AH * ((1-ERV_TRE) * HROUT + ERV_TRE * hrold[3]) - mHRV_AH * HROUT;
 		}
+		HR[1] = R / Q;
 
-		// Supply Air
+		// Node 3 - Supply Air
 		if(mCeiling >= 0) { // flow from attic to house
-			Q[2] = Mw3 / dtau + mSupLeak + mSupReg + mSupAHoff;
-			R[2] = Mw3 * hrold[2] / dtau + mAH * hrold[1] + mSupAHoff * hrold[0] - latcap / 2501000;
+			Q = Mw3 / dtau + mSupLeak + mSupReg + mSupAHoff;
+			R = Mw3 * hrold[2] / dtau + mAH * hrold[1] + mSupAHoff * hrold[0] - latcap / 2501000;
 		} else { // flow from house to attic
-			Q[2] = Mw3 / dtau + mSupLeak + mSupReg - mSupAHoff;
-			R[2] = Mw3 * hrold[2] / dtau + mAH * hrold[1] - mSupAHoff * hrold[3] - latcap / 2501000;
+			Q = Mw3 / dtau + mSupLeak + mSupReg - mSupAHoff;
+			R = Mw3 * hrold[2] / dtau + mAH * hrold[1] - mSupAHoff * hrold[3] - latcap / 2501000;
 		}
+		HR[2] = R / Q;
 
-		// House Air
+		// Node 4 - House Air
 		if(mCeiling >= 0) { // flow from attic to house
-			Q[3] = Mw4 / dtau - mHouseOUT - mRetReg + MWha;
-			R[3] = Mw4 * hrold[3] / dtau + mHouseIN * HROUT + mSupReg * hrold[2] + mCeiling * hrold[0] + mSupAHoff * hrold[2] + mRetAHoff * hrold[1] + latentLoad + MWha * hrold[4];
+			Q = Mw4 / dtau - mHouseOUT - mRetReg + MWha;
+			R = Mw4 * hrold[3] / dtau + mHouseIN * HROUT + mSupReg * hrold[2] + mCeiling * hrold[0] + mSupAHoff * hrold[2] + mRetAHoff * hrold[1] + latentLoad + MWha * hrold[4];
 		} else { // flow from house to attic
-			Q[3] = Mw4 / dtau - mHouseOUT - mRetReg - mCeiling - mSupAHoff - mRetAHoff + MWha;
-			R[3] = Mw4 * hrold[3] / dtau + mHouseIN * HROUT + mSupReg * hrold[2] + latentLoad + MWha * hrold[4];
+			Q = Mw4 / dtau - mHouseOUT - mRetReg - mCeiling - mSupAHoff - mRetAHoff + MWha;
+			R = Mw4 * hrold[3] / dtau + mHouseIN * HROUT + mSupReg * hrold[2] + latentLoad + MWha * hrold[4];
 		}
+		HR[3] = R / Q;
 
-		// House furnishings/storage
-		Q[4] = Mw5 / dtau + MWha;
-		R[4] = Mw5 * hrold[4] / dtau + MWha * hrold[3];
+		// Node 5 - House furnishings/storage
+		Q = Mw5 / dtau + MWha;
+		R = Mw5 * hrold[4] / dtau + MWha * hrold[3];
+		HR[4] = R / Q;
 		
-		for(int i=0; i < 5; i++) {
-			HR[i] = R[i] / Q[i];
-		}
 }
 
 void sub_houseLeak (

@@ -152,7 +152,6 @@ void sub_heat (
 
 void sub_moisture ( 
 	double* HR, 
-	double* hrold, 
 	double& Mw1, 
 	double& Mw2, 
 	double& Mw3, 
