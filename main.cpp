@@ -1378,11 +1378,6 @@ if(minuteYear > 1000) return 0;
 
 					// [START] RIVEC Decision ==================================================================================================================
 
-					if(nonRivecVentSumIN > nonRivecVentSumOUT)						//ventSum based on largest of inflow or outflow
-						nonRivecVentSum = nonRivecVentSumIN;
-					else
-						nonRivecVentSum = nonRivecVentSumOUT;
-
 					// Choose RIVEC time periods depending on heating or cooling
 					switch (hcFlag) {
 
@@ -2225,8 +2220,8 @@ if(minuteYear > 1000) return 0;
 							if(hour == 7 && minute >= 30) {
 								fan[i].on = 1;
 								mechVentPower = mechVentPower + fan[i].power;
-								ventSumOUT = ventSumOUT + abs(fan[i].q) * 3600 / houseVolume;
-								//nonRivecVentSumOUT = nonRivecVentSumOUT + abs(fan[i].q) * 3600 / houseVolume;
+								//ventSumOUT = ventSumOUT + abs(fan[i].q) * 3600 / houseVolume;
+								nonRivecVentSumOUT = nonRivecVentSumOUT + abs(fan[i].q) * 3600 / houseVolume;
 							} else
 								fan[i].on = 0;
 
@@ -2234,8 +2229,8 @@ if(minuteYear > 1000) return 0;
 							if(hour > 17 && hour <= 18) {
 								fan[i].on = 1;
 								mechVentPower = mechVentPower + fan[i].power;			// vent fan power
-								ventSumOUT = ventSumOUT + abs(fan[i].q) * 3600 / houseVolume;
-								//nonRivecVentSumOUT = nonRivecVentSumOUT + abs(fan[i].q) * 3600 / houseVolume;
+								//ventSumOUT = ventSumOUT + abs(fan[i].q) * 3600 / houseVolume;
+								nonRivecVentSumOUT = nonRivecVentSumOUT + abs(fan[i].q) * 3600 / houseVolume;
 							} else
 								fan[i].on = 0;
 
@@ -2246,8 +2241,8 @@ if(minuteYear > 1000) return 0;
 								else {
 									fan[i].on = 1;
 									mechVentPower = mechVentPower + fan[i].power;		// vent fan power
-									ventSumOUT = ventSumOUT + abs(fan[i].q) * 3600 / houseVolume;
-									//nonRivecVentSumOUT = nonRivecVentSumOUT + abs(fan[i].q) * 3600 / houseVolume;
+									//ventSumOUT = ventSumOUT + abs(fan[i].q) * 3600 / houseVolume;
+									nonRivecVentSumOUT = nonRivecVentSumOUT + abs(fan[i].q) * 3600 / houseVolume;
 								}
 							}
 							if(hcFlag == 2) {  // if cooling
@@ -2256,8 +2251,8 @@ if(minuteYear > 1000) return 0;
 								} else {
 									fan[i].on = 1;
 									mechVentPower = mechVentPower + fan[i].power;		// vent fan power
-									ventSumOUT = ventSumOUT + abs(fan[i].q) * 3600 / houseVolume;
-									//nonRivecVentSumOUT = nonRivecVentSumOUT + abs(fan[i].q) * 3600 / houseVolume;
+									//ventSumOUT = ventSumOUT + abs(fan[i].q) * 3600 / houseVolume;
+									nonRivecVentSumOUT = nonRivecVentSumOUT + abs(fan[i].q) * 3600 / houseVolume;
 								}
 							}
 
@@ -2266,8 +2261,8 @@ if(minuteYear > 1000) return 0;
 								if(hour > 12 && hour <= 15) {
 									fan[i].on = 1;
 									mechVentPower = mechVentPower + fan[i].power;
-									ventSumOUT = ventSumOUT + abs(fan[i].q) * 3600 / houseVolume;
-									//nonRivecVentSumOUT = nonRivecVentSumOUT + abs(fan[i].q) * 3600 / houseVolume;
+									//ventSumOUT = ventSumOUT + abs(fan[i].q) * 3600 / houseVolume;
+									nonRivecVentSumOUT = nonRivecVentSumOUT + abs(fan[i].q) * 3600 / houseVolume;
 								} else
 									fan[i].on = 0;
 							} else
@@ -2277,8 +2272,8 @@ if(minuteYear > 1000) return 0;
 							if(econoFlag == 1) {
 								fan[i].on = 1;
 								AHfanPower = AHfanPower + fan[i].power;			// vent fan power
-								ventSumIN = ventSumIN + abs(fan[i].q) * 3600 / houseVolume;
-								//nonRivecVentSumIN = nonRivecVentSumIN + abs(fan[i].q) * 3600 / houseVolume;
+								//ventSumIN = ventSumIN + abs(fan[i].q) * 3600 / houseVolume;
+								nonRivecVentSumIN = nonRivecVentSumIN + abs(fan[i].q) * 3600 / houseVolume;
 								economizerRan = 1;
 							} else
 								fan[i].on = 0;
@@ -2287,8 +2282,8 @@ if(minuteYear > 1000) return 0;
 							if(dryerFan == 1) {
 								fan[i].on = 1;
 								mechVentPower = mechVentPower + fan[i].power;
-								ventSumOUT = ventSumOUT + abs(fan[i].q) * 3600 / houseVolume;
-								//nonRivecVentSumOUT = nonRivecVentSumOUT + abs(fan[i].q) * 3600 / houseVolume;
+								//ventSumOUT = ventSumOUT + abs(fan[i].q) * 3600 / houseVolume;
+								nonRivecVentSumOUT = nonRivecVentSumOUT + abs(fan[i].q) * 3600 / houseVolume;
 							} else
 								fan[i].on = 0;
 
@@ -2296,8 +2291,8 @@ if(minuteYear > 1000) return 0;
 							if(kitchenFan == 1) {
 								fan[i].on = 1;
 								mechVentPower = mechVentPower + fan[i].power;
-								ventSumOUT = ventSumOUT + abs(fan[i].q) * 3600 / houseVolume;
-								//nonRivecVentSumOUT = nonRivecVentSumOUT + abs(fan[i].q) * 3600 / houseVolume;
+								//ventSumOUT = ventSumOUT + abs(fan[i].q) * 3600 / houseVolume;
+								nonRivecVentSumOUT = nonRivecVentSumOUT + abs(fan[i].q) * 3600 / houseVolume;
 							} else
 								fan[i].on = 0;
 
@@ -2305,8 +2300,8 @@ if(minuteYear > 1000) return 0;
 							if(bathOneFan == 1) {
 								fan[i].on = 1;
 								mechVentPower = mechVentPower + fan[i].power;
-								ventSumOUT = ventSumOUT + abs(fan[i].q) * 3600 / houseVolume;
-								//nonRivecVentSumOUT = nonRivecVentSumOUT + abs(fan[i].q) * 3600 / houseVolume;
+								//ventSumOUT = ventSumOUT + abs(fan[i].q) * 3600 / houseVolume;
+								nonRivecVentSumOUT = nonRivecVentSumOUT + abs(fan[i].q) * 3600 / houseVolume;
 							} else
 								fan[i].on = 0;
 
@@ -2314,8 +2309,8 @@ if(minuteYear > 1000) return 0;
 							if(bathTwoFan == 1) {
 								fan[i].on = 1;
 								mechVentPower = mechVentPower + fan[i].power;
-								ventSumOUT = ventSumOUT + abs(fan[i].q) * 3600 / houseVolume;
-								//nonRivecVentSumOUT = nonRivecVentSumOUT + abs(fan[i].q) * 3600 / houseVolume;
+								//ventSumOUT = ventSumOUT + abs(fan[i].q) * 3600 / houseVolume;
+								nonRivecVentSumOUT = nonRivecVentSumOUT + abs(fan[i].q) * 3600 / houseVolume;
 							} else
 								fan[i].on = 0;
 
@@ -2324,10 +2319,17 @@ if(minuteYear > 1000) return 0;
 							if(bathOneFan == 1) {
 								fan[i].on = 1;
 								mechVentPower = mechVentPower + fan[i].power;
-								ventSumOUT = ventSumOUT + abs(fan[i].q) * 3600 / houseVolume;
-								//nonRivecVentSumOUT = nonRivecVentSumOUT + abs(fan[i].q) * 3600 / houseVolume;
+								//ventSumOUT = ventSumOUT + abs(fan[i].q) * 3600 / houseVolume;
+								nonRivecVentSumOUT = nonRivecVentSumOUT + abs(fan[i].q) * 3600 / houseVolume;
 							} else
 								fan[i].on = 0;
+								
+//sum the non-Rivec ventilation airflows (prior section) and set nonRivecVentSum to the largest of inflow/outflow.								
+								
+						if(nonRivecVentSumIN > nonRivecVentSumOUT)						//ventSum based on largest of inflow or outflow
+							nonRivecVentSum = nonRivecVentSumIN;
+						else
+							nonRivecVentSum = nonRivecVentSumOUT;			
 
 						//} else if(fan[i].oper == 28) {					// Single Cut-Off Ventilation Temperature Controller. Brennan.
 						//	if(weatherTemp >= ventcutoff) {
