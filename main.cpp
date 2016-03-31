@@ -1707,7 +1707,7 @@ if(minuteYear > 1000) return 0;
 							}
 						}
 
-
+//Consider combining 8 and 12 - Monthly + Time of day + Cooling tie-in.
 						//Monthly Seasonal Control + Cooling system tie-in.		   				
 						//Indoor and Outdoor sensor based control. 
 						if(HumContType == 12) {
