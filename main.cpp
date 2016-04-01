@@ -1592,16 +1592,45 @@ if(minuteYear > 1000) return 0;
 
 						//Fixed control + cooling system tie-in + Monthly Seasonal Control.		   				
 						//Indoor and Outdoor sensor based control.
+// 						if(HumContType == 7) { 
+// 							if(weather.humidityRatio > HR[3]) { //do not want to vent. 
+// 								if(AHflag == 2) {
+// 									rivecOn = 1;
+// 								} else if(relExp >= 2.5 || relDose > HiDose) { 
+// 									rivecOn = 1;
+// 								} else { //otherwise off
+// 									rivecOn = 0;
+// 								}
+// 							} else { //want to vent due to high indoor humidity, so maybe we just let it run, without relExp control?
+// 								if(relDose > doseTarget) { 
+// 									rivecOn = 1; 
+// 								} else {
+// 									rivecOn = 0;
+// 								}
+// 							}
+// 						}
+
+						//Fixed control + cooling system tie-in + Monthly Seasonal Control.		   				
+						//Indoor and Outdoor sensor based control.
 						if(HumContType == 7) { 
 							if(weather.humidityRatio > HR[3]) { //do not want to vent. 
-								if(AHflag == 2) {
-									rivecOn = 1;
-								} else if(relExp >= 2.5 || relDose > HiDose) { 
-									rivecOn = 1;
-								} else { //otherwise off
-									rivecOn = 0;
+								if(RHhouse >= 55){
+									if(AHflag == 2) {
+										rivecOn = 1;
+									} else if(relExp >= 2.5 || relDose > HiDose) { 
+										rivecOn = 1;
+									} else { //otherwise off
+										rivecOn = 0;
+									}
 								}
-							} else { //want to vent due to high indoor humidity, so maybe we just let it run, without relExp control?
+								else if(relExp >= 0.95 || relDose > 1){ 
+									rivecOn = 1;
+								} 
+								else{
+									rivecOn = 0;
+								}		
+							}		
+							else { //want to vent due to high indoor humidity, so maybe we just let it run, without relExp control?
 								if(relDose > doseTarget) { 
 									rivecOn = 1; 
 								} else {
@@ -1668,14 +1697,14 @@ if(minuteYear > 1000) return 0;
 									else { //otherwise off
 										rivecOn = 0;
 									}
+								}	
 								else if(relExp >= 0.95 || relDose > 1){ 
 									rivecOn = 1;
 								} 
 								else{
 									rivecOn = 0;
 								}	
-							}		
-							}	
+							}			
 							else if(relDose > doseTarget){ //want to vent due to high indoor humidity, so maybe we just let it run, without relExp control?
 								rivecOn = 1; //OR we can change the does calculation based on expected periods of contol function (i.e., 1-week,1-month, etc.)
 							} 
