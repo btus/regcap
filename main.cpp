@@ -1639,23 +1639,51 @@ if(minuteYear > 1000) return 0;
 							}
 						}
 
-						//Fixed control + Monthly Seasonal Control.		   				
-						//Indoor and Outdoor sensor based control.
+// 						Fixed control + Monthly Seasonal Control.		   				
+// 						Indoor and Outdoor sensor based control.
+// 						if(HumContType == 9) { 
+// 							if(weather.humidityRatio > HR[3]) { //do not want to vent. Add some "by what amount" deadband value. 
+// 								if(relExp >= 2.5 || relDose > HiDose) { //have to with high exp 0.61
+// 									rivecOn = 1;
+// 								} else { //otherwise off
+// 									rivecOn = 0;
+// 								}
+// 							} else { //want to vent due to high indoor humidity, so maybe we just let it run, without relExp control?
+// 								if(relDose > doseTarget) { //control to exp = 0.5. Need to change this value based on weighted avg results.
+// 									rivecOn = 1; //OR we can change the does calculation based on expected periods of contol function (i.e., 1-week,1-month, etc.)
+// 								} else {
+// 									rivecOn = 0;
+// 								}
+// 							}
+// 						}
+					
+// 						Fixed control + Monthly Seasonal Control.		   				
+// 						Indoor and Outdoor sensor based control.
 						if(HumContType == 9) { 
 							if(weather.humidityRatio > HR[3]) { //do not want to vent. Add some "by what amount" deadband value. 
-								if(relExp >= 2.5 || relDose > HiDose) { //have to with high exp 0.61
+								if(RHhouse >= 55) {
+									if(relExp >= 2.5 || relDose > HiDose) { //have to with high exp 0.61
+										rivecOn = 1;
+									} 
+									else { //otherwise off
+										rivecOn = 0;
+									}
+								else if(relExp >= 0.95 || relDose > 1){ 
 									rivecOn = 1;
-								} else { //otherwise off
+								} 
+								else{
 									rivecOn = 0;
-								}
-							} else { //want to vent due to high indoor humidity, so maybe we just let it run, without relExp control?
-								if(relDose > doseTarget) { //control to exp = 0.5. Need to change this value based on weighted avg results.
-									rivecOn = 1; //OR we can change the does calculation based on expected periods of contol function (i.e., 1-week,1-month, etc.)
-								} else {
-									rivecOn = 0;
-								}
+								}	
+							}		
+							}	
+							else if(relDose > doseTarget){ //want to vent due to high indoor humidity, so maybe we just let it run, without relExp control?
+								rivecOn = 1; //OR we can change the does calculation based on expected periods of contol function (i.e., 1-week,1-month, etc.)
+							} 
+							else {
+								rivecOn = 0;
 							}
-						}
+						}						
+					
 
 						//The real opportunities for control based on outside are when the outside value is changing rapidly. Sharp increases, decrease ventilation. Sharp decreases, increase ventilation. 
 						//Need to undervent at above the 75th percentile and overvent below the 25th percentile based on a per month basis. 
@@ -1737,13 +1765,13 @@ if(minuteYear > 1000) return 0;
 						//Outdoor-only sensor based control, with variable dose targets
 						if(HumContType == 13) { 
 							if(weather.humidityRatio >= wCutoff) { //If humid outside, reduce ventilation. 
-								if(relExp >= 2.5 || relDose > 1.5) {
+								if(relExp >= 2.5 || relDose > 1.45) {
 									rivecOn = 1; 
 								} else {
 									rivecOn = 0;
 								}
-							} else { //If dry outside, increase vnetilation.
-								if(relDose > 0.5) { //but we do if exp is high
+							} else { //If dry outside, increase ventilation.
+								if(relDose > 0.45) { //but we do if exp is high
 									rivecOn = 1;
 								} else {
 									rivecOn = 0; //otherwise don't vent under high humidity condition.
@@ -2323,14 +2351,12 @@ if(minuteYear > 1000) return 0;
 								nonRivecVentSumOUT = nonRivecVentSumOUT + abs(fan[i].q) * 3600 / houseVolume;
 							} else
 								fan[i].on = 0;
+							
 								
 //sum the non-Rivec ventilation airflows (prior section) and set nonRivecVentSum to the largest of inflow/outflow.								
 								
-						if(nonRivecVentSumIN > nonRivecVentSumOUT)						//ventSum based on largest of inflow or outflow
-							nonRivecVentSum = nonRivecVentSumIN;
-						else
-							nonRivecVentSum = nonRivecVentSumOUT;			
 
+						
 						//} else if(fan[i].oper == 28) {					// Single Cut-Off Ventilation Temperature Controller. Brennan.
 						//	if(weatherTemp >= ventcutoff) {
 						//		fan[i].on = 1;
@@ -2416,6 +2442,13 @@ if(minuteYear > 1000) return 0;
 
 
 							} 
+							
+						if(nonRivecVentSumIN > nonRivecVentSumOUT){						//ventSum based on largest of inflow or outflow
+							nonRivecVentSum = nonRivecVentSumIN;
+						} else{
+							nonRivecVentSum = nonRivecVentSumOUT;			
+						}	
+						
 						}
 					//}
 					// [END] Auxiliary Fan Controls ========================================================================================================
