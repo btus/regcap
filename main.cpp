@@ -811,8 +811,6 @@ cout << "HumContType:" << HumContType << " LowMonths[1]" << LowMonths[1] << " Lo
 		double relDose = 1;							// Initial value for relative dose used in the RIVEC algorithm
 		double relExp = 1;							// Initial value for relative exposure used in the RIVEC algorithm
 		double turnover = 1 / Aeq;					// Initial value for turnover time (hrs) used in the RIVEC algorithm. Turnover is calculated the same for occupied and unoccupied minutes.					
-		double dtau = 60;								// RIVEC, one minute timestep (in seconds)
-		double rivecdt = dtau / 3600;				// Rivec timestep is in hours, dtau is simulation timestep in seconds. Used in calculation of relative dose and exposure.
 
 		//For calculating the "real" exposure and dose, based on the actual air change of the house predicted by the mass balance. Standard exposure and dose use the sum of annual average infiltration and current total fan airflow.
 		double relDoseReal = 1;						// Initial value for relative dose using ACH of house, i.e. the real rel dose not based on ventSum
@@ -994,6 +992,9 @@ cout << "HumContType:" << HumContType << " LowMonths[1]" << LowMonths[1] << " Lo
 		double HumidityIndex = 0;
 		double HumidityIndex_Sum = 0;
 		double HumidityIndex_Avg = 0;
+		double coolingLoad = 0;
+		double latLoad = 0;
+		double heatingLoad = 0;
 
 		vector<double> averageTemp (0);	// Array to track the 7 day running average
 
@@ -2875,12 +2876,13 @@ if(minuteYear > 1000) return 0;
 					if(Mcoil > .3 * capacityraw)
 						Mcoil = .3 * capacityraw;											// maximum mass on coil is 0.3 kg per ton of cooling
 					Mcoilprevious = Mcoil;													// maybe put this at top of the hour
+
 					// [END] Equipment Model ======================================================================================================================================
 
 					// [START] Moisture Balance ===================================================================================================================================
 
 					// Call moisture subroutine
-					sub_moisture(HR, M1, M12, M15, M16, Mw5, dtau, matticenvout, mCeiling, mSupAHoff, mRetAHoff,
+					sub_moisture(HR, M1, M12, M15, M16, Mw5, matticenvout, mCeiling, mSupAHoff, mRetAHoff,
 						matticenvin, weather.humidityRatio, mSupLeak, mAH, mRetReg, mRetLeak, mSupReg, latcap, mHouseIN, mHouseOUT,
 						latentLoad, mFanCycler, mHRV_AH, mERV_AH, ERV_TRE, MWha, airDensityIN, airDensityOUT);
 
@@ -2932,7 +2934,7 @@ if(minuteYear > 1000) return 0;
 							sub_atticLeak(flag, weather.windSpeed, weather.windDirection, tempHouse, weather.dryBulb, tempAttic, atticC, atticPressureExp, h, roofPeakHeight,
 								flueShelterFactor, Sw, numAtticVents, atticVent, soffit, mAtticIN, mAtticOUT, Patticint, mCeiling, rowOrIsolated,
 								soffitFraction, roofPitch, roofPeakOrient, numAtticFans, atticFan, mSupReg, mRetLeak, mSupLeak, matticenvin,
-								matticenvout, dtau, mSupAHoff, mRetAHoff, airDensityIN, airDensityOUT, airDensityATTIC);
+								matticenvout, mSupAHoff, mRetAHoff, airDensityIN, airDensityOUT, airDensityATTIC);
 						}
 
 						// adding fan heat for supply fans, internalGains1 is from input file, fanHeat reset to zero each minute, internalGains is common
@@ -2946,7 +2948,7 @@ if(minuteYear > 1000) return 0;
 							retDiameter, supArea, retArea, supThickness, retThickness, supVolume, retVolume, supCp, retCp, supVel, retVel, suprho,
 							retrho, weather.pressure, weather.humidityRatio, uaSolAir, uaTOut, matticenvin, matticenvout, mHouseIN, mHouseOUT, planArea, mSupAHoff,
 							mRetAHoff, solgain, tsolair, mFanCycler, roofPeakHeight, h, retLength, supLength,
-							roofType, M1, M12, M15, M16, roofRval, rceil, AHflag, dtau, mERV_AH, ERV_SRE, mHRV, HRV_ASE, mHRV_AH,
+							roofType, M1, M12, M15, M16, roofRval, rceil, AHflag, mERV_AH, ERV_SRE, mHRV, HRV_ASE, mHRV_AH,
 							capacityc, capacityh, evapcap, internalGains, airDensityIN, airDensityOUT, airDensityATTIC, airDensitySUP, airDensityRET, numStories, storyHeight);
 
 						if(abs(b[0] - tempAttic) < .2) {	// Testing for convergence
@@ -3224,6 +3226,9 @@ if(minuteYear > 1000) return 0;
 					mechVent_kWh = mechVent_kWh + mechVentPower / 60000;		// Total mechanical ventilation energy for over the simulation in kWh
 					gasTherm = gasTherm + hcap * 60 / 1000000 / 105.5;			// Total Heating energy for the simulation in therms
 					furnace_kWh = gasTherm * 29.3;								// Total heating/furnace energy for the simulation in kWh
+					coolingLoad += capacityc / 60000;
+					latLoad += latcap / 60000;
+					heatingLoad += capacityh / 60000;
 
 					// Average temperatures and airflows
 					meanOutsideTemp = meanOutsideTemp + (weather.dryBulb - 273.15);		// Average external temperature over the simulation
@@ -3292,12 +3297,13 @@ if(minuteYear > 1000) return 0;
 		ou2File << "Temp_out\tTemp_attic\tTemp_house";
 		ou2File << "\tAH_kWh\tfurnace_kWh\tcompressor_kWh\tmechVent_kWh\ttotal_kWh\tmean_ACH\tflue_ACH";
 		ou2File << "\tmeanRelExpReal\tmeanRelDoseReal\tmeanOccupiedExpReal\tmeanOccupiedDoseReal";
-		ou2File << "\toccupiedMinCount\trivecMinutes\tNL\tC\tAeq\tfilterChanges\tMERV\tloadingRate\tDryAirVentLoad\tMoistAirVentLoad\tRHexcAnnual60\tRHexcAnnual70\tHumidityIndex_Avg" << endl;
+		ou2File << "\toccupiedMinCount\trivecMinutes\tNL\tC\tAeq\tfilterChanges\tMERV\tloadingRate\tDryAirVentLoad\tMoistAirVentLoad\tRHexcAnnual60\tRHexcAnnual70\tHumidityIndex_Avg\tcoolingLoad\tlatLoad\theatingLoad" << endl;
 		//Values
 		ou2File << meanOutsideTemp << "\t" << meanAtticTemp << "\t" << meanHouseTemp << "\t";
 		ou2File << AH_kWh << "\t" << furnace_kWh << "\t" << compressor_kWh << "\t" << mechVent_kWh << "\t" << total_kWh << "\t" << meanHouseACH << "\t" << meanFlueACH << "\t";
 		ou2File << meanRelExp << "\t" << meanRelDose << "\t" << meanOccupiedExpReal << "\t" << meanOccupiedDoseReal << "\t"; //Brennan. changed all the exp/dose outputs to be "real"
-		ou2File << occupiedMinCount << "\t" << rivecMinutes << "\t" << NL << "\t" << C << "\t" << Aeq << "\t" << filterChanges << "\t" << MERV << "\t" << loadingRate << "\t" << TotalDAventLoad << "\t" << TotalMAventLoad << "\t" << RHexcAnnual60 << "\t" << RHexcAnnual70 << "\t" << HumidityIndex_Avg << endl;
+		ou2File << occupiedMinCount << "\t" << rivecMinutes << "\t" << NL << "\t" << C << "\t" << Aeq << "\t" << filterChanges << "\t" << MERV << "\t" << loadingRate << "\t" << TotalDAventLoad << "\t" << TotalMAventLoad;
+		ou2File << "\t" << RHexcAnnual60 << "\t" << RHexcAnnual70 << "\t" << HumidityIndex_Avg << "\t" << coolingLoad << "\t" << latLoad << "\t" << heatingLoad << endl;
 
 		ou2File.close();
 

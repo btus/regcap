@@ -1,3 +1,3 @@
 regcap.cfg
-sim_1
+doe2_4
 
