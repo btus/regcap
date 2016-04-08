@@ -33,11 +33,28 @@ class Fan {
 		double efficiency;
 		
 	public:
-		double type;		// was oper
+		int type;			// was oper
 		double massFlow;	// was m
-		double on; 			// Set on=1 in main program based on .oper
+		int on;	 			// Set on=1 in main program based on .oper
 		
 		
 };
+
+class Dehumidifier {
+	private:
+		double capacityRated;		// rated capacity (kg/s)
+		double efficiency;			// efficiency (Wh/kg)
+		double setPoint;				// set point (% RH)
+		int onTime;
+		
+	public:
+		double power;		// power (watts)
+		double moisture; 	// moisture removed (kg)
+		double sensible;	// sensible capacity added (watts)
+		
+		Dehumidifier(double capacity, double energyFactor, double rh);
+		bool run(double rhIn, double tIn);
+};
+
 
 #endif

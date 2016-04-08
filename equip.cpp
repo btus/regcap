@@ -1,3 +1,4 @@
+#include <iostream>
 #include "equip.h"
 #include "psychro.h"
 #include "constants.h"
@@ -6,8 +7,6 @@
 #endif
 
 using namespace std;
-
-const double rampTime = 3;	// time to reach full SHR (minutes)
 
 Compressor::Compressor(double EER, double tons, double charge) {
 	// The following corrections are for TXV only
@@ -30,6 +29,7 @@ Compressor::Compressor(double EER, double tons, double charge) {
 }							
 							
 double Compressor::run(bool compOn, double hrReturn, double tReturn, double tOut, double fanFlow, double fanHeat, double mAH) {
+	const int rampTime = 3;	// time to reach full SHR (minutes)
 	double hReturn;			// return air enthalpy (btu/lb)
 	double capacityTotal;	// total capacity at current conditions (btuh)
 	double EER;					// efficiency at current conditions (kbtuh/kWh)
@@ -97,4 +97,67 @@ double Compressor::run(bool compOn, double hrReturn, double tReturn, double tOut
 return compressorPower;
 }
 
+Dehumidifier::Dehumidifier(double capacity, double energyFactor, double rh) {
+	capacityRated = capacity * 0.4732 / (24 * 60 * 60);	// convert pints/day to kg/s
+	efficiency = 1000 / energyFactor;							// convert to Wh/kg
+	setPoint = rh;
+	onTime = 0;
+}
+
+bool Dehumidifier::run(double rhIn, double tIn) {
+	const double deadBand = 0.05;	// 5% RH deadband
+	const int initTime = 3;			// time to full capacity (minutes)
+	// Curves from Winkler et. al., NREl Technical Report TP-5500-52791, December 2011
+	// "Laboratory Test Report for Six ENERGY STAR® Dehumidifiers"
+	// Capacity curve
+	const double capA = -1.1625;
+	const double capB = 0.022715;
+	const double capC = -0.00011321;
+	const double capD = 0.021111;
+	const double capE = -6.9303E-05;
+	const double capF = 0.00037884;
+	// Energy Factor curve
+	const double efA = -1.9022;
+	const double efB = 0.063467;
+	const double efC = -0.00062284;
+	const double efD = 0.039540;
+	const double efE = -0.00012564;
+	const double efF = -0.00017672;
+	
+	
+	// Control
+	if(onTime > 0) {
+		if(rhIn < setPoint - deadBand) {
+			onTime = 0;
+		} else {
+			onTime++;
+		}
+	} else {
+		if(rhIn > setPoint + deadBand) {
+			onTime = 1;
+		}
+	}
+	
+	// Operate
+	if(onTime > 0) {
+		tIn -= C_TO_K;	// curves are in deg C and %RH
+		rhIn *= 100;
+		double capFTRH = capA + capB * tIn + capC * pow(tIn, 2) + capD * rhIn + capE * pow(rhIn, 2) + capF * tIn * rhIn;
+		moisture = capacityRated * capFTRH; 
+		double efFTRH = efA + efB * tIn + efC * pow(tIn, 2) + efD * rhIn + efE * pow(rhIn, 2) + efF * tIn * rhIn;
+		power = moisture * 3600 * efficiency / efFTRH;		// kg/s * 3600 s/h * Wh/kg = Watts
+		// adjust moisture for init time
+		double capInit = (onTime < initTime) ? 1.0 - double(initTime - onTime) / double(initTime) : 1.0;
+		moisture *= capInit;
+		sensible = moisture * 2501000 + power;
+//cout << " onTime=" << onTime << " capFTRH=" << capFTRH << " capInit=" << capInit << " efFTRH=" << efFTRH << endl;
+	} else {
+		// implement offTime here if we want to keep fan running
+		moisture = 0;
+		power = 0;
+		sensible = 0;
+	}
+	return (onTime > 0);
+}
+	
 
