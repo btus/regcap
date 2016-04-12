@@ -1352,11 +1352,6 @@ if(minuteYear > 1000) return 0;
 
 					// [START] RIVEC Decision ==================================================================================================================
 
-					if(nonRivecVentSumIN > nonRivecVentSumOUT)						//ventSum based on largest of inflow or outflow
-						nonRivecVentSum = nonRivecVentSumIN;
-					else
-						nonRivecVentSum = nonRivecVentSumOUT;
-
 					// Choose RIVEC time periods depending on heating or cooling
 					switch (hcFlag) {
 
@@ -1561,7 +1556,7 @@ if(minuteYear > 1000) return 0;
 									rivecOn = 0;
 								} 
 							} else { //Low ventilation months with net-humidity transport from outside to inside.
-								if(relExp >= 2.5 || relDose > 1.5) {
+								if(relExp >= 2.5 || relDose > HiDose) { //Brennan changed from fixed 1.5 to variable HiDose value.
 									rivecOn = 1;
 								} else {
 									rivecOn = 0;
@@ -1571,16 +1566,45 @@ if(minuteYear > 1000) return 0;
 
 						//Fixed control + cooling system tie-in + Monthly Seasonal Control.		   				
 						//Indoor and Outdoor sensor based control.
+// 						if(HumContType == 7) { 
+// 							if(weather.humidityRatio > HR[3]) { //do not want to vent. 
+// 								if(AHflag == 2) {
+// 									rivecOn = 1;
+// 								} else if(relExp >= 2.5 || relDose > HiDose) { 
+// 									rivecOn = 1;
+// 								} else { //otherwise off
+// 									rivecOn = 0;
+// 								}
+// 							} else { //want to vent due to high indoor humidity, so maybe we just let it run, without relExp control?
+// 								if(relDose > doseTarget) { 
+// 									rivecOn = 1; 
+// 								} else {
+// 									rivecOn = 0;
+// 								}
+// 							}
+// 						}
+
+						//Fixed control + cooling system tie-in + Monthly Seasonal Control.		   				
+						//Indoor and Outdoor sensor based control.
 						if(HumContType == 7) { 
 							if(weather.humidityRatio > HR[3]) { //do not want to vent. 
-								if(AHflag == 2) {
-									rivecOn = 1;
-								} else if(relExp >= 2.5 || relDose > HiDose) { 
-									rivecOn = 1;
-								} else { //otherwise off
-									rivecOn = 0;
+								if(RHhouse >= 55){
+									if(AHflag == 2) {
+										rivecOn = 1;
+									} else if(relExp >= 2.5 || relDose > HiDose) { 
+										rivecOn = 1;
+									} else { //otherwise off
+										rivecOn = 0;
+									}
 								}
-							} else { //want to vent due to high indoor humidity, so maybe we just let it run, without relExp control?
+								else if(relExp >= 0.95 || relDose > 1){ 
+									rivecOn = 1;
+								} 
+								else{
+									rivecOn = 0;
+								}		
+							}		
+							else { //want to vent due to high indoor humidity, so maybe we just let it run, without relExp control?
 								if(relDose > doseTarget) { 
 									rivecOn = 1; 
 								} else {
@@ -1594,8 +1618,8 @@ if(minuteYear > 1000) return 0;
 						// targeting dose = 1.5 during low-ventilation months, targeting annual dose of 0.98. 
 						if(HumContType == 8) {
 							if(month <= FirstCut || month >= SecondCut) { //High ventilation months with net-humidity transport from inside to outside.
-								if(hour >= 3 && hour <= 7) { //Maybe change this to the warmest hours of the day.
-									rivecOn = 1;
+								if(hour >= 3 && hour <= 7) { //Was 3 and 7. Maybe change this to the warmest hours of the day.
+									rivecOn = 0; //Brennan changed from 1 to 0. 
 								} else {
 									if(relDose > doseTarget) {
 										rivecOn = 1;
@@ -1604,12 +1628,12 @@ if(minuteYear > 1000) return 0;
 									} 
 								}
 							} else { //Low ventilation months with net-humidity transport from outside to inside.
-								if(hour >= 8 && hour <= 11) {
-									rivecOn = 0;
-								} if(hour >= 15 && hour <=18) {
+								if(hour >= 14 && hour <= 18) { //Brennan changed from 12 and 6, to 14 to 18. Always vent during peak cooling period.
 									rivecOn = 1;
+								//} if(hour >= 15 && hour <=18) {
+									//rivecOn = 1;
 								} else {
-									if(relExp >= 2.5 || relDose > 1.5) {
+									if(relExp >= 2.5 || relDose > HiDose) {
 										rivecOn = 1;
 									} else {
 										rivecOn = 0;
@@ -1618,23 +1642,51 @@ if(minuteYear > 1000) return 0;
 							}
 						}
 
-						//Fixed control + Monthly Seasonal Control.		   				
-						//Indoor and Outdoor sensor based control.
+// 						Fixed control + Monthly Seasonal Control.		   				
+// 						Indoor and Outdoor sensor based control.
+// 						if(HumContType == 9) { 
+// 							if(weather.humidityRatio > HR[3]) { //do not want to vent. Add some "by what amount" deadband value. 
+// 								if(relExp >= 2.5 || relDose > HiDose) { //have to with high exp 0.61
+// 									rivecOn = 1;
+// 								} else { //otherwise off
+// 									rivecOn = 0;
+// 								}
+// 							} else { //want to vent due to high indoor humidity, so maybe we just let it run, without relExp control?
+// 								if(relDose > doseTarget) { //control to exp = 0.5. Need to change this value based on weighted avg results.
+// 									rivecOn = 1; //OR we can change the does calculation based on expected periods of contol function (i.e., 1-week,1-month, etc.)
+// 								} else {
+// 									rivecOn = 0;
+// 								}
+// 							}
+// 						}
+					
+// 						Fixed control + Monthly Seasonal Control.		   				
+// 						Indoor and Outdoor sensor based control.
 						if(HumContType == 9) { 
 							if(weather.humidityRatio > HR[3]) { //do not want to vent. Add some "by what amount" deadband value. 
-								if(relExp >= 2.5 || relDose > HiDose) { //have to with high exp 0.61
+								if(RHhouse >= 55) {
+									if(relExp >= 2.5 || relDose > HiDose) { //have to with high exp 0.61
+										rivecOn = 1;
+									} 
+									else { //otherwise off
+										rivecOn = 0;
+									}
+								}	
+								else if(relExp >= 0.95 || relDose > 1){ 
 									rivecOn = 1;
-								} else { //otherwise off
+								} 
+								else{
 									rivecOn = 0;
-								}
-							} else { //want to vent due to high indoor humidity, so maybe we just let it run, without relExp control?
-								if(relDose > doseTarget) { //control to exp = 0.5. Need to change this value based on weighted avg results.
-									rivecOn = 1; //OR we can change the does calculation based on expected periods of contol function (i.e., 1-week,1-month, etc.)
-								} else {
-									rivecOn = 0;
-								}
+								}	
+							}			
+							else if(relDose > doseTarget){ //want to vent due to high indoor humidity, so maybe we just let it run, without relExp control?
+								rivecOn = 1; //OR we can change the does calculation based on expected periods of contol function (i.e., 1-week,1-month, etc.)
+							} 
+							else {
+								rivecOn = 0;
 							}
-						}
+						}						
+					
 
 						//The real opportunities for control based on outside are when the outside value is changing rapidly. Sharp increases, decrease ventilation. Sharp decreases, increase ventilation. 
 						//Need to undervent at above the 75th percentile and overvent below the 25th percentile based on a per month basis. 
@@ -1666,11 +1718,11 @@ if(minuteYear > 1000) return 0;
 							} else if(month == LowMonths[0] || month == LowMonths[1]  || month == LowMonths[2]) {
 								doseTargetTmp = LowMonthDose;
 							} else if(month > FirstCut && month < SecondCut) {
-								doseTargetTmp = 1.5;
+								doseTargetTmp = HiDose; //Brennan changed from fixed 1.5 to HiDose.
 							} else {
 								doseTargetTmp = doseTarget;
 							}
-							if(doseTargetTmp >= 1.5) {
+							if(doseTargetTmp >= HiDose) {
 								if(relExp >= 2.5 || relDose > doseTargetTmp) {
 									rivecOn = 1; 
 								} else {
@@ -1686,7 +1738,7 @@ if(minuteYear > 1000) return 0;
 							}
 						}
 
-
+//Consider combining 8 and 12 - Monthly + Time of day + Cooling tie-in.
 						//Monthly Seasonal Control + Cooling system tie-in.		   				
 						//Indoor and Outdoor sensor based control. 
 						if(HumContType == 12) {
@@ -1694,11 +1746,11 @@ if(minuteYear > 1000) return 0;
 							if(month <= FirstCut || month >= SecondCut) {
 								doseTargetTmp = doseTarget;
 							} else {
-								doseTargetTmp = 1.5;
+								doseTargetTmp = HiDose;
 							}
 							if(AHflag == 2) {
 									rivecOn = 1;
-							} else if(doseTargetTmp >= 1.5) {
+							} else if(doseTargetTmp >= HiDose) {
 								if(relExp >= 2.5 || relDose > doseTargetTmp) {
 									rivecOn = 1; 
 								} else {
@@ -1716,13 +1768,13 @@ if(minuteYear > 1000) return 0;
 						//Outdoor-only sensor based control, with variable dose targets
 						if(HumContType == 13) { 
 							if(weather.humidityRatio >= wCutoff) { //If humid outside, reduce ventilation. 
-								if(relExp >= 2.5 || relDose > 1.5) {
+								if(relExp >= 2.5 || relDose > 1.45) {
 									rivecOn = 1; 
 								} else {
 									rivecOn = 0;
 								}
-							} else { //If dry outside, increase vnetilation.
-								if(relDose > 0.5) { //but we do if exp is high
+							} else { //If dry outside, increase ventilation.
+								if(relDose > 0.45) { //but we do if exp is high
 									rivecOn = 1;
 								} else {
 									rivecOn = 0; //otherwise don't vent under high humidity condition.
@@ -2199,8 +2251,8 @@ if(minuteYear > 1000) return 0;
 							if(hour == 7 && minute >= 30) {
 								fan[i].on = 1;
 								mechVentPower = mechVentPower + fan[i].power;
-								ventSumOUT = ventSumOUT + abs(fan[i].q) * 3600 / houseVolume;
-								//nonRivecVentSumOUT = nonRivecVentSumOUT + abs(fan[i].q) * 3600 / houseVolume;
+								//ventSumOUT = ventSumOUT + abs(fan[i].q) * 3600 / houseVolume;
+								nonRivecVentSumOUT = nonRivecVentSumOUT + abs(fan[i].q) * 3600 / houseVolume;
 							} else
 								fan[i].on = 0;
 
@@ -2208,8 +2260,8 @@ if(minuteYear > 1000) return 0;
 							if(hour > 17 && hour <= 18) {
 								fan[i].on = 1;
 								mechVentPower = mechVentPower + fan[i].power;			// vent fan power
-								ventSumOUT = ventSumOUT + abs(fan[i].q) * 3600 / houseVolume;
-								//nonRivecVentSumOUT = nonRivecVentSumOUT + abs(fan[i].q) * 3600 / houseVolume;
+								//ventSumOUT = ventSumOUT + abs(fan[i].q) * 3600 / houseVolume;
+								nonRivecVentSumOUT = nonRivecVentSumOUT + abs(fan[i].q) * 3600 / houseVolume;
 							} else
 								fan[i].on = 0;
 
@@ -2220,8 +2272,8 @@ if(minuteYear > 1000) return 0;
 								else {
 									fan[i].on = 1;
 									mechVentPower = mechVentPower + fan[i].power;		// vent fan power
-									ventSumOUT = ventSumOUT + abs(fan[i].q) * 3600 / houseVolume;
-									//nonRivecVentSumOUT = nonRivecVentSumOUT + abs(fan[i].q) * 3600 / houseVolume;
+									//ventSumOUT = ventSumOUT + abs(fan[i].q) * 3600 / houseVolume;
+									nonRivecVentSumOUT = nonRivecVentSumOUT + abs(fan[i].q) * 3600 / houseVolume;
 								}
 							}
 							if(hcFlag == 2) {  // if cooling
@@ -2230,8 +2282,8 @@ if(minuteYear > 1000) return 0;
 								} else {
 									fan[i].on = 1;
 									mechVentPower = mechVentPower + fan[i].power;		// vent fan power
-									ventSumOUT = ventSumOUT + abs(fan[i].q) * 3600 / houseVolume;
-									//nonRivecVentSumOUT = nonRivecVentSumOUT + abs(fan[i].q) * 3600 / houseVolume;
+									//ventSumOUT = ventSumOUT + abs(fan[i].q) * 3600 / houseVolume;
+									nonRivecVentSumOUT = nonRivecVentSumOUT + abs(fan[i].q) * 3600 / houseVolume;
 								}
 							}
 
@@ -2240,8 +2292,8 @@ if(minuteYear > 1000) return 0;
 								if(hour > 12 && hour <= 15) {
 									fan[i].on = 1;
 									mechVentPower = mechVentPower + fan[i].power;
-									ventSumOUT = ventSumOUT + abs(fan[i].q) * 3600 / houseVolume;
-									//nonRivecVentSumOUT = nonRivecVentSumOUT + abs(fan[i].q) * 3600 / houseVolume;
+									//ventSumOUT = ventSumOUT + abs(fan[i].q) * 3600 / houseVolume;
+									nonRivecVentSumOUT = nonRivecVentSumOUT + abs(fan[i].q) * 3600 / houseVolume;
 								} else
 									fan[i].on = 0;
 							} else
@@ -2251,8 +2303,8 @@ if(minuteYear > 1000) return 0;
 							if(econoFlag == 1) {
 								fan[i].on = 1;
 								AHfanPower = AHfanPower + fan[i].power;			// vent fan power
-								ventSumIN = ventSumIN + abs(fan[i].q) * 3600 / houseVolume;
-								//nonRivecVentSumIN = nonRivecVentSumIN + abs(fan[i].q) * 3600 / houseVolume;
+								//ventSumIN = ventSumIN + abs(fan[i].q) * 3600 / houseVolume;
+								nonRivecVentSumIN = nonRivecVentSumIN + abs(fan[i].q) * 3600 / houseVolume;
 								economizerRan = 1;
 							} else
 								fan[i].on = 0;
@@ -2261,8 +2313,8 @@ if(minuteYear > 1000) return 0;
 							if(dryerFan == 1) {
 								fan[i].on = 1;
 								mechVentPower = mechVentPower + fan[i].power;
-								ventSumOUT = ventSumOUT + abs(fan[i].q) * 3600 / houseVolume;
-								//nonRivecVentSumOUT = nonRivecVentSumOUT + abs(fan[i].q) * 3600 / houseVolume;
+								//ventSumOUT = ventSumOUT + abs(fan[i].q) * 3600 / houseVolume;
+								nonRivecVentSumOUT = nonRivecVentSumOUT + abs(fan[i].q) * 3600 / houseVolume;
 							} else
 								fan[i].on = 0;
 
@@ -2270,8 +2322,8 @@ if(minuteYear > 1000) return 0;
 							if(kitchenFan == 1) {
 								fan[i].on = 1;
 								mechVentPower = mechVentPower + fan[i].power;
-								ventSumOUT = ventSumOUT + abs(fan[i].q) * 3600 / houseVolume;
-								//nonRivecVentSumOUT = nonRivecVentSumOUT + abs(fan[i].q) * 3600 / houseVolume;
+								//ventSumOUT = ventSumOUT + abs(fan[i].q) * 3600 / houseVolume;
+								nonRivecVentSumOUT = nonRivecVentSumOUT + abs(fan[i].q) * 3600 / houseVolume;
 							} else
 								fan[i].on = 0;
 
@@ -2279,8 +2331,8 @@ if(minuteYear > 1000) return 0;
 							if(bathOneFan == 1) {
 								fan[i].on = 1;
 								mechVentPower = mechVentPower + fan[i].power;
-								ventSumOUT = ventSumOUT + abs(fan[i].q) * 3600 / houseVolume;
-								//nonRivecVentSumOUT = nonRivecVentSumOUT + abs(fan[i].q) * 3600 / houseVolume;
+								//ventSumOUT = ventSumOUT + abs(fan[i].q) * 3600 / houseVolume;
+								nonRivecVentSumOUT = nonRivecVentSumOUT + abs(fan[i].q) * 3600 / houseVolume;
 							} else
 								fan[i].on = 0;
 
@@ -2288,8 +2340,8 @@ if(minuteYear > 1000) return 0;
 							if(bathTwoFan == 1) {
 								fan[i].on = 1;
 								mechVentPower = mechVentPower + fan[i].power;
-								ventSumOUT = ventSumOUT + abs(fan[i].q) * 3600 / houseVolume;
-								//nonRivecVentSumOUT = nonRivecVentSumOUT + abs(fan[i].q) * 3600 / houseVolume;
+								//ventSumOUT = ventSumOUT + abs(fan[i].q) * 3600 / houseVolume;
+								nonRivecVentSumOUT = nonRivecVentSumOUT + abs(fan[i].q) * 3600 / houseVolume;
 							} else
 								fan[i].on = 0;
 
@@ -2298,11 +2350,16 @@ if(minuteYear > 1000) return 0;
 							if(bathOneFan == 1) {
 								fan[i].on = 1;
 								mechVentPower = mechVentPower + fan[i].power;
-								ventSumOUT = ventSumOUT + abs(fan[i].q) * 3600 / houseVolume;
-								//nonRivecVentSumOUT = nonRivecVentSumOUT + abs(fan[i].q) * 3600 / houseVolume;
+								//ventSumOUT = ventSumOUT + abs(fan[i].q) * 3600 / houseVolume;
+								nonRivecVentSumOUT = nonRivecVentSumOUT + abs(fan[i].q) * 3600 / houseVolume;
 							} else
 								fan[i].on = 0;
+							
+								
+//sum the non-Rivec ventilation airflows (prior section) and set nonRivecVentSum to the largest of inflow/outflow.								
+								
 
+						
 						//} else if(fan[i].oper == 28) {					// Single Cut-Off Ventilation Temperature Controller. Brennan.
 						//	if(weatherTemp >= ventcutoff) {
 						//		fan[i].on = 1;
@@ -2388,6 +2445,13 @@ if(minuteYear > 1000) return 0;
 
 
 							} 
+							
+						if(nonRivecVentSumIN > nonRivecVentSumOUT){						//ventSum based on largest of inflow or outflow
+							nonRivecVentSum = nonRivecVentSumIN;
+						} else{
+							nonRivecVentSum = nonRivecVentSumOUT;			
+						}	
+						
 						}
 					//}
 					// [END] Auxiliary Fan Controls ========================================================================================================
