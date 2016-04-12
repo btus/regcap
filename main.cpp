@@ -10,6 +10,7 @@
 #include "functions.h"
 #include "weather.h"
 #include "psychro.h"
+#include "equip.h"
 #include "constants.h"
 #include "config/config.h"
 
@@ -227,6 +228,10 @@ int main(int argc, char *argv[], char* envp[])
 		int LowMonths[3];
 		double HiMonthDose;
 		double LowMonthDose;
+		double dhCapacity;		// Dehumidifier capacity (pints/day)
+		double dhEnergyFactor;	// Dehumidifier energy factor (L/kWh)
+		double dhSetPoint;		// Dehumidifier set point (%RH)
+		double dhDeadBand;		// Dehumidifier dead band (+/- %RH)
 		
 		// Zeroing the variables to create the sums for the .ou2 file
 		long int minuteYear = 1;
@@ -246,6 +251,7 @@ int main(int argc, char *argv[], char* envp[])
 		double compressor_kWh = 0;
 		double mechVent_kWh = 0;
 		double furnace_kWh = 0;
+		double dehumidifier_kWh = 0;
 		double SatVaporPressure = 0; //Saturation vapor pressure, pa
 		double HRsaturation = 0; //humidity ratio at saturation
 		double RHhouse = 50; //house relative humidity
@@ -465,8 +471,13 @@ int main(int argc, char *argv[], char* envp[])
 			buildingFile >> LowMonths[0] >> LowMonths[1] >> LowMonths[2];
 			buildingFile >> HiMonthDose;
 			buildingFile >> LowMonthDose;
-cout << "HumContType:" << HumContType << " LowMonths[1]" << LowMonths[1] << " LowMonthDose:" << LowMonthDose << endl;
 		}
+		buildingFile >> dhCapacity;	
+		buildingFile >> dhEnergyFactor;
+		buildingFile >> dhSetPoint;	
+		buildingFile >> dhDeadBand;	
+
+cout << "dhCapacity:" << dhCapacity << " dhEnergyFactor:" << dhEnergyFactor << " dhSetPoint:" << dhSetPoint << endl;
 
 		buildingFile.close();
 
@@ -848,9 +859,6 @@ cout << "HumContType:" << HumContType << " LowMonths[1]" << LowMonths[1] << " Lo
 		
 		double relExpTarget = 1;		//This is a relative expsoure value target used for humidity control simulations. It varies between 0 and 2.5, depending on magnitude of indoor-outdoor humidity ratio difference.
 
-
-		// =====================================================================================================================
-
 		// [START] Fan Schedule Inputs =========================================================================================
 		// Read in fan schedule (lists of 1s and 0s, 1 = fan ON, 0 = fan OFF, for every minute of the year)
 		// Different schedule file depending on number of bathrooms
@@ -860,9 +868,8 @@ cout << "HumContType:" << HumContType << " LowMonths[1]" << LowMonths[1] << " Lo
 			cout << "Cannot open fan schedule: " << fanScheduleFileName << endl;
 			return 1; 		
 		}
-
-
 		// [END] Fan Schedule Inputs =======================================================================================
+
 		int AHminutes;
 		int target;
 		int day = 1;
@@ -992,9 +999,9 @@ cout << "HumContType:" << HumContType << " LowMonths[1]" << LowMonths[1] << " Lo
 		double HumidityIndex = 0;
 		double HumidityIndex_Sum = 0;
 		double HumidityIndex_Avg = 0;
-		double coolingLoad = 0;
-		double latLoad = 0;
-		double heatingLoad = 0;
+		//double coolingLoad = 0;
+		//double latLoad = 0;
+		//double heatingLoad = 0;
 
 		vector<double> averageTemp (0);	// Array to track the 7 day running average
 
@@ -1008,6 +1015,7 @@ cout << "HumContType:" << HumContType << " LowMonths[1]" << LowMonths[1] << " Lo
 		double qFanFlowRatio = 0; //Brennan added
 		double FanQ = fan[0].q; //Brennan's attempt to fix the airflow outside of the if() structures in the fan.oper section. fan[0].q was always the whole house exhaust fan, to be operated continuously or controlled by temperature controls.
 		double FanP = fan[0].power; //Brennan's attempt to fix the fan power outside of the if() structures in the fan.oper section.
+		Dehumidifier dh(dhCapacity, dhEnergyFactor, dhSetPoint, dhDeadBand);	// Initialize Dehumidifier 
 
 		cout << endl;
 		cout << "Simulation: " << simNum << endl;
@@ -2877,6 +2885,8 @@ if(minuteYear > 1000) return 0;
 						Mcoil = .3 * capacityraw;											// maximum mass on coil is 0.3 kg per ton of cooling
 					Mcoilprevious = Mcoil;													// maybe put this at top of the hour
 
+					dh.run(RHhouse, tempHouse);	// run dehumidifier using house air node conditions
+					
 					// [END] Equipment Model ======================================================================================================================================
 
 					// [START] Moisture Balance ===================================================================================================================================
@@ -2884,7 +2894,7 @@ if(minuteYear > 1000) return 0;
 					// Call moisture subroutine
 					sub_moisture(HR, M1, M12, M15, M16, Mw5, matticenvout, mCeiling, mSupAHoff, mRetAHoff,
 						matticenvin, weather.humidityRatio, mSupLeak, mAH, mRetReg, mRetLeak, mSupReg, latcap, mHouseIN, mHouseOUT,
-						latentLoad, mFanCycler, mHRV_AH, mERV_AH, ERV_TRE, MWha, airDensityIN, airDensityOUT);
+						latentLoad, mFanCycler, mHRV_AH, mERV_AH, ERV_TRE, MWha, airDensityIN, airDensityOUT, dh.moisture);
 
 					SatVaporPressure = saturationVaporPressure(tempHouse);
 
@@ -2949,7 +2959,7 @@ if(minuteYear > 1000) return 0;
 							retrho, weather.pressure, weather.humidityRatio, uaSolAir, uaTOut, matticenvin, matticenvout, mHouseIN, mHouseOUT, planArea, mSupAHoff,
 							mRetAHoff, solgain, tsolair, mFanCycler, roofPeakHeight, h, retLength, supLength,
 							roofType, M1, M12, M15, M16, roofRval, rceil, AHflag, mERV_AH, ERV_SRE, mHRV, HRV_ASE, mHRV_AH,
-							capacityc, capacityh, evapcap, internalGains, airDensityIN, airDensityOUT, airDensityATTIC, airDensitySUP, airDensityRET, numStories, storyHeight);
+							capacityc, capacityh, evapcap, internalGains, airDensityIN, airDensityOUT, airDensityATTIC, airDensitySUP, airDensityRET, numStories, storyHeight, dh.sensible);
 
 						if(abs(b[0] - tempAttic) < .2) {	// Testing for convergence
 
@@ -3226,9 +3236,10 @@ if(minuteYear > 1000) return 0;
 					mechVent_kWh = mechVent_kWh + mechVentPower / 60000;		// Total mechanical ventilation energy for over the simulation in kWh
 					gasTherm = gasTherm + hcap * 60 / 1000000 / 105.5;			// Total Heating energy for the simulation in therms
 					furnace_kWh = gasTherm * 29.3;								// Total heating/furnace energy for the simulation in kWh
-					coolingLoad += capacityc / 60000;
-					latLoad += latcap / 60000;
-					heatingLoad += capacityh / 60000;
+					dehumidifier_kWh += dh.power / 60000;
+					//coolingLoad += capacityc / 60000;
+					//latLoad += latcap / 60000;
+					//heatingLoad += capacityh / 60000;
 
 					// Average temperatures and airflows
 					meanOutsideTemp = meanOutsideTemp + (weather.dryBulb - 273.15);		// Average external temperature over the simulation
@@ -3262,7 +3273,7 @@ if(minuteYear > 1000) return 0;
 
 		fanScheduleFile.close();
 
-		double total_kWh = AH_kWh + furnace_kWh + compressor_kWh + mechVent_kWh;
+		double total_kWh = AH_kWh + furnace_kWh + compressor_kWh + mechVent_kWh + dehumidifier_kWh;
 
 		meanOutsideTemp = meanOutsideTemp / minuteYear;
 		meanAtticTemp = meanAtticTemp / minuteYear;
@@ -3297,13 +3308,13 @@ if(minuteYear > 1000) return 0;
 		ou2File << "Temp_out\tTemp_attic\tTemp_house";
 		ou2File << "\tAH_kWh\tfurnace_kWh\tcompressor_kWh\tmechVent_kWh\ttotal_kWh\tmean_ACH\tflue_ACH";
 		ou2File << "\tmeanRelExpReal\tmeanRelDoseReal\tmeanOccupiedExpReal\tmeanOccupiedDoseReal";
-		ou2File << "\toccupiedMinCount\trivecMinutes\tNL\tC\tAeq\tfilterChanges\tMERV\tloadingRate\tDryAirVentLoad\tMoistAirVentLoad\tRHexcAnnual60\tRHexcAnnual70\tHumidityIndex_Avg\tcoolingLoad\tlatLoad\theatingLoad" << endl;
+		ou2File << "\toccupiedMinCount\trivecMinutes\tNL\tC\tAeq\tfilterChanges\tMERV\tloadingRate\tDryAirVentLoad\tMoistAirVentLoad\tRHexcAnnual60\tRHexcAnnual70\tHumidityIndex_Avg\tdehumidifier_kWh" << endl;
 		//Values
 		ou2File << meanOutsideTemp << "\t" << meanAtticTemp << "\t" << meanHouseTemp << "\t";
 		ou2File << AH_kWh << "\t" << furnace_kWh << "\t" << compressor_kWh << "\t" << mechVent_kWh << "\t" << total_kWh << "\t" << meanHouseACH << "\t" << meanFlueACH << "\t";
 		ou2File << meanRelExp << "\t" << meanRelDose << "\t" << meanOccupiedExpReal << "\t" << meanOccupiedDoseReal << "\t"; //Brennan. changed all the exp/dose outputs to be "real"
 		ou2File << occupiedMinCount << "\t" << rivecMinutes << "\t" << NL << "\t" << C << "\t" << Aeq << "\t" << filterChanges << "\t" << MERV << "\t" << loadingRate << "\t" << TotalDAventLoad << "\t" << TotalMAventLoad;
-		ou2File << "\t" << RHexcAnnual60 << "\t" << RHexcAnnual70 << "\t" << HumidityIndex_Avg << "\t" << coolingLoad << "\t" << latLoad << "\t" << heatingLoad << endl;
+		ou2File << "\t" << RHexcAnnual60 << "\t" << RHexcAnnual70 << "\t" << HumidityIndex_Avg << "\t" << dehumidifier_kWh << endl;
 
 		ou2File.close();
 

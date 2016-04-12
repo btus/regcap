@@ -168,7 +168,8 @@ void sub_heat (
 	double& airDensitySUP,
 	double& airDensityRET,
 	int& numStories,
-	double& storyHeight
+	double& storyHeight,
+	double dhSensibleGain
 ) {
 	
 	int rhoSheathing;
@@ -739,12 +740,12 @@ void sub_heat (
 			A[15][15] = M16 * cp16 / dtau + H7 * A7 - mRetReg * cp16 - mHouseOUT * cp16 + H13 * A13 + uaSolAir + uaTOut;
 			b[15] = M16 * cp16 * tempOld[15] / dtau + (mHouseIN - mHRV) * cp16 * tempOut + mHRV * cp16 * (( 1 - HRV_ASE) 
 				* tempOut + HRV_ASE * tempOld[15]) + uaSolAir * tsolair + uaTOut * tempOut + .05 * solgain + mSupReg * cp1 * toldcur[14] 
-				+ mCeiling * cp1 * toldcur[0] + mSupAHoff * cp15 * toldcur[14] + mRetAHoff * cp12 * toldcur[11] + internalGains;
+				+ mCeiling * cp1 * toldcur[0] + mSupAHoff * cp15 * toldcur[14] + mRetAHoff * cp12 * toldcur[11] + internalGains + dhSensibleGain;
 		} else {
 			// flow from house to attic
 			A[15][15] = M16 * cp16 / dtau + H7 * A7 - mCeiling * cp16 - mSupAHoff * cp16 - mRetAHoff * cp16 - mRetReg * cp16 - mHouseOUT * cp16 + H13 * A13 + uaSolAir + uaTOut;
 			b[15] = M16 * cp16 * tempOld[15] / dtau + (mHouseIN - mHRV) * cp16 * tempOut + mHRV * cp16 * ((1 - HRV_ASE)
-				* tempOut + HRV_ASE * tempOld[15]) + uaSolAir * tsolair + uaTOut * tempOut + .05 * solgain + mSupReg * cp1 * toldcur[14] + internalGains;
+				* tempOut + HRV_ASE * tempOld[15]) + uaSolAir * tsolair + uaTOut * tempOut + .05 * solgain + mSupReg * cp1 * toldcur[14] + internalGains + dhSensibleGain;
 		}
 
 		A[15][6] = -H7 * A7;
@@ -800,7 +801,8 @@ void sub_moisture (
 	double& ERV_TRE,
 	double& MWha,
 	double& airDensityIN,
-	double& airDensityOUT
+	double& airDensityOUT,
+	double dhMoistureRemoved
 	) {
 		double Q;
 		double R;
@@ -853,10 +855,10 @@ void sub_moisture (
 		// Node 4 - House Air
 		if(mCeiling >= 0) { // flow from attic to house
 			Q = Mw4 / dtau - mHouseOUT - mRetReg + MWha;
-			R = Mw4 * hrold[3] / dtau + mHouseIN * HROUT + mSupReg * hrold[2] + mCeiling * hrold[0] + mSupAHoff * hrold[2] + mRetAHoff * hrold[1] + latentLoad + MWha * hrold[4];
+			R = Mw4 * hrold[3] / dtau + mHouseIN * HROUT + mSupReg * hrold[2] + mCeiling * hrold[0] + mSupAHoff * hrold[2] + mRetAHoff * hrold[1] + latentLoad + MWha * hrold[4] - dhMoistureRemoved;
 		} else { // flow from house to attic
 			Q = Mw4 / dtau - mHouseOUT - mRetReg - mCeiling - mSupAHoff - mRetAHoff + MWha;
-			R = Mw4 * hrold[3] / dtau + mHouseIN * HROUT + mSupReg * hrold[2] + latentLoad + MWha * hrold[4];
+			R = Mw4 * hrold[3] / dtau + mHouseIN * HROUT + mSupReg * hrold[2] + latentLoad + MWha * hrold[4] - dhMoistureRemoved;
 		}
 		HR[3] = R / Q;
 

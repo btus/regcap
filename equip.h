@@ -45,6 +45,7 @@ class Dehumidifier {
 		double capacityRated;		// rated capacity (kg/s)
 		double efficiency;			// efficiency (Wh/kg)
 		double setPoint;				// set point (% RH)
+		double deadBand;				// dead band (% RH), optional, default= +/-2.5%
 		int onTime;
 		
 	public:
@@ -52,7 +53,7 @@ class Dehumidifier {
 		double moisture; 	// moisture removed (kg)
 		double sensible;	// sensible capacity added (watts)
 		
-		Dehumidifier(double capacity, double energyFactor, double rh);
+		Dehumidifier(double capacity, double energyFactor, double setPoint, double deadBand=2.5);
 		bool run(double rhIn, double tIn);
 };
 

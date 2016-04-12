@@ -1,10 +1,10 @@
-#include <iostream>
 #include "equip.h"
 #include "psychro.h"
 #include "constants.h"
 #ifdef __APPLE__
    #include <cmath>        // needed for mac g++
 #endif
+#include <iostream>
 
 using namespace std;
 
@@ -97,16 +97,19 @@ double Compressor::run(bool compOn, double hrReturn, double tReturn, double tOut
 return compressorPower;
 }
 
-Dehumidifier::Dehumidifier(double capacity, double energyFactor, double rh) {
-	capacityRated = capacity * 0.4732 / (24 * 60 * 60);	// convert pints/day to kg/s
-	efficiency = 1000 / energyFactor;							// convert to Wh/kg
-	setPoint = rh;
+Dehumidifier::Dehumidifier(double cap, double ef, double sp, double db) {
+	capacityRated = cap * 0.4732 / (24 * 60 * 60);	// convert pints/day to kg/s
+	efficiency = 1000 / ef;									// convert to Wh/kg
+	setPoint = sp;
+	deadBand = db;
 	onTime = 0;
+	moisture = 0;
+	power = 0;
+	sensible = 0;
 }
 
 bool Dehumidifier::run(double rhIn, double tIn) {
-	const double deadBand = 0.05;	// 5% RH deadband
-	const int initTime = 3;			// time to full capacity (minutes)
+	const int initTime = 4;			// time to full capacity (minutes)
 	// Curves from Winkler et. al., NREl Technical Report TP-5500-52791, December 2011
 	// "Laboratory Test Report for Six ENERGY STAR® Dehumidifiers"
 	// Capacity curve
@@ -140,13 +143,13 @@ bool Dehumidifier::run(double rhIn, double tIn) {
 	
 	// Operate
 	if(onTime > 0) {
+		cout << "rhin=" << rhIn << " setpoint=" << setPoint << " deadband=" << deadBand << endl;
 		tIn -= C_TO_K;	// curves are in deg C and %RH
-		rhIn *= 100;
 		double capFTRH = capA + capB * tIn + capC * pow(tIn, 2) + capD * rhIn + capE * pow(rhIn, 2) + capF * tIn * rhIn;
 		moisture = capacityRated * capFTRH; 
 		double efFTRH = efA + efB * tIn + efC * pow(tIn, 2) + efD * rhIn + efE * pow(rhIn, 2) + efF * tIn * rhIn;
 		power = moisture * 3600 * efficiency / efFTRH;		// kg/s * 3600 s/h * Wh/kg = Watts
-		// adjust moisture for init time
+		// reduce moisture removal linearly up to init time
 		double capInit = (onTime < initTime) ? 1.0 - double(initTime - onTime) / double(initTime) : 1.0;
 		moisture *= capInit;
 		sensible = moisture * 2501000 + power;

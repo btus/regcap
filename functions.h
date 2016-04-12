@@ -146,7 +146,8 @@ void sub_heat (
 	double& airDensitySUP,
 	double& airDensityRET,
 	int& numStories,
-	double& storyHeight
+	double& storyHeight,
+	double dhSensibleGain
 );
 
 void sub_moisture ( 
@@ -177,7 +178,8 @@ void sub_moisture (
 	double& ERV_TRE,
 	double& MWha,
 	double& airDensityIN,
-	double& airDensityOUT
+	double& airDensityOUT,
+	double dhMoistureRemoved
 );
 
 void sub_houseLeak ( 
