@@ -49,9 +49,9 @@ class Dehumidifier {
 		int onTime;
 		
 	public:
-		double power;		// power (watts)
-		double moisture; 	// moisture removed (kg)
-		double sensible;	// sensible capacity added (watts)
+		double power;			// power (watts)
+		double condensate; 	// moisture removed (kg)
+		double sensible;		// sensible capacity added (watts)
 		
 		Dehumidifier(double capacity, double energyFactor, double setPoint, double deadBand=2.5);
 		bool run(double rhIn, double tIn);

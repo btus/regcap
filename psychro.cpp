@@ -40,3 +40,10 @@ double calcHumidityRatio(double dewpoint, double pressure) {
 double KtoF(double degK) {
 	return (degK - C_TO_K) * (9.0 / 5.0) + 32;
 }
+
+/* This function calculates the heat of vaporization for moist air (J/kg) as function of temperature (deg C).
+	From EnergyPlus Psychometrics function PsyHfgAirFnWTdb()
+*/
+double calcHfgAir(double temp) {
+	return ( 2500940.0 + 1858.95 * temp ) - ( 4180.0 * temp ); // enthalpy of the gas - enthalpy of the fluid
+}

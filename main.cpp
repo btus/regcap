@@ -477,8 +477,6 @@ int main(int argc, char *argv[], char* envp[])
 		buildingFile >> dhSetPoint;	
 		buildingFile >> dhDeadBand;	
 
-cout << "dhCapacity:" << dhCapacity << " dhEnergyFactor:" << dhEnergyFactor << " dhSetPoint:" << dhSetPoint << endl;
-
 		buildingFile.close();
 
 		// [END] Read in Building Inputs ============================================================================================================================================
@@ -2885,7 +2883,9 @@ if(minuteYear > 1000) return 0;
 						Mcoil = .3 * capacityraw;											// maximum mass on coil is 0.3 kg per ton of cooling
 					Mcoilprevious = Mcoil;													// maybe put this at top of the hour
 
-					dh.run(RHhouse, tempHouse);	// run dehumidifier using house air node conditions
+					if(dhCapacity > 0) {
+						dh.run(RHhouse, tempHouse);	// run dehumidifier using house air node conditions
+						}
 					
 					// [END] Equipment Model ======================================================================================================================================
 
@@ -2894,7 +2894,7 @@ if(minuteYear > 1000) return 0;
 					// Call moisture subroutine
 					sub_moisture(HR, M1, M12, M15, M16, Mw5, matticenvout, mCeiling, mSupAHoff, mRetAHoff,
 						matticenvin, weather.humidityRatio, mSupLeak, mAH, mRetReg, mRetLeak, mSupReg, latcap, mHouseIN, mHouseOUT,
-						latentLoad, mFanCycler, mHRV_AH, mERV_AH, ERV_TRE, MWha, airDensityIN, airDensityOUT, dh.moisture);
+						latentLoad, mFanCycler, mHRV_AH, mERV_AH, ERV_TRE, MWha, airDensityIN, airDensityOUT, dh.condensate);
 
 					SatVaporPressure = saturationVaporPressure(tempHouse);
 

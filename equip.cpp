@@ -75,13 +75,14 @@ double Compressor::run(bool compOn, double hrReturn, double tReturn, double tOut
 	}
 	
 	// Track Coil Moisture
+	double hfg = calcHfgAir(tReturn);
 	if(SHR < 1) {
-		capacityLatent = (1 - SHR) * capacityTotal / 3.413;			// latent capacity Watts
-		coilMoisture += capacityLatent / 2501000 * dtau;				// condenstion in timestep kg/s * time
+		capacityLatent = (1 - SHR) * capacityTotal / 3.413;		// latent capacity Watts
+		coilMoisture += capacityLatent / hfg * dtau;					// condensation in timestep kg/s * time
 	} else {
-		if(coilMoisture > 0) {													// if moisture on coil but no latcap, then we evaporate coil moisture until Mcoil = zero
-			capacityLatent = -maxMoisture / 1800 * 2501000;				// evaporation capacity J/s - this is negative latent capacity
-			coilMoisture -=  maxMoisture / 1800 * dtau;					// evaporation in timestep kg/s * time
+		if(coilMoisture > 0) {												// if moisture on coil but no latcap, then we evaporate coil moisture until Mcoil = zero
+			capacityLatent = -maxMoisture / 1800 * hfg;				// evaporation capacity J/s - this is negative latent capacity (1800 sec = 30 minutes to dry coil)
+			coilMoisture -=  maxMoisture / 1800 * dtau;				// evaporation in timestep kg/s * time
 		} else {
 			capacityLatent = 0;
 		}
@@ -99,11 +100,13 @@ return compressorPower;
 
 Dehumidifier::Dehumidifier(double cap, double ef, double sp, double db) {
 	capacityRated = cap * 0.4732 / (24 * 60 * 60);	// convert pints/day to kg/s
-	efficiency = 1000 / ef;									// convert to Wh/kg
+	if(ef > 0) {
+		efficiency = 1000 / ef;								// convert to Wh/kg
+	}
 	setPoint = sp;
 	deadBand = db;
 	onTime = 0;
-	moisture = 0;
+	condensate = 0;
 	power = 0;
 	sensible = 0;
 }
@@ -143,20 +146,20 @@ bool Dehumidifier::run(double rhIn, double tIn) {
 	
 	// Operate
 	if(onTime > 0) {
-		cout << "rhin=" << rhIn << " setpoint=" << setPoint << " deadband=" << deadBand << endl;
 		tIn -= C_TO_K;	// curves are in deg C and %RH
 		double capFTRH = capA + capB * tIn + capC * pow(tIn, 2) + capD * rhIn + capE * pow(rhIn, 2) + capF * tIn * rhIn;
-		moisture = capacityRated * capFTRH; 
+		condensate = capacityRated * capFTRH; 
 		double efFTRH = efA + efB * tIn + efC * pow(tIn, 2) + efD * rhIn + efE * pow(rhIn, 2) + efF * tIn * rhIn;
-		power = moisture * 3600 * efficiency / efFTRH;		// kg/s * 3600 s/h * Wh/kg = Watts
+		power = condensate * 3600 * efficiency / efFTRH;		// kg/s * 3600 s/h * Wh/kg = Watts
 		// reduce moisture removal linearly up to init time
 		double capInit = (onTime < initTime) ? 1.0 - double(initTime - onTime) / double(initTime) : 1.0;
-		moisture *= capInit;
-		sensible = moisture * 2501000 + power;
-//cout << " onTime=" << onTime << " capFTRH=" << capFTRH << " capInit=" << capInit << " efFTRH=" << efFTRH << endl;
+		condensate *= capInit;
+		double hfg = calcHfgAir(tIn);
+		sensible = condensate * hfg + power;
+//cout << onTime << "," << rhIn << "," << tIn << "," << condensate << endl;
 	} else {
 		// implement offTime here if we want to keep fan running
-		moisture = 0;
+		condensate = 0;
 		power = 0;
 		sensible = 0;
 	}
