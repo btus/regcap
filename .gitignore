@@ -3,5 +3,6 @@ Debug
 weather
 tmy3
 rc
+test_equip
 out
 *.o
