@@ -134,7 +134,7 @@ int main(int argc, char *argv[], char* envp[])
 		string shelterFileName;
 		double C;
 		double n;						// Envelope Pressure Exponent
-		double h;						// Eaves Height [m]
+		double eaveHeight;			// Eave Height [m]
 		double R;						// Ceiling Floor Leakage Sum
 		double X;						// Ceiling Floor Leakage Difference
 		int numFlues;					// Number of flues/chimneys/passive stacks
@@ -300,7 +300,7 @@ int main(int argc, char *argv[], char* envp[])
 
 		buildingFile >> C;
 		buildingFile >> n;
-		buildingFile >> h;
+		buildingFile >> eaveHeight;
 		buildingFile >> R;
 		buildingFile >> X;
 		buildingFile >> numFlues;
@@ -672,10 +672,10 @@ int main(int argc, char *argv[], char* envp[])
 		}
 
 		// Wind speed correction to adjust met wind speed to that at building eaves height
-		double metExponent = 0.14;		// Power law exponent of the wind speed profile at the met station
-		double metThickness = 270;		// Atmospheric boundary layer thickness at met station [m]
-		double metHeight = 10;			// Height of met station wind measurements [m]
-		double windSpeedCorrection = pow((metThickness / metHeight), metExponent) * pow((h / layerThickness), windPressureExp);
+		const double metExponent = 0.14;		// Power law exponent of the wind speed profile at the met station
+		const double metThickness = 270;		// Atmospheric boundary layer thickness at met station [m]
+		const double metHeight = 10;			// Height of met station wind measurements [m]
+		double windSpeedCorrection = pow((metThickness / metHeight), metExponent) * pow((eaveHeight / layerThickness), windPressureExp);
 		//double windSpeedCorrection = pow((80/ 10), .15) * pow((h / 80), .3);		// The old wind speed correction
 		// [END] Terrain ============================================================================================
 
@@ -2991,7 +2991,7 @@ if(minuteYear > 1000) return 0;
 
 						while(1) {
 							// Call houseleak subroutine to calculate air flow. Brennan added the variable mCeilingIN to be passed to the subroutine. Re-add between mHouseIN and mHouseOUT
-							sub_houseLeak(AHflag, flag, weather.windSpeed, weather.windDirection, tempHouse, tempAttic, weather.dryBulb, C, n, h, R, X, numFlues,
+							sub_houseLeak(AHflag, flag, weather.windSpeed, weather.windDirection, tempHouse, tempAttic, weather.dryBulb, C, n, eaveHeight, R, X, numFlues,
 								flue, wallFraction, floorFraction, Sw, flueShelterFactor, numWinDoor, winDoor, numFans, fan, numPipes,
 								Pipe, mIN, mOUT, Pint, mFlue, mCeiling, mFloor, atticC, dPflue, dPceil, dPfloor, Crawl,
 								Hfloor, rowOrIsolated, soffitFraction, Patticint, wallCp, mSupReg, mAH, mRetLeak, mSupLeak,
@@ -3005,7 +3005,7 @@ if(minuteYear > 1000) return 0;
 								mCeilingOld = mCeiling;
 
 							// call atticleak subroutine to calculate air flow to/from the attic
-							sub_atticLeak(flag, weather.windSpeed, weather.windDirection, tempHouse, weather.dryBulb, tempAttic, atticC, atticPressureExp, h, roofPeakHeight,
+							sub_atticLeak(flag, weather.windSpeed, weather.windDirection, tempHouse, weather.dryBulb, tempAttic, atticC, atticPressureExp, eaveHeight, roofPeakHeight,
 								flueShelterFactor, Sw, numAtticVents, atticVent, soffit, mAtticIN, mAtticOUT, Patticint, mCeiling, rowOrIsolated,
 								soffitFraction, roofPitch, roofPeakOrient, numAtticFans, atticFan, mSupReg, mRetLeak, mSupLeak, matticenvin,
 								matticenvout, mSupAHoff, mRetAHoff, airDensityIN, airDensityOUT, airDensityATTIC);
@@ -3021,7 +3021,7 @@ if(minuteYear > 1000) return 0;
 							floorArea, roofPitch, ductLocation, mSupReg, mRetReg, mRetLeak, mSupLeak, mAH, supRval, retRval, supDiameter,
 							retDiameter, supArea, retArea, supThickness, retThickness, supVolume, retVolume, supCp, retCp, supVel, retVel, suprho,
 							retrho, weather.pressure, weather.humidityRatio, uaSolAir, uaTOut, matticenvin, matticenvout, mHouseIN, mHouseOUT, planArea, mSupAHoff,
-							mRetAHoff, solgain, tsolair, mFanCycler, roofPeakHeight, h, retLength, supLength,
+							mRetAHoff, solgain, tsolair, mFanCycler, roofPeakHeight, eaveHeight, retLength, supLength,
 							roofType, M1, M12, M15, M16, roofRval, rceil, AHflag, mERV_AH, ERV_SRE, mHRV, HRV_ASE, mHRV_AH,
 							capacityc, capacityh, evapcap, internalGains, airDensityIN, airDensityOUT, airDensityATTIC, airDensitySUP, airDensityRET, numStories, storyHeight, dh.sensible);
 

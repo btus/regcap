@@ -1,10 +1,0 @@
-REGCAP++ Building Simulation Tool LBNL
-dhCapacity:0 dhEnergyFactor:0 dhSetPoint:0
-ID=722430TZ=-6 lat=30 long=-95.367 alt=29
-
-Simulation: 1
-Batch File:	 in/test1.bat
-Input File:	 in/sim_2.csv
-Output File:	 out/sim_2.rco
-Weather File:	 weather/Hourly/02.WS3
-Day = 11,50,20,0
