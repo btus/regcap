@@ -95,7 +95,7 @@ int main(int argc, char *argv[], char* envp[])
 	// Main loop on each input file =======================================================
 	while(batchFile >> simName)  {		
 		simNum++;
-		string inputFileName = inPath + simName + ".csv";
+		string inputFileName = inPath + simName + ".in";
 		string outputFileName = outPath + simName + ".rco";
 		string moistureFileName = outPath + simName + ".hum";
 		string filterFileName = outPath + simName + ".fil";
@@ -133,7 +133,7 @@ int main(int argc, char *argv[], char* envp[])
 		string occupancyFileName;
 		string shelterFileName;
 		double C;
-		double n;						// Envelope Pressure Exponent
+		double envPressureExp;		// Envelope Pressure Exponent
 		double eaveHeight;			// Eave Height [m]
 		double R;						// Ceiling Floor Leakage Sum
 		double X;						// Ceiling Floor Leakage Difference
@@ -146,8 +146,8 @@ int main(int argc, char *argv[], char* envp[])
 		double floorArea;				// Conditioned floor area (m2)
 		double planArea;				// Footprint of house (m2)
 		double storyHeight;			// Story height (m)
-		double houseLength;			// Long side of house (m) NOT USED IN CODE
-		double houseWidth;			// Short side of house (m) NOT USED IN CODE
+		//double houseLength;			// Long side of house (m) NOT USED IN CODE
+		//double houseWidth;			// Short side of house (m) NOT USED IN CODE
 		double uaWall;					// UA of opaque wall elements (walls and doors) (W/K)
 		double uaFloor;				// UA of floor or slab (no solar gain, not used for cooling load) (W/K)
 		double uaWindow;				// UA of windows for conductive gain (W/K)
@@ -188,7 +188,7 @@ int main(int argc, char *argv[], char* envp[])
 		double retn;
 		double supC;					// Supply leak flow coefficient
 		double retC;					// Return leak flow coefficient
-		double buried;
+		//double buried;
 		double capacityraw;
 		double capacityari;
 		double EERari;
@@ -197,7 +197,7 @@ int main(int argc, char *argv[], char* envp[])
 		double fanPower_cooling0;	// Cooling fan power [W]
 		double charge;
 		double AFUE;				// Annual Fuel Utilization Efficiency for the furnace
-		int bathroomSchedule;	// Bathroom schedule file to use (1, 2 or 3)
+		//int bathroomSchedule;	// Bathroom schedule file to use (1, 2 or 3)
 		int numBedrooms;			// Number of bedrooms (for 62.2 target ventilation calculation)
 		int numStories;			// Number of stories in the building (for Nomalized Leakage calculation)
 		double weatherFactor;	// Weather Factor (w) (for infiltration calculation from ASHRAE 136)
@@ -299,7 +299,7 @@ int main(int argc, char *argv[], char* envp[])
 		shelterFileName = schedulePath + shelterFileName;
 
 		buildingFile >> C;
-		buildingFile >> n;
+		buildingFile >> envPressureExp;
 		buildingFile >> eaveHeight;
 		buildingFile >> R;
 		buildingFile >> X;
@@ -336,8 +336,8 @@ int main(int argc, char *argv[], char* envp[])
 		buildingFile >> floorArea;
 		buildingFile >> planArea;
 		buildingFile >> storyHeight;
-		buildingFile >> houseLength;
-		buildingFile >> houseWidth;
+		//buildingFile >> houseLength;
+		//buildingFile >> houseWidth;
 		buildingFile >> uaWall;
 		buildingFile >> uaFloor;
 		buildingFile >> uaWindow;
@@ -424,7 +424,7 @@ int main(int argc, char *argv[], char* envp[])
 		buildingFile >> retn;
 		buildingFile >> supC;
 		buildingFile >> retC;
-		buildingFile >> buried; // NOTE: The buried variable is not used but left in code to continue proper file navigation
+		//buildingFile >> buried; // NOTE: The buried variable is not used but left in code to continue proper file navigation
 
 		// =========================== Equipment Inputs ============================
 		buildingFile >> capacityraw;
@@ -435,7 +435,7 @@ int main(int argc, char *argv[], char* envp[])
 		buildingFile >> fanPower_cooling0;
 		buildingFile >> charge;
 		buildingFile >> AFUE;
-		buildingFile >> bathroomSchedule;
+		//buildingFile >> bathroomSchedule;
 		buildingFile >> numBedrooms;
 		buildingFile >> numStories;
 		buildingFile >> weatherFactor;
@@ -689,7 +689,7 @@ int main(int argc, char *argv[], char* envp[])
 			AL4 = ceilingC * sqrt(airDensityRef / 2) * pow(4, (atticPressureExp - .5));
 
 		// AL5 is use to estimate flow velocities in the house
-		double AL5 = C * sqrt(airDensityRef / 2) * pow(4, (n - .5));
+		double AL5 = C * sqrt(airDensityRef / 2) * pow(4, (envPressureExp - .5));
 
 		// ================= CREATE OUTPUT FILE =================================================
 		ofstream outputFile;
@@ -781,7 +781,7 @@ int main(int argc, char *argv[], char* envp[])
 		int recoveryStart = 0;
 		int recoveryEnd = 0;
 
-		double ELA = C * sqrt(airDensityRef / 2) * pow(4, (n - .5));			// Effective Leakage Area
+		double ELA = C * sqrt(airDensityRef / 2) * pow(4, (envPressureExp - .5));			// Effective Leakage Area
 		double NL = 1000 * (ELA / floorArea) * pow(numStories, .3);				// Normalized Leakage Calculation. Iain! Brennan! this does not match 62.2-2013 0.4 exponent assumption.
 		double wInfil = weatherFactor * NL;										// Infiltration credit from updated ASHRAE 136 weather factors [ACH]
 		double defaultInfil = .001 * ((floorArea / 100) * 10) * 3600 / houseVolume;	// Default infiltration credit [ACH] (ASHRAE 62.2, 4.1.3 p.4). This NO LONGER exists in 62.2-2013
@@ -1133,7 +1133,7 @@ int main(int argc, char *argv[], char* envp[])
 						if(AL4 == 0)
 							AL4 = ceilingC * sqrt(airDensityRef / 2) * pow(4, (atticPressureExp - .5));
 
-						AL5 = C * sqrt(airDensityRef / 2) * pow(4, (n - .5));
+						AL5 = C * sqrt(airDensityRef / 2) * pow(4, (envPressureExp - .5));
 					}
 						
 					// [START] Filter loading calculations ===============================================================
@@ -1348,7 +1348,7 @@ if(minuteYear > 1000) return 0;
 								if(AL4 == 0)
 									AL4 = ceilingC * sqrt(airDensityRef / 2) * pow(4, (atticPressureExp - .5));
 
-								AL5 = C * sqrt(airDensityRef / 2) * pow(4, (n - .5));
+								AL5 = C * sqrt(airDensityRef / 2) * pow(4, (envPressureExp - .5));
 							} else {
 								econoFlag = 0;
 							}
@@ -2991,7 +2991,7 @@ if(minuteYear > 1000) return 0;
 
 						while(1) {
 							// Call houseleak subroutine to calculate air flow. Brennan added the variable mCeilingIN to be passed to the subroutine. Re-add between mHouseIN and mHouseOUT
-							sub_houseLeak(AHflag, flag, weather.windSpeed, weather.windDirection, tempHouse, tempAttic, weather.dryBulb, C, n, eaveHeight, R, X, numFlues,
+							sub_houseLeak(AHflag, flag, weather.windSpeed, weather.windDirection, tempHouse, tempAttic, weather.dryBulb, C, envPressureExp, eaveHeight, R, X, numFlues,
 								flue, wallFraction, floorFraction, Sw, flueShelterFactor, numWinDoor, winDoor, numFans, fan, numPipes,
 								Pipe, mIN, mOUT, Pint, mFlue, mCeiling, mFloor, atticC, dPflue, dPceil, dPfloor, Crawl,
 								Hfloor, rowOrIsolated, soffitFraction, Patticint, wallCp, mSupReg, mAH, mRetLeak, mSupLeak,
