@@ -1,2 +1,2 @@
 regcap.cfg
-dh_1a
+sim_1
