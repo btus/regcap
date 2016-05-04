@@ -232,6 +232,7 @@ int main(int argc, char *argv[], char* envp[])
 		double dhEnergyFactor;	// Dehumidifier energy factor (L/kWh)
 		double dhSetPoint;		// Dehumidifier set point (%RH)
 		double dhDeadBand;		// Dehumidifier dead band (+/- %RH)
+		string endOfFile;
 		
 		// Zeroing the variables to create the sums for the .ou2 file
 		long int minuteYear = 1;
@@ -473,9 +474,16 @@ int main(int argc, char *argv[], char* envp[])
 			buildingFile >> LowMonthDose;
 		}
 		buildingFile >> dhCapacity;	
+cout << "dhCapacity: " << dhCapacity << endl;
 		buildingFile >> dhEnergyFactor;
 		buildingFile >> dhSetPoint;	
-		buildingFile >> dhDeadBand;	
+		buildingFile >> dhDeadBand;
+		
+		buildingFile >> endOfFile;
+		if(endOfFile != "E_O_F") {
+			cout << "Error in input file. Last line: >>" << endOfFile << "<<" << endl;
+			return 1;
+		}	
 
 		buildingFile.close();
 
