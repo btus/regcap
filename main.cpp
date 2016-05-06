@@ -474,7 +474,6 @@ int main(int argc, char *argv[], char* envp[])
 			buildingFile >> LowMonthDose;
 		}
 		buildingFile >> dhCapacity;	
-cout << "dhCapacity: " << dhCapacity << endl;
 		buildingFile >> dhEnergyFactor;
 		buildingFile >> dhSetPoint;	
 		buildingFile >> dhDeadBand;

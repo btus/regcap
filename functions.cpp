@@ -1297,9 +1297,6 @@ void sub_atticLeak (
 	// ***************************
 	// the following are some typical pressure coefficients for rectangular houses
 
-
-	double Cproofvar = -.4;		// FF: this variable isnt used
-
 	for(int i=0; i < 4; i++) {
 		CP[i][0] = .6;
 		CP[i][1] = -.3;
@@ -2059,40 +2056,28 @@ void f_winDoorFlow(double& tempHouse, double& tempOut, double& airDensityIN, dou
 void f_roofCpTheta(double* Cproof, int& windAngle, double* Cppitch, double& roofPitch) {
 	
 	double Theta;
-	double C2;
 	double C;
-	double func;
-	double S2;
 	double S;
 
 	for(int i=0; i < 4; i++) {
 		Theta = windAngle * M_PI / 180;
-		if(i == 2) {
+		if(i == 1) {
 			Theta = Theta - M_PI;
-		} else if(i == 3) {
+		} else if(i == 2) {
 			Theta = Theta - .5 * M_PI;
-		} else if(i == 4) {
+		} else if(i == 3) {
 			Theta = Theta - 1.5 * M_PI;
 		}
 
-		C2 = pow(cos(windAngle * M_PI / 180), 2);
-		C = cos(windAngle * M_PI / 180);
+		if(roofPitch < 28)
+			C = cos(Theta);
+		else
+			C = pow(abs(cos(Theta)),5) * cos(Theta);
+		S = sin(Theta);
 
-		if(C != 0) {
-			if(roofPitch != 28) {
-				func = (1 - abs(pow(C, 5))) / 2 * ((28 - roofPitch) / 28) * pow(abs((28 - roofPitch) / 28), -.99) + (1 + abs(pow(C, 5))) / 2;
-			} else {
-				func = (1 + abs(pow(C, 5))) / 2;
-			}
-			C = C * func;
-		}
-
-		S2 = pow(sin(windAngle * M_PI / 180), 2);
-		S = sin(windAngle * M_PI / 180);
-
-		Cppitch[i] = (Cproof[0] + Cproof[1]) * C2;
+		Cppitch[i] = (Cproof[0] + Cproof[1]) * pow(C,2);
 		Cppitch[i] = Cppitch[i] + (Cproof[0] - Cproof[1]) * C;
-		Cppitch[i] = Cppitch[i] + (Cproof[2] + Cproof[3]) * S2;
+		Cppitch[i] = Cppitch[i] + (Cproof[2] + Cproof[3]) * pow(S,2);
 		Cppitch[i] = Cppitch[i] + (Cproof[2] - Cproof[3]) * S;
 		Cppitch[i] = Cppitch[i] / 2;
 	}
