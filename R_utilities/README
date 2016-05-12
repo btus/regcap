@@ -3,23 +3,21 @@ This directory contains useful R scripts for working with REGCAP outputs.
 'REGCAP_rco_viewer.R' 
 
 This is a program that is run at the command line. User must have R 
-installed and must have packages 'lubridate', 'zoo', 'xts' and 'data.table' installed. 
-The file must be copied to the directory containing the .rco files. Navigate to the
-chosen directory in the shell.
+installed and must have packages 'lubridate', 'zoo', 'xts' and 'data.table' installed. This should be executed from the directory where the ‘REGCAP_rco_viewer.R’ file is located, otherwise a file path should be added to the file name. Navigate to the chosen directory in the shell.
 
 Usage at the shell:
 
 # ##For daily averages
-Rscript --vanilla REGCAP_rco_viewer.R days
+Rscript --vanilla REGCAP_rco_viewer.R <directory_containing_data_files> days
 
 # #For hourly averages
-Rscript --vanilla REGCAP_rco_viewer.R hours
+Rscript --vanilla REGCAP_rco_viewer.R <directory_containing_data_files> hours
 
 # #For monthly averages
-Rscript --vanilla REGCAP_rco_viewer.R months
+Rscript --vanilla REGCAP_rco_viewer.R <directory_containing_data_files> months
 
 #Or combine them:
-Rscript --vanilla REGCAP_rco_viewer.R months days hours
+Rscript --vanilla REGCAP_rco_viewer.R <directory_containing_data_files> months days hours
 
 #To move all of the new files to an hourly or daily directory:
 mv *.months [new_directory]

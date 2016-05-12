@@ -2,7 +2,7 @@
 args = commandArgs(trailingOnly=TRUE)
 
 # ##For daily averages
-# Rscript --vanilla REGCAP_rco_viewer.R days
+# Rscript --vanilla REGCAP_rco_viewer.R <directory_containing_data_files> days
 
 # #For hourly averages
 # Rscript --vanilla REGCAP_rco_viewer.R hours
@@ -18,6 +18,8 @@ args = commandArgs(trailingOnly=TRUE)
 # mv *.hours [new_directory]
 
 library(lubridate); library(xts); library(data.table); library(zoo)
+
+setwd(args[1])
 
 #Set working directory
 #setwd(args[1])
@@ -84,7 +86,7 @@ rcoCondense=function(filename, time_period="hours"){
 files<-list.files()[grep(".rco", list.files(), fixed=TRUE)]
 
 for(i in files[1:length(files)]){
-	for(j in 1:length(args)){
+	for(j in 2:length(args)){
 		sim_name<-substr(i, 1 ,(nchar(i)-4))
 		extname<-paste(".", args[j], sep="")
 		textname<-paste(sim_name, extname, sep="")
