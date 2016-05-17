@@ -55,6 +55,5 @@ shinyUI(fluidPage(
         # selected = col_list[1]) #,		        
     ),
     mainPanel(dygraphOutput("map"))
-    #mainPanel(plotOutput("map"))
   )
 ))
