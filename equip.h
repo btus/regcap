@@ -17,7 +17,7 @@ class Compressor {
 		double maxMoisture;		// maximum amount of water that can be on coil (kg)
 		
 	public:
-		double SHR;
+		double SHR;						// sensible heat ratio (unitless)
 		double capacitySensible;	// sensible capacity at current conditions (watts)
 		double capacityLatent;		// latent capacity at current conditions (watts)
 		double condensate;			// condensed water removed (kg)

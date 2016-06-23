@@ -8,6 +8,12 @@
 
 using namespace std;
 
+/***********************************************************************************
+Compressor - AC compressor class constructor
+	EER    - rated efficiency (kbtuh/kWh)
+	tons   - rated capacity (tons)
+	charge - refrigerant charge fraction (optional)
+**********************************************************************************/
 Compressor::Compressor(double EER, double tons, double charge) {
 	// The following corrections are for TXV only
 	chargeCapDry = (charge < .725) ? 1.2 + (charge - 1) : .925;
@@ -28,6 +34,17 @@ Compressor::Compressor(double EER, double tons, double charge) {
 	coilMoisture = 0;
 }							
 							
+/***********************************************************************************
+run - run the ac compressor model for 1 minute
+	compOn   - flag indicating compressor is running
+	hrReturn - return humidity ratio (unitless)
+	tReturn  - return temperature (deg K)
+	tOut     - outdoor temperature (deg K)
+	fanFlow  - fan air flow (m3/s)
+	fanHeat  - fan heat (Watts)
+	mAH      - fan mass flow (kg/s)
+	Returns: compressor power (Watts)
+**********************************************************************************/
 double Compressor::run(bool compOn, double hrReturn, double tReturn, double tOut, double fanFlow, double fanHeat, double mAH) {
 	const int rampTime = 3;	// time to reach full SHR (minutes)
 	double hReturn;			// return air enthalpy (btu/lb)
@@ -98,6 +115,13 @@ double Compressor::run(bool compOn, double hrReturn, double tReturn, double tOut
 return compressorPower;
 }
 
+/***********************************************************************************
+Dehumidifier - dehumidifier class constructor
+	cap - capacity (pints/day)
+	ef  - energy factor (kg/Wh)
+	sp  - RH setpoint (%)
+	db  - RH deadband (optional)
+**********************************************************************************/
 Dehumidifier::Dehumidifier(double cap, double ef, double sp, double db) {
 	capacityRated = cap * 0.4732 / (24 * 60 * 60);	// convert pints/day to kg/s
 	if(ef > 0) {
@@ -111,6 +135,12 @@ Dehumidifier::Dehumidifier(double cap, double ef, double sp, double db) {
 	sensible = 0;
 }
 
+/***********************************************************************************
+run - run the dehumidifier model for 1 minute
+	rhIn - indoor RH (%)
+	tIn  - indoor temperature (deg K)
+	Returns: status (bool) True - on, False - off
+**********************************************************************************/
 bool Dehumidifier::run(double rhIn, double tIn) {
 	const int initTime = 4;			// time to full capacity (minutes)
 	// Curves from Winkler et. al., NREl Technical Report TP-5500-52791, December 2011
@@ -156,7 +186,6 @@ bool Dehumidifier::run(double rhIn, double tIn) {
 		condensate *= capInit;
 		double hfg = calcHfgAir(tIn);
 		sensible = condensate * hfg + power;
-//cout << onTime << "," << rhIn << "," << tIn << "," << condensate << endl;
 	} else {
 		// implement offTime here if we want to keep fan running
 		condensate = 0;
