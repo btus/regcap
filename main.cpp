@@ -1200,7 +1200,7 @@ int main(int argc, char *argv[], char* envp[])
 					tsolair = weather.dryBulb;
 
 					for(int k=0; k < 4; k++)			// Wind direction as a compass direction?
-						Sw[k] = Swinit[k][weather.windDirection];		// -1 in order to allocate from array (1 to n) to array (0 to n-1)
+						Sw[k] = pow(Swinit[k][weather.windDirection],2);		// store square of Sw to pass to attic_leak and house_leak
 
 					// Fan Schedule Inputs
 					// Assumes operation of dryer and kitchen fans, then 1 - 3 bathroom fans

@@ -1015,8 +1015,8 @@ void sub_houseLeak (
 		Cpattic = 0;
 
 		for(int i=0; i < 4; i++) {
-			Cpattic = Cpattic + pow(Sw[i], 2) * wallCp[i] * soffitFraction[i];
-			Cpwalls = Cpwalls + pow(Sw[i], 2) * wallCp[i] * wallFraction[i];			// Shielding weighted Cp
+			Cpattic = Cpattic + Sw[i] * wallCp[i] * soffitFraction[i];
+			Cpwalls = Cpwalls + Sw[i] * wallCp[i] * wallFraction[i];			// Shielding weighted Cp
 		}
 
 		Cpattic = Cpattic + pow(flueShelterFactor, 2) * Cproof * soffitFraction[4];
@@ -1061,7 +1061,7 @@ void sub_houseLeak (
 
 				} else {
 					for(int i=0; i < 4; i++) {
-						Cpfloor = pow(Sw[i], 2) * wallCp[i];
+						Cpfloor = Sw[i] * wallCp[i];
 						Cfloor = C * (R - X) / 2 * floorFraction[i];
 
 						f_floorFlow3(Cfloor, Cpfloor, dPwind, Pint, C, n, mFloor[i], airDensityOUT, airDensityIN, dPfloor, Hfloor, dPtemp);
@@ -1091,7 +1091,7 @@ void sub_houseLeak (
 			
 			if(R < 1) {
 				for(int i=0; i < 4; i++) {
-					Cpwallvar = pow(Sw[i], 2) * wallCp[i];
+					Cpwallvar = Sw[i] * wallCp[i];
 					Cwall = C * (1 - R) * wallFraction[i];
 					
 					f_wallFlow3(tempHouse, tempOut, airDensityIN, airDensityOUT, Bo[i], Cpwallvar, n, Cwall, h, Pint, dPtemp, dPwind, Mwall[i], Mwallin[i], Mwallout[i], dPwalltop, dPwallbottom, Hfloor);
@@ -1121,7 +1121,7 @@ void sub_houseLeak (
 				// it would try to find Sw[-1] and cause error.
 
 				if(Pipe[i].wall - 1 >= 0)
-					CPvar = pow(Sw[Pipe[i].wall - 1], 2) * wallCp[Pipe[i].wall - 1];
+					CPvar = Sw[Pipe[i].wall - 1] * wallCp[Pipe[i].wall - 1];
 				else
 					CPvar = 0;
 
@@ -1136,7 +1136,7 @@ void sub_houseLeak (
 			
 			for(int i=0; i < numWinDoor; i++) {
 				if(winDoor[i].wall-1 >= 0) {
-					Cpwallvar = pow(Sw[winDoor[i].wall-1], 2) * wallCp[winDoor[i].wall-1];
+					Cpwallvar = Sw[winDoor[i].wall-1] * wallCp[winDoor[i].wall-1];
 					Bovar = Bo[winDoor[i].wall-1];
 				} else {
 					Cpwallvar = 0;
@@ -1344,9 +1344,9 @@ void sub_atticLeak (
 		
 		// for first pitched part either front, above wall 1, or side above wall 3
 		if(strUppercase(roofPeakOrient) == "D") {
-			Cpr = Cppitch[2] * pow(Sw[2], 2);
+			Cpr = Cppitch[2] * Sw[2];
 		} else {
-			Cpr = Cppitch[0] * pow(Sw[0], 2);
+			Cpr = Cppitch[0] * Sw[0];
 		}
 
 		// the neutral level is calculated separately for each roof roofPitch
@@ -1360,9 +1360,9 @@ void sub_atticLeak (
 
 		// for second pitched part either back, above wall 2, or side above wall 4
 		if(strUppercase(roofPeakOrient) == "D") {
-			Cpr = Cppitch[3] * pow(Sw[3], 2);
+			Cpr = Cppitch[3] * Sw[3];
 		} else {
-			Cpr = Cppitch[1] * pow(Sw[1], 2);
+			Cpr = Cppitch[1] * Sw[1];
 		}
 
 		f_neutralLevel3(dPtemp, dPwind, Patticint, Cpr, Broofo, roofPeakHeight);
@@ -1377,10 +1377,9 @@ void sub_atticLeak (
 
 			// FF: This if is to counter the 0 index out of bound present in BASIC version
 			// example: if atticVent[i].wall = 0 then it would look for Sw[0] in BASIC version, which defaults to 0 while in the C++ version
-			// it would try to find Sw[-1] and cause error. Original version:
-			// CPvar = pow(Sw[atticVent[i].wall], 2) * Cppitch[atticVent[i].wall];
+			// it would try to find Sw[-1] and cause error.
 			if(atticVent[i].wall - 1 >= 0)
-				CPvar = pow(Sw[atticVent[i].wall - 1], 2) * Cppitch[atticVent[i].wall - 1];
+				CPvar = Sw[atticVent[i].wall - 1] * Cppitch[atticVent[i].wall - 1];
 			else
 				CPvar = 0;
 
@@ -1394,7 +1393,7 @@ void sub_atticLeak (
 		}
 		// note that gable vents are the same as soffits
 		for(int i=0; i < 4; i++) {
-			CPvar = pow(Sw[i], 2) * wallCp[i];
+			CPvar = Sw[i] * wallCp[i];
 
 			f_soffitFlow(airDensityOUT, airDensityATTIC, CPvar, dPwind, dPtemp, Patticint, soffit[i], soffitFraction[i], atticC, atticPressureExp, tempAttic, tempOut);
 
@@ -1865,7 +1864,7 @@ void f_neutralLevel2(double& dPtemp, double& dPwind, double* Sw, double& Pint, d
 	// calculates the neutral level for each wall
 	for(int i=0; i < 4; i++) {
 		if(dPtemp)
-			Bo[i] = (Pint + pow(Sw[i], 2) * dPwind * wallCp[i]) / dPtemp / h;
+			Bo[i] = (Pint + Sw[i] * dPwind * wallCp[i]) / dPtemp / h;
 		else
 			Bo[i] = 0;
 	}
