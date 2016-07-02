@@ -2967,7 +2967,7 @@ if(minuteYear > 1000) return 0;
 						matticenvin, weather.humidityRatio, mSupLeak, mAH, mRetReg, mRetLeak, mSupReg, latcap, mHouseIN, mHouseOUT,
 						latentLoad, mFanCycler, mHRV_AH, mERV_AH, ERV_TRE, MWha, airDensityIN, airDensityOUT, dh.condensate);
 
-					SatVaporPressure = saturationVaporPressure(tempHouse);
+					SatVaporPressure = saturation_vapor_pressure(tempHouse);
 
 					//Calculate Saturation Humidity Ratio, Equation 23 in ASHRAE HoF
 					HRsaturation = 0.621945*(SatVaporPressure/(weather.pressure-SatVaporPressure)); 

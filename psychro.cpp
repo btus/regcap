@@ -6,7 +6,7 @@
 
 // using namespace std;
 
-double saturationVaporPressure(double temp) {
+double saturation_vapor_pressure(double temp) {
 	//Coefficients for saturation vapor pressure over ice -100 to 0C. ASHRAE HoF.
 	const double C1 = -5.6745359E+03;
 	const double C2 = 6.3925247E+00;
@@ -33,7 +33,7 @@ double saturationVaporPressure(double temp) {
 }
 
 double calcHumidityRatio(double dewpoint, double pressure) {
-	double pws = saturationVaporPressure(dewpoint);
+	double pws = saturation_vapor_pressure(dewpoint);
 	return 0.621945 * (pws / (pressure - pws));
 }
 

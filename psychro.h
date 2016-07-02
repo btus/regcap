@@ -4,7 +4,7 @@
 
 //using namespace std;
 
-double saturationVaporPressure(double temp);
+double saturation_vapor_pressure(double temp);
 double calcHumidityRatio(double dewpoint, double pressure);
 double KtoF(double degK);
 double calcHfgAir(double temp);
