@@ -119,8 +119,8 @@ int main(int argc, char *argv[], char* envp[])
 		double soffitFraction[5];
 		double wallCp[4] = {0,0,0,0};
 		double mechVentPower;
-		double b[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-		double tempOld[16];
+		double b[ATTIC_NODES] = {0};
+		double tempOld[ATTIC_NODES];
 		double HR[5];		
 		double heatThermostat[24];
 		double coolThermostat[24];
@@ -759,7 +759,7 @@ int main(int argc, char *argv[], char* envp[])
 		int econoFlag = 0;		// Economizer Flag (0/1 = OFF/ON)
 
 		// ---------------- Attic and duct system heat transfer nodes --------------------
-		for(int k=0; k < 16; k++) {
+		for(int k=0; k < ATTIC_NODES; k++) {
 			tempOld[k] = airTempRef;
 		}
 		tempOld[2] = 278;

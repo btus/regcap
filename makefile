@@ -2,7 +2,7 @@
 # 3/16/16 LIR
 CC=g++
 
-OBJECTS=main.o functions.o config.o log.o weather.o psychro.o equip.o
+OBJECTS=main.o functions.o config.o log.o weather.o psychro.o equip.o gauss.o
 EXE=rc
 
 regcap: $(OBJECTS) functions.h config/config.h
@@ -11,8 +11,11 @@ regcap: $(OBJECTS) functions.h config/config.h
 main.o: main.cpp functions.h weather.h 
 	$(CC) -c main.cpp
 
-functions.o: functions.cpp functions.h constants.h
+functions.o: functions.cpp functions.h constants.h gauss.h
 	$(CC) -c functions.cpp
+
+gauss.o: gauss.cpp gauss.h
+	$(CC) -c gauss.cpp
 
 weather.o: weather.cpp weather.h constants.h
 	$(CC) -c weather.cpp
