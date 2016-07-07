@@ -4,6 +4,7 @@
 
 #include <iostream>
 #include <string>
+#include <vector>
 
 using namespace std;
 
@@ -76,7 +77,7 @@ void sub_heat (
 	double& atticVolume, 
 	double& houseVolume, 
 	double& sc, 
-	double* b, 
+	double* b,
 	int& ERRCODE, 
 	double& TSKY, 
 	double& floorArea, 

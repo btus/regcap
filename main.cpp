@@ -119,7 +119,7 @@ int main(int argc, char *argv[], char* envp[])
 		double soffitFraction[5];
 		double wallCp[4] = {0,0,0,0};
 		double mechVentPower;
-		double b[ATTIC_NODES] = {0};
+		double b[ATTIC_NODES];
 		double tempOld[ATTIC_NODES];
 		double HR[5];		
 		double heatThermostat[24];

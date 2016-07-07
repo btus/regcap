@@ -78,7 +78,7 @@ void sub_heat (
 	double& atticVolume, 
 	double& houseVolume, 
 	double& sc, 
-	double* b, 
+	double* x,
 	int& ERRCODE, 
 	double& TSKY, 
 	double& floorArea, 
@@ -161,7 +161,9 @@ void sub_heat (
 	int cpShingles;
 	
 	double incsolar[4] = {0,0,0,0};
-	double A[ATTIC_NODES][ATTIC_NODES] = {0};
+	vector<double> b(ATTIC_NODES+1,0);
+	vector< vector<double> > A(ATTIC_NODES,b);
+	//double A[ATTIC_NODES][ATTIC_NODES] = {0};
 	double toldcur[ATTIC_NODES];
 	double woodThickness;
 	double pws;
@@ -380,7 +382,7 @@ void sub_heat (
 		// reset array A to 0
 		if(heatIterations > 1) {
 			for(int i=0; i < ATTIC_NODES; i++) {
-				for(int j=0; j < ATTIC_NODES; j++) {
+				for(int j=0; j < ATTIC_NODES+1; j++) {
 					A[i][j] = 0;
 				}
 			}
@@ -741,7 +743,11 @@ void sub_heat (
 		//asize = sizeof(A)/sizeof(A[0]);
 		//asize2 = sizeof(A[0])/sizeof(A[0][0]);
 
-		ERRCODE = MatSEqn(A, b);
+		//ERRCODE = MatSEqn(A, b);
+		for (int i=0; i<ATTIC_NODES; i++) {
+			A[i][ATTIC_NODES] = b[i];
+		}
+		b = gauss(A);
 
 		if(abs(b[0] - toldcur[0]) < .1) {
 			break;
@@ -751,6 +757,9 @@ void sub_heat (
 			}
 		}
 	} // END of DO LOOP
+	for (int i=0; i<ATTIC_NODES; i++) {
+		x[i] = b[i];
+		}
 }
 
 void sub_moisture ( 

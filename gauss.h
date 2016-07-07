@@ -1,8 +1,9 @@
 #pragma once
 #ifndef gauss_h
 #define gauss_h
+#include <vector>
 
-//using namespace std;
+using namespace std;
 
 // ----- MatSEqn forward declarations -----
 /*
@@ -25,5 +26,6 @@ const int ArraySize = 16;
 int MatSEqn(double A[][ArraySize], double* b);
 int matlu(double A[][ArraySize], int* rpvt, int* cpvt, int& continuevar);
 int matbs(double A[][ArraySize], double* b, double* x, int* rpvt, int* cpvt);
+vector<double> gauss(vector< vector<double> > A);
 
 #endif
