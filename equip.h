@@ -50,7 +50,7 @@ class Dehumidifier {
 		
 	public:
 		double power;			// power (watts)
-		double condensate; 	// moisture removed (kg)
+		double condensate; 	// moisture removed (kg/s)
 		double sensible;		// sensible capacity added (watts)
 		
 		Dehumidifier(double capacity, double energyFactor, double setPoint, double deadBand=2.5);

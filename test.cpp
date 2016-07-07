@@ -67,6 +67,8 @@ int main (int argc, char** argv) {
 	cout << M_PI -3.14159 << endl;
 	
 	cout << "asize =" << sizeof(A)/sizeof(A[0]);
-	cout << " asize2 =" << sizeof(A[0])/sizeof(A[0][0]) << endl;
+	cout << " asize2 =" << sizeof(A[0])/sizeof(A[0][0]);
+	cout << " bsize =" << sizeof(b)/sizeof(b[0]) << endl;
+
 
 }
