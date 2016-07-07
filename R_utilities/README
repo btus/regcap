@@ -36,12 +36,12 @@ A merged file combining all .rc2 files together into one .csv file will be named
 
 Usage at the shell:
 
-Rscript --vanilla REGCAP_rco_viewer.R <directory_name>
+Rscript --vanilla REGCAP_RC2_merge.R <directory_name>
 
 If you are not in the R_utilities directory, you must enter the path to the 'REGCAP_RC2_merge.R'
 file. As in:
 
-Rscript --vanilla <file_path>/REGCAP_rco_viewer.R <directory_name>
+Rscript --vanilla <file_path>/REGCAP_RC2_merge.R <directory_name>
 
 
 
