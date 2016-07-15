@@ -8,12 +8,6 @@ class WoodMoisture {
 	private:
 		static const int rhoWood = 400;		// Wood density (@TODO function.cpp uses 500 - need to make consistant)
 		static const int timeStep = 3600;	// Timestep (1 hour)
-		// humidity ratio constants (from Cleary 1985)
-		static const double B3 =  15.8;		// was MCA
-		static const double B4 = -0.0015;	// was MCB
-		static const double B5 =  0.053;		// was MCC
-		static const double B6 = -0.184;		// was MCD
-		static const double B7 =  0.233;		// was MCE
 		
 		double deltaX[7];							// Node thickness
 		double area[7];							// Node area
@@ -24,9 +18,11 @@ class WoodMoisture {
 		double PWOld[7];
 		double tempOld[7];
 
-		double cond_bal();
-		double calc_kappa_1(double pressure, double temp, double mc);
-		double calc_kappa_2(double mc);
+		void cond_bal(double pressure);
+		double calc_kappa_1(double pressure, double temp, double mc, double volume);
+		double calc_kappa_2(double mc, double volume);
+        double mc_cubic(double pw, double pressure, double temp);
+        double calc_vapor_pressure(double mc, double temp, double pressure);
 		
 	public:
 		double temperature[7];
@@ -34,8 +30,11 @@ class WoodMoisture {
 		double PW[7];
 		double mTotal[7] = {0};
 
-		WoodMoisture();
-		double mass_cond_bal();
+		WoodMoisture(double woodThick, double atticVolume, double atticArea, double roofPitch, double tempInit, double mcInit);
+        void mass_cond_bal(double tempOut, double RHOut, double tempHouse, double RHHouse,
+                             double airDensityOut, double airDensityAttic, double airDensityHouse,
+                             double pressure, double hU0, double hU1, double hU2,
+                             double mAttic, double mCeiling);
 };
 
 

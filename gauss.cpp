@@ -7,6 +7,7 @@
 
 using namespace std;
 
+// From: https://martin-thoma.com/solving-linear-equations-with-gaussian-elimination/
 vector<double> gauss(vector< vector<double> > A) {
     int n = A.size();
 
@@ -52,8 +53,7 @@ vector<double> gauss(vector< vector<double> > A) {
     return x;
 }
 
-// ----- MatSEqn definitions -----
-
+// ----- Original MatSEqn definitions -----
 int MatSEqn(double A[][ArraySize], double* b) {
 	// Error codes returned:
 	//      0  no error                     -1  matrix not invertible

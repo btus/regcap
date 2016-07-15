@@ -517,9 +517,9 @@ int main(int argc, char *argv[], char* envp[])
 		}
 		occupancyFile.close();
 
-		double lc = (R + X) * 50;		// Percentage of leakage in the ceiling
-		double lf = (R - X) * 50;		// Percentage of leakage in the floor
-		double lw = 100 - lf - lc;		// Percentage of leakage in the walls
+		// double lc = (R + X) * 50;		// Percentage of leakage in the ceiling
+		// double lf = (R - X) * 50;		// Percentage of leakage in the floor
+		// double lw = 100 - lf - lc;		// Percentage of leakage in the walls
 
 		// In case the user enters leakage fraction in % rather than as a fraction
 		if(supLF0 > 1)
@@ -589,7 +589,7 @@ int main(int argc, char *argv[], char* envp[])
 		int peakFlag = 0;						// Peak flag (0 or 1) prevents two periods during same day
 		int rivecFlag = 0;					// Dose controlled ventilation (RIVEC) flag 0 = off, 1 = use rivec (mainly for HRV/ERV control)
 		double qRivec = 1.0;					// Airflow rate of RIVEC fan for max allowed dose and exposure [L/s]
-		int numFluesActual = numFlues;	// numFluesActual used to remember the number of flues for when RIVEC blocks them off as part of a hybrid ventilation strategy
+		// int numFluesActual = numFlues;	// numFluesActual used to remember the number of flues for when RIVEC blocks them off as part of a hybrid ventilation strategy
 
 		// For Economizer calculations
 		int economizerUsed = 0;			// 1 = use economizer and change C (house leakage) for pressure relief while economizer is running (changes automatically)
@@ -877,7 +877,6 @@ int main(int argc, char *argv[], char* envp[])
 
 		int AHminutes;
 		int target;
-		int day = 1;
 		int dryerFan = 0;			// Dynamic schedule flag for dryer fan (0 or 1)
 		int kitchenFan = 0;		// Dynamic schedule flag for kitchen fan (0 or 1)
 		int bathOneFan = 0;		// Dynamic schedule flag for first bathroom fan (0 or 1)
@@ -984,7 +983,7 @@ int main(int argc, char *argv[], char* envp[])
 		double mAtticIN = 0;
 		double mAtticOUT = 0;
 		double TSKY = 0;
-		double w = 0;
+		// double w = 0;
 		double mHouse = 0;
 		double qHouse = 0;
 		double houseACH = 0;
@@ -1014,12 +1013,12 @@ int main(int argc, char *argv[], char* envp[])
 		double dailyCumulativeTemp = 0;
 		double dailyAverageTemp = 0;
 		double runningAverageTemp = 0;
-		double AIM2 = 0; //Brennan added
-		double AEQaim2FlowDiff = 0; //Brennan added
-		double FlowDiff = 0; //Brennan added
-		double qFanFlowRatio = 0; //Brennan added
+		//double AIM2 = 0; //Brennan added
+		//double AEQaim2FlowDiff = 0; //Brennan added
+		//double FlowDiff = 0; //Brennan added
+		//double qFanFlowRatio = 0; //Brennan added
 		double FanQ = fan[0].q; //Brennan's attempt to fix the airflow outside of the if() structures in the fan.oper section. fan[0].q was always the whole house exhaust fan, to be operated continuously or controlled by temperature controls.
-		double FanP = fan[0].power; //Brennan's attempt to fix the fan power outside of the if() structures in the fan.oper section.
+		//double FanP = fan[0].power; //Brennan's attempt to fix the fan power outside of the if() structures in the fan.oper section.
 		Dehumidifier dh(dhCapacity, dhEnergyFactor, dhSetPoint, dhDeadBand);	// Initialize Dehumidifier 
 
 		cout << endl;
@@ -1243,13 +1242,6 @@ int main(int argc, char *argv[], char* envp[])
 						}
 						solgain = winShadingCoef * (windowS * incsolar[0] + windowWE / 2 * incsolar[1] + windowN * incsolar[2] + windowWE / 2 * incsolar[3]);
 						tsolair = totalSolar / 4 * .03 + weather.dryBulb;		// the .03 is from 1993 AHSRAE Fund. SI 26.5
-/*
-cout << "time=" << day << ":" << hour << ":" << minute << ":";
-cout << " direct=" << weather.directNormal << " diffuse=" << diffuse << " ssol=" << ssolrad << " nsol=" << nsolrad;
-cout << " incS=" << incsolar[0] << " incW=" << incsolar[1] << " incN=" << incsolar[2] << " incE=" << incsolar[3];
-cout << " totalSolar=" << totalSolar << " solargain=" << solgain << " tsolair=" << tsolair << endl;
-if(minuteYear > 1000) return 0;
-*/
 					}
 					// 7 day outdoor temperature running average. If <= 60F we're heating. If > 60F we're cooling
 					if(runningAverageTemp <= (60 - 32) * 5.0 / 9.0)
@@ -2371,34 +2363,6 @@ if(minuteYear > 1000) return 0;
 								
 //sum the non-Rivec ventilation airflows (prior section) and set nonRivecVentSum to the largest of inflow/outflow.								
 								
-
-						
-						//} else if(fan[i].oper == 28) {					// Single Cut-Off Ventilation Temperature Controller. Brennan.
-						//	if(weatherTemp >= ventcutoff) {
-						//		fan[i].on = 1;
-						//		mechVentPower = mechVentPower + fan[i].power;
-						//		ventSumOUT = ventSumOUT + abs(fan[i].q) * 3600 / houseVolume;
-						//		//nonRivecVentSumOUT = nonRivecVentSumOUT + abs(fan[i].q) * 3600 / houseVolume;
-						//	} else
-						//		fan[i].on = 0;
-
-						//} else if(fan[i].oper == 29) {					// Two Cut-Off Ventilation Temperature Controller. Brennan.
-						//	if(weatherTemp >= ventcutoff && weatherTemp < ventcutoff2) {
-						//		fan[i].on = 1; //Brennan, this needs to equal 50% fan airflow.
-						//		fan[i].q = FanQ * 0.50 ; //FanQ is set outside the loop, so it is fixed, based on the imnput file. This modifies it by cutting in half.
-						//		fan[i].power = FanP * 0.50 ;
-						//		mechVentPower = mechVentPower + fan[i].power; 
-						//		ventSumOUT = ventSumOUT + abs(fan[i].q) * 3600 / houseVolume;
-						//	} else
-						//		if(weatherTemp >= ventcutoff2) {
-						//			fan[i].on = 1; //Brennan, this needs to equal 100% fan airflow
-						//			fan[i].q = FanQ;
-						//			fan[i].power = FanP;
-						//			mechVentPower = mechVentPower + fan[i].power;
-						//			ventSumOUT = ventSumOUT + abs(fan[i].q) * 3600 / houseVolume;
-						//		} else
-						//			fan[i].on = 0;
-
 						//} else if(fan[i].oper == 30) {// Continuous, Infiltration-Balanced Ventilation Temperature Controller ("Gold Standard"). Brennan.
 						//	if(numStories == 1){
 						//		AIM2 = pow(abs((tempHouse - 273.15) - weatherTemp) , 0.67) * 0.069 * C; //estimated stack infiltration (m3/s). Alwasy positive.

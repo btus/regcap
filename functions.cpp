@@ -160,13 +160,13 @@ void sub_heat (
 	//int asize2;
 	int cpShingles;
 	
-	double incsolar[4] = {0,0,0,0};
+	//double incsolar[4] = {0,0,0,0};
 	vector<double> b(ATTIC_NODES+1,0);
 	vector< vector<double> > A(ATTIC_NODES,b);
 	//double A[ATTIC_NODES][ATTIC_NODES] = {0};
 	double toldcur[ATTIC_NODES];
 	double woodThickness;
-	double pws;
+	//double pws;
 	double PW;
 	double A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16;
 	double denShingles;
@@ -262,13 +262,12 @@ void sub_heat (
 	
 	// the following are commented out for ConSOl becasue cement tile is flat and does not have increased surface area
 	if(roofType == 2 || roofType == 3) {
-	   A3 = 1.5 * A2;	   // tile roof has more surface area for convection heat transfer
-		A5 = A3;
+        A3 = 1.5 * A2;	   // tile roof has more surface area for convection heat transfer
 	} else {
 		A3 = A2;																
-		A5 = A3;
 	}
 
+    A5 = A3;
 	A6 = planArea * 1.5;							// Attic wood surface area
 	A7 = planArea;									// Ceiling
 	A8 = A7;											// Attic floor
@@ -923,8 +922,8 @@ void sub_houseLeak (
 	double& windPressureExp,
 	double& Q622
 	) {
-		double dtheta = 11.3;
-		int nofirst = 0;
+		//double dtheta = 11.3;
+		//int nofirst = 0;
 
 		double Cpwallvar = 0;		// This variable replaces the non-array wallCp var
 		double CPvar = 0;			// This variable replaces the non-array CP var
