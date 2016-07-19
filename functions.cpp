@@ -2060,7 +2060,7 @@ void f_roofCpTheta(double* Cproof, int& windAngle, double* Cppitch, double& roof
 		if(roofPitch < 28)
 			F = C;
 		else
-			F = pow(abs(C),5) * C;	// maintain sign
+			F = pow(C,5);
 
 		Cppitch[i] = (Cproof[0] + Cproof[1]) * pow(C,2);
 		Cppitch[i] = Cppitch[i] + (Cproof[0] - Cproof[1]) * F;
