@@ -6,6 +6,7 @@
    #include <cmath>        // needed for mac g++
 #endif
 #include <iostream>
+#include <vector>
 
 using namespace std;
 
@@ -31,6 +32,8 @@ WoodMoisture::WoodMoisture(double woodThick, double atticVolume, double atticAre
     double RHout = 0.5;   // RHOREF * TREF / tempInit;
     double pressure = 1000;
 
+    A.resize(7, vector<double>(7+1, 0));
+    PW.resize(7, 0);
 	deltaX[0] = woodThick / 2;                // distance between the centers of the surface and bulk wood layers. it is half the characteristic thickness of the wood member
 	deltaX[1] = deltaX[0];                    // same as for the other sheathing surface
 	deltaX[2] = .015;									// assume 1.5 cm as approximate wood half thickness
@@ -80,7 +83,6 @@ WoodMoisture::WoodMoisture(double woodThick, double atticVolume, double atticAre
  * @param hU2 - surface heat transfer coefficient for node 2 (J/sm2K) - was H10
  * @param mAttic -
  * @param mCeiling -
- * @return
  */
 void WoodMoisture::mass_cond_bal(double tempOut, double RHOut, double tempHouse, double RHHouse,
                                    double airDensityOut, double airDensityAttic, double airDensityHouse,
@@ -181,15 +183,18 @@ void WoodMoisture::mass_cond_bal(double tempOut, double RHOut, double tempHouse,
 
 	// MATSEQND%() SIMULTANEOUSLY SOLVES THE MASS BALANCE EQUATIONS
 	// ERRCODE = MatSEqn(A, PW);
+    for (int i=0; i<7; i++) {
+        A[i][7] = PW[i];
+        }
+    PW = gauss(A);
 	// once the attic moisture nodes have been calculated assuming no condensation (as above)
 	// then we call CONDBAL2 to check for condensation and redo the calculations if necessasry
 	// CONBAL2 PERFORMS AN ITERATIVE SCHEME THAT TESTS FOR CONDENSATION
-    // @TODO call x = gauss(A); here
 	cond_bal(pressure);
 
 	for(int i=0; i<7; i++) {
 		tempOld[i] = temperature[i];
-		PWOld[i] = fabs(PW[i]);			// IN CASE NEGATIVE PW'S ARE GENERATED
+		PWOld[i] = abs(PW[i]);			// IN CASE NEGATIVE PW'S ARE GENERATED
 		}
 }
 
@@ -197,7 +202,6 @@ void WoodMoisture::mass_cond_bal(double tempOut, double RHOut, double tempHouse,
  * cond_bal - checks for condensation at the various nodes and corrects the mass balances
  *            to adapt for this condensation.
  * @param pressure - atomospheric pressure (Pa)
- * @return
  */
 void WoodMoisture::cond_bal(double pressure) {
 	double PWSaturation[7];			// saturation vapor pressure at each node

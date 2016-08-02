@@ -1,8 +1,9 @@
 #pragma once
 #ifndef wood_h
 #define wood_h
+#include <vector>
 
-//using namespace std;
+using namespace std;
 
 class WoodMoisture {
 	private:
@@ -14,7 +15,7 @@ class WoodMoisture {
 		double volume[7];							// Node volume
 		double kappa1[7], kappa2[7];
 		double x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17;
-		double A[7][7] = {0};
+		vector< vector<double> > A;
 		double PWOld[7];
 		double tempOld[7];
 
@@ -27,7 +28,7 @@ class WoodMoisture {
 	public:
 		double temperature[7];
 		double moistureContent[7];
-		double PW[7];
+		vector <double> PW;
 		double mTotal[7] = {0};
 
 		WoodMoisture(double woodThick, double atticVolume, double atticArea, double roofPitch, double tempInit, double mcInit);

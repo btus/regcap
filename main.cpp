@@ -237,9 +237,6 @@ int main(int argc, char *argv[], char* envp[])
 		// Zeroing the variables to create the sums for the .ou2 file
 		long int minuteYear = 1;
 		int endrunon = 0;
-		int prerunon = 0;
-		//int timeSteps = 0;
-		//int bsize = 0;
 		double Mcoil = 0;
 		double SHR = 0;		
 		double meanOutsideTemp = 0;
@@ -695,9 +692,6 @@ int main(int argc, char *argv[], char* envp[])
 		if(AL4 == 0)
 			AL4 = ceilingC * sqrt(airDensityRef / 2) * pow(4, (atticPressureExp - .5));
 
-		// AL5 is use to estimate flow velocities in the house
-		double AL5 = C * sqrt(airDensityRef / 2) * pow(4, (envPressureExp - .5));
-
 		// ================= CREATE OUTPUT FILE =================================================
 		ofstream outputFile;
 		if(printOutputFile) {
@@ -888,7 +882,6 @@ int main(int argc, char *argv[], char* envp[])
 		int rivecOn = 0;		   // 0 (off) or 1 (on) for RIVEC devices
 		int mainIterations;
 		int ERRCODE = 0;
-		int economizerRan = 0;	// 0 or else 1 if economizer has run that day
 		int hcFlag = 1;         // Start with HEATING (simulations start in January)
 
 		weatherData weather;		// current minute of weather data
@@ -936,11 +929,9 @@ int main(int argc, char *argv[], char* envp[])
 		double latcap = 0;
 		double capacity = 0;
 		double capacityh = 0;
-		double powercon = 0;
 		double compressorPower = 0;
 		double capacityc = 0;
 		double Toutf = 0;
-		double tretf = 0;
 		double dhret = 0;
 		double chargecapd = 0;
 		double chargeeerd = 0;
@@ -1138,8 +1129,6 @@ int main(int argc, char *argv[], char* envp[])
 
 						if(AL4 == 0)
 							AL4 = ceilingC * sqrt(airDensityRef / 2) * pow(4, (atticPressureExp - .5));
-
-						AL5 = C * sqrt(airDensityRef / 2) * pow(4, (envPressureExp - .5));
 					}
 						
 					// [START] Filter loading calculations ===============================================================
@@ -1249,13 +1238,6 @@ int main(int argc, char *argv[], char* envp[])
 					else
 						hcFlag = 2;					// Cooling
 			
-					// Setting thermostat heat/cool mode:
-					/*if(tempOld[15] < 295.35 && economizerRan == 0)			// 295.35K = 22.2C = 71.96F
-						//if(day <= 152 || day >= 283)							// EISG settings for Oakland/San Fran
-						hcFlag = 1;                 // Turn on HEATING
-					else
-						hcFlag = 2;                 // Turn on COOLING
-					*/
 					// ====================== HEATING THERMOSTAT CALCULATIONS ============================
 					if(hcFlag == 1) {
 						qAH = qAH_heat;            // Heating Air Flow Rate [m3/s]
@@ -1297,7 +1279,6 @@ int main(int argc, char *argv[], char* envp[])
 						uaTOut = uaWindow;
 						rceil = ceilRval_cool;
 						endrunon = 0;
-						prerunon = 0;
 
 						if(tempOld[15] < (coolThermostat[hour] - .5))
 							AHflag = 0;
@@ -1346,8 +1327,6 @@ int main(int argc, char *argv[], char* envp[])
 
 								if(AL4 == 0)
 									AL4 = ceilingC * sqrt(airDensityRef / 2) * pow(4, (atticPressureExp - .5));
-
-								AL5 = C * sqrt(airDensityRef / 2) * pow(4, (envPressureExp - .5));
 							} else {
 								econoFlag = 0;
 							}
@@ -2310,7 +2289,6 @@ int main(int argc, char *argv[], char* envp[])
 								AHfanPower = AHfanPower + fan[i].power;			// vent fan power
 								//ventSumIN = ventSumIN + abs(fan[i].q) * 3600 / houseVolume;
 								nonRivecVentSumIN = nonRivecVentSumIN + abs(fan[i].q) * 3600 / houseVolume;
-								economizerRan = 1;
 							} else
 								fan[i].on = 0;
 
@@ -2802,13 +2780,11 @@ int main(int argc, char *argv[], char* envp[])
 					latcap = 0;
 					capacity = 0;
 					capacityh = 0;
-					powercon = 0;
 					compressorPower = 0;
 
 					if(AHflag == 0) {										// AH OFF
 						capacityc = 0;
 						capacityh = 0;
-						powercon = 0;
 						compressorPower = 0;
 					} else if(AHflag == 100) {								// Fan on no heat/cool
 						capacityh = AHfanHeat;								// Include fan heat
@@ -2821,7 +2797,6 @@ int main(int argc, char *argv[], char* envp[])
 						capacityc = 0;
 					} else {												// we have cooling
 						Toutf = (weather.dryBulb - 273.15) * (9.0 / 5.0) + 32;
-						tretf = (tempOld[11] - 273.15 + AHfanHeat / 1005 / mAH) * (9.0 / 5.0) + 32;		// return in F used for capacity includes fan heat
 						dhret = AHfanHeat / mAH / 2326;										// added to hret in capacity caluations for wet coil - converted to Btu/lb
 
 						// the following corerctions are for TXV only

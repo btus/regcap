@@ -922,9 +922,6 @@ void sub_houseLeak (
 	double& windPressureExp,
 	double& Q622
 	) {
-		//double dtheta = 11.3;
-		//int nofirst = 0;
-
 		double Cpwallvar = 0;		// This variable replaces the non-array wallCp var
 		double CPvar = 0;			// This variable replaces the non-array CP var
 		double Bovar = 0;			// This variable is to replace Bo[-1] and to account for Bo(0) in BASIC version
@@ -1199,7 +1196,6 @@ void sub_atticLeak (
 	double& airDensityATTIC
 ) {
 
-	double dtheta = 0;	
 	double Matticwall[4];
 	double Matticwallin[4];
 	double Matticwallout[4];
@@ -1223,8 +1219,6 @@ void sub_atticLeak (
 	double dProoftop = 0;
 	double dProofbottom = 0;
 	double CPvar;
-
-	dtheta = 11.3;
 
 	for(int i=0; i < 4; i++) {
 		Matticwall[i] = 0;
