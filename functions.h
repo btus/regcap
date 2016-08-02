@@ -185,7 +185,7 @@ void sub_moisture (
 
 void sub_houseLeak ( 
 	int& AHflag,
-	double& flag, 
+	int& flag, 
 	double& U, 
 	int& windAngle, 
 	double& tempHouse, 
@@ -245,12 +245,11 @@ void sub_houseLeak (
 	double& airDensityATTIC,
 	double& ceilingC,
 	double& houseVolume,
-	double& windPressureExp,
-	double& Q622
+	double& windPressureExp
 );
 
 void sub_atticLeak ( 
-	double& flag, 
+	int& flag, 
 	double& U, 
 	int& windAngle, 
 	double& tempHouse, 

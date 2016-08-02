@@ -514,9 +514,10 @@ int main(int argc, char *argv[], char* envp[])
 		}
 		occupancyFile.close();
 
-		// double lc = (R + X) * 50;		// Percentage of leakage in the ceiling
-		// double lf = (R - X) * 50;		// Percentage of leakage in the floor
-		// double lw = 100 - lf - lc;		// Percentage of leakage in the walls
+		// Leakage fractions
+		double leakCeil = (R + X) / 2 ;					// Fraction of leakage in the ceiling
+		double leakFloor = (R - X) / 2;					// Fraction of leakage in the floor
+		double leakWall = 1 - leakFloor - leakCeil;	// Fraction of leakage in the walls
 
 		// In case the user enters leakage fraction in % rather than as a fraction
 		if(supLF0 > 1)
@@ -683,7 +684,7 @@ int main(int argc, char *argv[], char* envp[])
 		//double windSpeedCorrection = pow((80/ 10), .15) * pow((h / 80), .3);		// The old wind speed correction
 		// [END] Terrain ============================================================================================
 
-		double ceilingC = C * (R + X) / 2;
+		double ceilingC = C * leakCeil;
 
 		// AL4 is used to estimate flow velocities in the attic
 		double AL4 = atticC * sqrt(airDensityRef / 2) * pow(4, (atticPressureExp - .5));
@@ -788,7 +789,6 @@ int main(int argc, char *argv[], char* envp[])
 		double defaultInfil = .001 * ((floorArea / 100) * 10) * 3600 / houseVolume;	// Default infiltration credit [ACH] (ASHRAE 62.2, 4.1.3 p.4). This NO LONGER exists in 62.2-2013
 		double rivecX = (.05 * floorArea + 3.5 * (numBedrooms + 1)) / qRivec;
 		double rivecY = 0;
-		double Q622 = .001 * (.05 * floorArea + 3.5 * (numBedrooms + 1)) * (3600 / houseVolume); // ASHRAE 62.2 Mechanical Ventilation Rate [ACH]
 		double Aeq = 0;		// Equivalent air change rate of house to meet 62.2 minimum for RIVEC calculations. Choose one of the following:
 
 		switch (AeqCalcs) {
@@ -962,7 +962,6 @@ int main(int argc, char *argv[], char* envp[])
 		double tempRetSurface;
 		double tempSupSurface;
 		double tempHouseMass;
-		double flag;				// Should be an int?
 		double mIN = 0;
 		double mOUT = 0;
 		double Pint = 0;
@@ -974,7 +973,6 @@ int main(int argc, char *argv[], char* envp[])
 		double mAtticIN = 0;
 		double mAtticOUT = 0;
 		double TSKY = 0;
-		// double w = 0;
 		double mHouse = 0;
 		double qHouse = 0;
 		double houseACH = 0;
@@ -1124,7 +1122,7 @@ int main(int argc, char *argv[], char* envp[])
 					// Resets leakage in case economizer has operated previously (increased leakage for pressure relief)
 					if(economizerUsed == 1) {
 						C = Coriginal;
-						ceilingC = C * (R + X) / 2;
+						ceilingC = C * leakCeil;
 						AL4 = atticC * sqrt(airDensityRef / 2) * pow(4, (atticPressureExp - .5));
 
 						if(AL4 == 0)
@@ -1322,7 +1320,7 @@ int main(int argc, char *argv[], char* envp[])
 								econoFlag = 1;
 												
 								C = Ceconomizer;
-								ceilingC = C * (R + X) / 2;
+								ceilingC = C * leakCeil;
 								AL4 = atticC * sqrt(airDensityRef / 2) * pow(4, (atticPressureExp - .5));
 
 								if(AL4 == 0)
@@ -2933,7 +2931,7 @@ int main(int argc, char *argv[], char* envp[])
 					// Ventilation and heat transfer calculations
 					while(1) {
 						mainIterations = mainIterations + 1;	// counting # of temperature/ventilation iterations
-						flag = 0;
+						int flag = 0;
 
 						while(1) {
 							// Call houseleak subroutine to calculate air flow. Brennan added the variable mCeilingIN to be passed to the subroutine. Re-add between mHouseIN and mHouseOUT
@@ -2941,7 +2939,7 @@ int main(int argc, char *argv[], char* envp[])
 								flue, wallFraction, floorFraction, Sw, flueShelterFactor, numWinDoor, winDoor, numFans, fan, numPipes,
 								Pipe, mIN, mOUT, Pint, mFlue, mCeiling, mFloor, atticC, dPflue, dPceil, dPfloor, Crawl,
 								Hfloor, rowOrIsolated, soffitFraction, Patticint, wallCp, mSupReg, mAH, mRetLeak, mSupLeak,
-								mRetReg, mHouseIN, mHouseOUT, supC, supn, retC, retn, mSupAHoff, mRetAHoff, Aeq, airDensityIN, airDensityOUT, airDensityATTIC, ceilingC, houseVolume, windPressureExp, Q622);
+								mRetReg, mHouseIN, mHouseOUT, supC, supn, retC, retn, mSupAHoff, mRetAHoff, Aeq, airDensityIN, airDensityOUT, airDensityATTIC, ceilingC, houseVolume, windPressureExp);
 							//Yihuan : put the mCeilingIN on comment 
 							flag = flag + 1;
 
@@ -2971,7 +2969,7 @@ int main(int argc, char *argv[], char* envp[])
 							roofType, M1, M12, M15, M16, roofRval, rceil, AHflag, mERV_AH, ERV_SRE, mHRV, HRV_ASE, mHRV_AH,
 							capacityc, capacityh, evapcap, internalGains, airDensityIN, airDensityOUT, airDensityATTIC, airDensitySUP, airDensityRET, numStories, storyHeight, dh.sensible);
 
-						if(abs(b[0] - tempAttic) < .2) {	// Testing for convergence
+						if((abs(b[0] - tempAttic) < .2) || (mainIterations > 10)) {	// Testing for convergence
 
 							tempAttic        = b[0];					
 							tempInnerSheathN = b[1];
@@ -2993,27 +2991,6 @@ int main(int argc, char *argv[], char* envp[])
 							break;
 						}
 
-						if(mainIterations > 10) {			// Assume convergence
-
-							tempAttic        = b[0];
-							tempInnerSheathN = b[1];
-							tempOuterSheathN = b[2];
-							tempInnerSheathS = b[3];
-							tempOuterSheathS = b[4];					
-							tempWood         = b[5];
-							tempCeiling      = b[6];
-							tempAtticFloor   = b[7];
-							tempInnerGable   = b[8];
-							tempOuterGable   = b[9];
-							tempRetSurface   = b[10];
-							tempReturn       = b[11];
-							tempHouseMass	 = b[12];
-							tempSupSurface   = b[13];					
-							tempSupply       = b[14];
-							tempHouse	     = b[15];
-
-							break;
-						}
 						tempAttic = b[0];
 						tempHouse = b[15];
 					}

@@ -18,7 +18,7 @@ int sgn(double sgnvar);
 void f_CpTheta(double CP[4][4], int& windAngle, double* wallCp);
 
 void f_flueFlow(double& tempHouse, double& flueShelterFactor, double& dPwind, double& dPtemp, double& h, double& Pint, int& numFlues, flue_struct* flue, double& mFlue,
-	double& airDensityOUT, double& airDensityIN, double& dPflue, double& tempOut, double& Aeq, double& houseVolume, double& windPressureExp, double& Q622);
+	double& airDensityOUT, double& airDensityIN, double& dPflue, double& tempOut, double& Aeq, double& houseVolume, double& windPressureExp);
 
 void f_floorFlow3(double& Cfloor, double& Cpfloor, double& dPwind, double& Pint, double& C,
 	double& n, double& mFloor, double& airDensityOUT, double& airDensityIN, double& dPfloor, double& Hfloor, double& dPtemp);
@@ -154,7 +154,6 @@ void sub_heat (
 	
 	int rhoSheathing;
 	int rhoWood;
-	int rhoDrywall;
 	int heatIterations;
 	//int asize;
 	//int asize2;
@@ -288,7 +287,6 @@ void sub_heat (
 	// Material densities
 	rhoSheathing = 450;							// Sheathing
 	rhoWood = 500;									// Wood
-	rhoDrywall = 800;								// Drywall
 
 	// masses
 	M1 = atticVolume * airDensityATTIC;					// mass of attic air
@@ -859,7 +857,7 @@ void sub_moisture (
 
 void sub_houseLeak (
 	int& AHflag,
-	double& flag, 
+	int& flag, 
 	double& windSpeed, 
 	int& windAngle, 
 	double& tempHouse, 
@@ -919,8 +917,7 @@ void sub_houseLeak (
 	double& airDensityATTIC,
 	double& ceilingC,
 	double& houseVolume,
-	double& windPressureExp,
-	double& Q622
+	double& windPressureExp
 	) {
 		double Cpwallvar = 0;		// This variable replaces the non-array wallCp var
 		double CPvar = 0;			// This variable replaces the non-array CP var
@@ -1019,7 +1016,7 @@ void sub_houseLeak (
 			mOUT = 0;
 			
 			if(numFlues) {					//FF: This IF behaves as if(numFlues != 0)
-				f_flueFlow(tempHouse, flueShelterFactor, dPwind, dPtemp, h, Pint, numFlues, flue, mFlue, airDensityOUT, airDensityIN, dPflue, tempOut, Aeq, houseVolume, windPressureExp, Q622);
+				f_flueFlow(tempHouse, flueShelterFactor, dPwind, dPtemp, h, Pint, numFlues, flue, mFlue, airDensityOUT, airDensityIN, dPflue, tempOut, Aeq, houseVolume, windPressureExp);
 
 				if(mFlue >= 0) {
 					mIN = mIN + mFlue;		// Add mass flow through flue
@@ -1157,7 +1154,7 @@ void sub_houseLeak (
 }
 
 void sub_atticLeak ( 
-	double& flag, 
+	int& flag, 
 	double& windSpeed, 
 	int& windAngle, 
 	double& tempHouse, 
@@ -1304,7 +1301,6 @@ void sub_atticLeak (
 		}
 	}
 
-	// f_CpTheta CP(), windAngle, wallCp()
 	f_CpTheta(CP, windAngle, wallCp);
 
 	// for pitched roof leaks
@@ -1720,7 +1716,7 @@ void f_CpTheta(double CP[4][4], int& windAngle, double* wallCp) {
 }
 
 void f_flueFlow(double& tempHouse, double& flueShelterFactor, double& dPwind, double& dPtemp, double& h, double& Pint, int& numFlues, flue_struct* flue, double& mFlue,
-	double& airDensityOUT, double& airDensityIN, double& dPflue, double& tempOut, double& Aeq, double& houseVolume, double& windPressureExp, double& Q622) {
+	double& airDensityOUT, double& airDensityIN, double& dPflue, double& tempOut, double& Aeq, double& houseVolume, double& windPressureExp) {
 
 		// calculates flow through the flue
 
@@ -1754,35 +1750,6 @@ void f_flueFlow(double& tempHouse, double& flueShelterFactor, double& dPwind, do
 			}
 		}
 
-
-		//125% Mechanical 62.2 Flow Controller
-		//if (massflue > 1.25 * Q622 * houseVolume / 3600 * airDensityOUT)
-		//	massflue = 1.25 * Q622 * houseVolume / 3600 * airDensityOUT;
-
-		//if (massflue < 1.25 * -Q622 * houseVolume / 3600 * airDensityIN)
-		//	massflue = 1.25 * -Q622 * houseVolume / 3600 * airDensityIN;
-
-		//100% Mechanical 62.2 Flow Controller
-		/*if (massflue > 1.00 * Q622 * houseVolume / 3600 * airDensityOUT)
-			massflue = 1.00 * Q622 * houseVolume / 3600 * airDensityOUT;
-
-		if (massflue < 1.00 * -Q622 * houseVolume / 3600 * airDensityIN)
-			massflue = 1.00 * -Q622 * houseVolume / 3600 * airDensityIN;*/
-			
-		//100% Flow Controller
-		/*if (massflue >= Aeq * houseVolume / 3600 * airDensityOUT * 1)
-			massflue = Aeq * houseVolume / 3600 * airDensityOUT * 1;
-
-		if (massflue <= -Aeq * houseVolume / 3600 * airDensityIN * 1)
-			massflue = -Aeq * houseVolume / 3600 * airDensityIN * 1;*/		
-
-		//125% Flow Controller
-		/*if (massflue >= Aeq * houseVolume / 3600 * airDensityOUT * 1.25)
-			massflue = Aeq * houseVolume / 3600 * airDensityOUT * 1.25;
-
-		if (massflue <= -Aeq * houseVolume / 3600 * airDensityIN * 1.25)
-			massflue = -Aeq * houseVolume / 3600 * airDensityIN * 1.25;*/
-		
 		mFlue = massflue;
 }
 
