@@ -2092,7 +2092,7 @@ if(minuteYear > 1000) return 0;
 					for(int i=0; i < numFans; i++) {
 						// ***********************  20 minute minimum central fan integrated supply (CFIS) system. 20 minute minimum operation per hour. 
 						if(fan[i].oper == 13) {			// fan cycler operation without exhaust fan
-							if((rivecFlag == 0 && AHminutes < target && AHflag != 1 && AHflag != 2 && AHflag != 102) || (rivecFlag == 1 && rivecOn == 1 && AHflag != 1 && AHflag != 2 && AHflag != 102)){		// conditions for turning on air handler only for fan cycler operation
+							if((rivecFlag == 0 && AHminutes <= target && AHflag != 1 && AHflag != 2 && AHflag != 102) || (rivecFlag == 1 && rivecOn == 1 && AHflag != 1 && AHflag != 2 && AHflag != 102)){		// conditions for turning on air handler only for fan cycler operation
 								AHflag = 100;
 								AHminutes = AHminutes + 1;
 								qAH = qAH_cool;
