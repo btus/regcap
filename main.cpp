@@ -2834,12 +2834,17 @@ if(minuteYear > 1000) return 0;
 					// [END] Hybrid Systems ==================================================================================================================================
 
 					// [START] Equipment Model ===============================================================================================================================
+					
 					evapcap = 0;
 					latcap = 0;
 					capacity = 0;
 					capacityh = 0;
 					powercon = 0;
 					compressorPower = 0;
+					
+					// hret is in btu/lb and is used in capacity calculations
+					hret = .24 * ((b[11] - 273.15) * 9 / 5 + 32) + HR[1] * (1061 + .444 * ((b[11] - 273.15) * 9 / 5 + 32));
+					
 
 					if(AHflag == 0) {										// AH OFF
 						capacityc = 0;
@@ -3092,11 +3097,6 @@ if(minuteYear > 1000) return 0;
 						HR[1] = weather.humidityRatio;
 					if(HR[3] > HRsaturation) // Previously set by Iain to 0.02. Here we've replaced it with the saturation humidity ratio (Ws).
 						HR[3] = HRsaturation; //consider adding calculate saturation humidity ratio by indoor T and Pressure and lmit HR[3] to that.
-
-					// hret is in btu/lb and is used in capacity calculations
-					hret = .24 * ((b[11] - 273.15) * 9 / 5 + 32) + HR[1] * (1061 + .444 * ((b[11] - 273.15) * 9 / 5 + 32));
-
-
 
 					// [END] Moisture Balance =======================================================================================================================================
 
