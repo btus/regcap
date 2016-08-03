@@ -3079,34 +3079,6 @@ if(minuteYear > 1000) return 0;
 
 					// Call moisture subroutine
 					
-// 					This fixes the start of the cycle, but not the end
-// 					
-// 					if(FanCyclerOLD == 0 & mFanCycler != 0){ //Fan cycler turns on but was not on prior minute
-// 						mHouseIN = 0;
-// 						mHouseOUT = 0.8 * mFanCycler; //0.8 and 0.2 account for flow through house vs. ceiling.
-// 						mCeiling = 0.2 * mFanCycler
-// 					} else if(FanCyclerOLD == 1 & mFanCycler == 0){ //Fan cycler turns off but was on prior minute
-// 						mHouseOUT = mHouseOUT - (
-// 						
-// 					
-// 						
-// 					
-// 					if(mFanCycler == 0){
-// 						FanCyclerIndex == 0;
-// 					FanCyclerIndex
-// 					
-// 					if(mFanCycler == 0 & mHouseIN != 0){
-// 						mHouseIN = 0;
-// 						mHouseOUT = mFanCycler;
-// 						}
-// 					
-// 					I'm not sure this will work for not airtight and not small homes. Need to think more. 
-// 					if(mFanCycler != 0){
-// 						mHouseIN = 0;
-// 						mHouseOUT = 0.8 * mFanCycler; //0.8 and 0.2 account for flow through house vs. ceiling.
-// 						mCeiling = 0.2 * mFanCycler
-// 						}
-						
 					sub_moisture(HR, M1, M12, M15, M16, Mw5, matticenvout, mCeiling, mSupAHoff, mRetAHoff,
 						matticenvin, weather.humidityRatio, mSupLeak, mAH, mRetReg, mRetLeak, mSupReg, latcap, mHouseIN, mHouseOUT,
 						latentLoad, mFanCycler, mHRV_AH, mERV_AH, ERV_TRE, MWha, airDensityIN, airDensityOUT, dh.condensate);
