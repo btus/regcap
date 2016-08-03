@@ -1121,7 +1121,7 @@ int main(int argc, char *argv[], char* envp[])
 					double solgain = 0;
 					double tsolair;
 
-					target = minute - 40;			// Target is used for fan cycler operation currently set for 20 minutes operation, in the last 20 minutes of the hour.
+					target = minute - 39;			// Target is used for fan cycler operation currently set for 20 minutes operation, in the last 20 minutes of the hour.
 					if(target < 0)
 						target = 0;						// For other time periods, replace the "40" with 60 - operating minutes
 
@@ -2092,7 +2092,7 @@ if(minuteYear > 1000) return 0;
 					for(int i=0; i < numFans; i++) {
 						// ***********************  20 minute minimum central fan integrated supply (CFIS) system. 20 minute minimum operation per hour. 
 						if(fan[i].oper == 13) {			// fan cycler operation without exhaust fan
-							if((rivecFlag == 0 && AHminutes <= target && AHflag != 1 && AHflag != 2 && AHflag != 102) || (rivecFlag == 1 && rivecOn == 1 && AHflag != 1 && AHflag != 2 && AHflag != 102)){		// conditions for turning on air handler only for fan cycler operation
+							if((rivecFlag == 0 && AHminutes < target && AHflag != 1 && AHflag != 2 && AHflag != 102) || (rivecFlag == 1 && rivecOn == 1 && AHflag != 1 && AHflag != 2 && AHflag != 102)){		// conditions for turning on air handler only for fan cycler operation
 								AHflag = 100;
 								AHminutes = AHminutes + 1;
 								qAH = qAH_cool;
