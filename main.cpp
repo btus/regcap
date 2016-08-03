@@ -2960,29 +2960,6 @@ if(minuteYear > 1000) return 0;
 					
 					// [END] Equipment Model ======================================================================================================================================
 
-					// [START] Moisture Balance ===================================================================================================================================
-
-					// Call moisture subroutine
-					sub_moisture(HR, M1, M12, M15, M16, Mw5, matticenvout, mCeiling, mSupAHoff, mRetAHoff,
-						matticenvin, weather.humidityRatio, mSupLeak, mAH, mRetReg, mRetLeak, mSupReg, latcap, mHouseIN, mHouseOUT,
-						latentLoad, mFanCycler, mHRV_AH, mERV_AH, ERV_TRE, MWha, airDensityIN, airDensityOUT, dh.condensate);
-
-					SatVaporPressure = saturationVaporPressure(tempHouse);
-
-					//Calculate Saturation Humidity Ratio, Equation 23 in ASHRAE HoF
-					HRsaturation = 0.621945*(SatVaporPressure/(weather.pressure-SatVaporPressure)); 
-
-					if(HR[1] == 0)
-						HR[1] = weather.humidityRatio;
-					if(HR[3] > HRsaturation) // Previously set by Iain to 0.02. Here we've replaced it with the saturation humidity ratio (Ws).
-						HR[3] = HRsaturation; //consider adding calculate saturation humidity ratio by indoor T and Pressure and lmit HR[3] to that.
-
-					// hret is in btu/lb and is used in capacity calculations
-					hret = .24 * ((b[11] - 273.15) * 9 / 5 + 32) + HR[1] * (1061 + .444 * ((b[11] - 273.15) * 9 / 5 + 32));
-
-
-
-					// [END] Moisture Balance =======================================================================================================================================
 
 					// [START] Heat and Mass Transport ==============================================================================================================================
 					mCeilingOld = -1000;														// inital guess
@@ -3098,7 +3075,59 @@ if(minuteYear > 1000) return 0;
 					tempOld[15] = tempHouse;			// Node 16 is the House Air (all one zone)
 
 
-			
+					// [START] Moisture Balance ===================================================================================================================================
+
+					// Call moisture subroutine
+					
+// 					This fixes the start of the cycle, but not the end
+// 					
+// 					if(FanCyclerOLD == 0 & mFanCycler != 0){ //Fan cycler turns on but was not on prior minute
+// 						mHouseIN = 0;
+// 						mHouseOUT = 0.8 * mFanCycler; //0.8 and 0.2 account for flow through house vs. ceiling.
+// 						mCeiling = 0.2 * mFanCycler
+// 					} else if(FanCyclerOLD == 1 & mFanCycler == 0){ //Fan cycler turns off but was on prior minute
+// 						mHouseOUT = mHouseOUT - (
+// 						
+// 					
+// 						
+// 					
+// 					if(mFanCycler == 0){
+// 						FanCyclerIndex == 0;
+// 					FanCyclerIndex
+// 					
+// 					if(mFanCycler == 0 & mHouseIN != 0){
+// 						mHouseIN = 0;
+// 						mHouseOUT = mFanCycler;
+// 						}
+// 					
+// 					I'm not sure this will work for not airtight and not small homes. Need to think more. 
+// 					if(mFanCycler != 0){
+// 						mHouseIN = 0;
+// 						mHouseOUT = 0.8 * mFanCycler; //0.8 and 0.2 account for flow through house vs. ceiling.
+// 						mCeiling = 0.2 * mFanCycler
+// 						}
+						
+					sub_moisture(HR, M1, M12, M15, M16, Mw5, matticenvout, mCeiling, mSupAHoff, mRetAHoff,
+						matticenvin, weather.humidityRatio, mSupLeak, mAH, mRetReg, mRetLeak, mSupReg, latcap, mHouseIN, mHouseOUT,
+						latentLoad, mFanCycler, mHRV_AH, mERV_AH, ERV_TRE, MWha, airDensityIN, airDensityOUT, dh.condensate);
+
+					SatVaporPressure = saturationVaporPressure(tempHouse);
+
+					//Calculate Saturation Humidity Ratio, Equation 23 in ASHRAE HoF
+					HRsaturation = 0.621945*(SatVaporPressure/(weather.pressure-SatVaporPressure)); 
+
+					if(HR[1] == 0)
+						HR[1] = weather.humidityRatio;
+					if(HR[3] > HRsaturation) // Previously set by Iain to 0.02. Here we've replaced it with the saturation humidity ratio (Ws).
+						HR[3] = HRsaturation; //consider adding calculate saturation humidity ratio by indoor T and Pressure and lmit HR[3] to that.
+
+					// hret is in btu/lb and is used in capacity calculations
+					hret = .24 * ((b[11] - 273.15) * 9 / 5 + 32) + HR[1] * (1061 + .444 * ((b[11] - 273.15) * 9 / 5 + 32));
+
+
+
+					// [END] Moisture Balance =======================================================================================================================================
+
 			
 
 					// ************** house ventilation rate  - what would be measured with a tracer gas i.e., not just envelope and vent fan flows
