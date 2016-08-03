@@ -2030,7 +2030,7 @@ if(minuteYear > 1000) return 0;
 								if(fan[i].oper == 13) {
 									if((rivecFlag == 0 && AHminutes <= 20) || (rivecFlag == 1 && rivecOn == 1)){ //This allows RIVEC to operate this fan until it reaches its Exposure setpoint?
 									mFanCycler = fan[i].q * airDensityIN;
-									mRetReg = mRetReg1 - mFanCycler;
+									mRetReg = mRetReg1 - mFanCycler;								
 									ventSumIN = ventSumIN + abs(fan[i].q) * 3600 / houseVolume;
 									//nonRivecVentSumIN = nonRivecVentSumIN + abs(fan[i].q) * 3600 / houseVolume;
 									}
@@ -2076,7 +2076,7 @@ if(minuteYear > 1000) return 0;
 								if(fan[i].oper == 13) { 
 									if((rivecFlag == 0 && AHminutes <= 20) || (rivecFlag == 1 && rivecOn == 1)){ //This allow RIVEC to operate this fan until it reaches its Exposure setpoint?
 									mFanCycler = fan[i].q * airDensityIN;
-									mRetReg = mRetReg1 - mFanCycler;
+									mRetReg = mRetReg1 - mFanCycler;								
 									ventSumIN = ventSumIN + abs(fan[i].q) * 3600 / houseVolume;
 									//nonRivecVentSumIN = nonRivecVentSumIN + abs(fan[i].q) * 3600 / houseVolume;
 									}
@@ -2106,7 +2106,7 @@ if(minuteYear > 1000) return 0;
 								mRetLeak = qRetLeak * airDensityIN;
 								mFanCycler = fan[i].q * airDensityIN;
 								mSupReg = qSupReg * airDensityIN;
-								mRetReg = qRetReg * airDensityIN - mFanCycler;
+								mRetReg = qRetReg * airDensityIN - mFanCycler;							
 								mAH = qAH * airDensityIN;
 								mechVentPower = mechVentPower + fanPower_cooling;			// note ah operates at cooling speed
 								AHfanHeat = fanPower_cooling * .85;							// for heat
@@ -3279,8 +3279,9 @@ if(minuteYear > 1000) return 0;
 						outputFile << fan[0].on << "\t" << fan[1].on << "\t" << fan[2].on << "\t" << fan[3].on << "\t" << fan[4].on << "\t" << fan[5].on << "\t" << fan[6].on << "\t";
 						outputFile << rivecOn << "\t" << turnover << "\t" << relExp << "\t" << relDose << "\t" << occupiedExpReal << "\t" << occupiedDoseReal << "\t";
 						outputFile << occupied[weekend][hour] << "\t" << occupiedExp << "\t" << occupiedDose << "\t" << DAventLoad << "\t" << MAventLoad << "\t"; 
-						outputFile << weather.humidityRatio << "\t" << HR[3] << "\t" << RHhouse << "\t" << RHind60 << "\t" << RHind70 << "\t" << HumidityIndex << "\t" << dh.condensate << endl;
-						//outputFile << mCeiling << "\t" << mHouseIN << "\t" << mHouseOUT << "\t" << mSupReg << "\t" << mRetReg << "\t" << mSupAHoff << "\t" ;
+						outputFile << weather.humidityRatio << "\t" << HR[3] << "\t" << RHhouse << "\t" << RHind60 << "\t" << RHind70 << "\t" << HumidityIndex << "\t" << dh.condensate << "\t"; //endl;
+						outputFile << mHouse << "\t" << mHouseIN << "\t" << mHouseOUT << "\t" << mIN << "\t" << mOUT << "\t" << mCeiling << "\t" << mSupReg << "\t" << mSupAHoff << "\t" << mRetAHoff << "\t" << mRetReg << "\t" << mFlue << "\t" << mFloor << "\t" << mAH << endl;
+						//outputFile << mHouse << "\t" << mHouseIN << "\t" << mHouseOUT << mCeiling << "\t" << mHouseIN << "\t" << mHouseOUT << "\t" << mSupReg << "\t" << mRetReg << "\t" << mSupAHoff << "\t" ;
 						//outputFile << mRetAHoff << "\t" << mHouse << "\t"<< flag << "\t"<< AIM2 << "\t" << AEQaim2FlowDiff << "\t" << qFanFlowRatio << "\t" << C << endl; //Breann/Yihuan added these for troubleshooting
 					}
 
