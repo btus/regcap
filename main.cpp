@@ -1601,21 +1601,21 @@ if(minuteYear > 1000) return 0;
 						//Indoor and Outdoor sensor based control.
 						if(HumContType == 7) { 
 							if(weather.humidityRatio > HR[3]) { //do not want to vent. 
-								if(RHhouse >= 55){
-									if(AHflag == 2) {
-										rivecOn = 1;
-									} else if(relExp >= 2.5 || relDose > HiDose) { 
-										rivecOn = 1;
-									} else { //otherwise off
-										rivecOn = 0;
-									}
-								}
-								else if(relExp >= 0.95 || relDose > 1){ 
+								//if(RHhouse >= 55){
+								if(AHflag == 2) {
 									rivecOn = 1;
-								} 
-								else{
+								} else if(relExp >= 2.5 || relDose > HiDose) { 
+									rivecOn = 1;
+								} else { //otherwise off
 									rivecOn = 0;
-								}		
+								}
+// 								}
+// 								else if(relExp >= 0.95 || relDose > 1){ 
+// 									rivecOn = 1;
+// 								} 
+// 								else{
+// 									rivecOn = 0;
+// 								}		
 							}		
 							else { //want to vent due to high indoor humidity, so maybe we just let it run, without relExp control?
 								if(relDose > doseTarget) { 
@@ -1632,7 +1632,7 @@ if(minuteYear > 1000) return 0;
 						if(HumContType == 8) {
 							if(month <= FirstCut || month >= SecondCut) { //High ventilation months with net-humidity transport from inside to outside.
 								if(hour >= 3 && hour <= 7) { //Was 3 and 7. Maybe change this to the warmest hours of the day.
-									rivecOn = 0; //Brennan changed from 1 to 0. 
+									rivecOn = 1; //Relatively dry time of day, vent more.
 								} else {
 									if(relDose > doseTarget) {
 										rivecOn = 1;
@@ -1643,8 +1643,8 @@ if(minuteYear > 1000) return 0;
 							} else { //Low ventilation months with net-humidity transport from outside to inside.
 								if(hour >= 14 && hour <= 18) { //Brennan changed from 12 and 6, to 14 to 18. Always vent during peak cooling period.
 									rivecOn = 1;
-								//} if(hour >= 15 && hour <=18) {
-									//rivecOn = 1;
+								else if(hour >= 7 && hour <= 11){
+									rivecOn = 0;
 								} else {
 									if(relExp >= 2.5 || relDose > HiDose) {
 										rivecOn = 1;
@@ -1677,20 +1677,20 @@ if(minuteYear > 1000) return 0;
 // 						Indoor and Outdoor sensor based control.
 						if(HumContType == 9) { 
 							if(weather.humidityRatio > HR[3]) { //do not want to vent. Add some "by what amount" deadband value. 
-								if(RHhouse >= 55) {
-									if(relExp >= 2.5 || relDose > HiDose) { //have to with high exp 0.61
-										rivecOn = 1;
-									} 
-									else { //otherwise off
-										rivecOn = 0;
-									}
-								}	
-								else if(relExp >= 0.95 || relDose > 1){ 
+								//if(RHhouse >= 55) {
+								if(relExp >= 2.5 || relDose > HiDose) { //have to with high exp 0.61
 									rivecOn = 1;
 								} 
-								else{
+								else { //otherwise off
 									rivecOn = 0;
-								}	
+								}
+// 								}	
+// 								else if(relExp >= 0.95 || relDose > 1){ 
+// 									rivecOn = 1;
+// 								} 
+// 								else{
+// 									rivecOn = 0;
+// 								}	
 							}			
 							else if(relDose > doseTarget){ //want to vent due to high indoor humidity, so maybe we just let it run, without relExp control?
 								rivecOn = 1; //OR we can change the does calculation based on expected periods of contol function (i.e., 1-week,1-month, etc.)
