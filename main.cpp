@@ -706,7 +706,7 @@ int main(int argc, char *argv[], char* envp[])
 				cout << "Cannot open output file: " << outputFileName << endl;
 				return 1; 
 			}
-			outputFile << "Time\tMin\twindSpeed\ttempOut\ttempHouse\tsetpoint\ttempAttic\ttempSupply\ttempReturn\tAHflag\tAHpower\tcompressPower\tmechVentPower\tHR\tSHR\tMcoil\thousePress\tQhouse\tACH\tACHflue\tventSum\tnonRivecVentSum\tfan1\tfan2\tfan3\tfan4\tfan5\tfan6\tfan7\trivecOn\tturnover\trelExpRIVEC\trelDoseRIVEC\toccupiedExpReal\toccupiedDoseReal\toccupied\toccupiedExp\toccupiedDose\tDAventLoad\tMAventLoad\tHROUT\tHRhouse\tRH%house\tRHind60\tRHind70\tHumidityIndex\tDHcondensate" << endl; 
+			outputFile << "Time\tMin\twindSpeed\ttempOut\ttempHouse\tsetpoint\ttempAttic\ttempSupply\ttempReturn\tAHflag\tAHpower\tcompressPower\tmechVentPower\tHR\tSHR\tMcoil\thousePress\tQhouse\tACH\tACHflue\tventSum\tnonRivecVentSum\tfan1\tfan2\tfan3\tfan4\tfan5\tfan6\tfan7\trivecOn\tturnover\trelExpRIVEC\trelDoseRIVEC\toccupiedExpReal\toccupiedDoseReal\toccupied\toccupiedExp\toccupiedDose\tHROUT\tHRhouse\tRH%house\tRHind60\tRHind70\tHumidityIndex\tDHcondensate" << endl; 
 		}
 		
 		// 5 HR nodes
@@ -1897,20 +1897,20 @@ if(minuteYear > 1000) return 0;
 						}
 
 						//Rivec control of number 50 fan type, algorithm v6					     
-						if(HumContType == 0) {
-							if(occupied[weekend][hour]) {				            	// Base occupied
-								if(relExp >= 0.95 || relDose >= 1.0)
-									rivecOn = 1;
-							} else {						                	// Base unoccupied
-								if(relExp >= expLimit)
-									rivecOn = 1;
-							}
-							if(hour >= peakStart && hour < peakEnd && peakFlag == 0) {		// PEAK Time Period
-								rivecOn = 0;												// Always off
-								if(relExp >= expLimit)
-									rivecOn = 1;
-							}
-						}
+// 						if(HumContType == 0) {
+// 							if(occupied[weekend][hour]) {				            	// Base occupied
+// 								if(relExp >= 0.95 || relDose >= 1.0)
+// 									rivecOn = 1;
+// 							} else {						                	// Base unoccupied
+// 								if(relExp >= expLimit)
+// 									rivecOn = 1;
+// 							}
+// 							if(hour >= peakStart && hour < peakEnd && peakFlag == 0) {		// PEAK Time Period
+// 								rivecOn = 0;												// Always off
+// 								if(relExp >= expLimit)
+// 									rivecOn = 1;
+// 							}
+// 						}
 						// ================== End Humidity Control Logic ================================
 					}
 				
@@ -3279,9 +3279,9 @@ if(minuteYear > 1000) return 0;
 						outputFile << Pint << "\t"<< qHouse << "\t" << houseACH << "\t" << flueACH << "\t" << ventSum << "\t" << nonRivecVentSum << "\t";
 						outputFile << fan[0].on << "\t" << fan[1].on << "\t" << fan[2].on << "\t" << fan[3].on << "\t" << fan[4].on << "\t" << fan[5].on << "\t" << fan[6].on << "\t";
 						outputFile << rivecOn << "\t" << turnover << "\t" << relExp << "\t" << relDose << "\t" << occupiedExpReal << "\t" << occupiedDoseReal << "\t";
-						outputFile << occupied[weekend][hour] << "\t" << occupiedExp << "\t" << occupiedDose << "\t" << DAventLoad << "\t" << MAventLoad << "\t"; 
-						outputFile << weather.humidityRatio << "\t" << HR[3] << "\t" << RHhouse << "\t" << RHind60 << "\t" << RHind70 << "\t" << HumidityIndex << "\t" << dh.condensate << "\t"; //endl;
-						outputFile << mHouse << "\t" << mHouseIN << "\t" << mHouseOUT << "\t" << mIN << "\t" << mOUT << "\t" << mCeiling << "\t" << mSupReg << "\t" << mSupAHoff << "\t" << mRetAHoff << "\t" << mRetReg << "\t" << mFanCycler << "\t" << mFlue << "\t" << mFloor << "\t" << mAH << endl;
+						outputFile << occupied[weekend][hour] << "\t" << occupiedExp << "\t" << occupiedDose << "\t"; 
+						outputFile << weather.humidityRatio << "\t" << HR[3] << "\t" << RHhouse << "\t" << RHind60 << "\t" << RHind70 << "\t" << HumidityIndex << "\t" << dh.condensate << endl;
+						//outputFile << mHouse << "\t" << mHouseIN << "\t" << mHouseOUT << "\t" << mIN << "\t" << mOUT << "\t" << mCeiling << "\t" << mSupReg << "\t" << mSupAHoff << "\t" << mRetAHoff << "\t" << mRetReg << "\t" << mFanCycler << "\t" << mFlue << "\t" << mFloor << "\t" << mAH << endl;
 						//outputFile << mHouse << "\t" << mHouseIN << "\t" << mHouseOUT << mCeiling << "\t" << mHouseIN << "\t" << mHouseOUT << "\t" << mSupReg << "\t" << mRetReg << "\t" << mSupAHoff << "\t" ;
 						//outputFile << mRetAHoff << "\t" << mHouse << "\t"<< flag << "\t"<< AIM2 << "\t" << AEQaim2FlowDiff << "\t" << qFanFlowRatio << "\t" << C << endl; //Breann/Yihuan added these for troubleshooting
 					}
