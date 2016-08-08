@@ -1643,7 +1643,7 @@ if(minuteYear > 1000) return 0;
 							} else { //Low ventilation months with net-humidity transport from outside to inside.
 								if(hour >= 14 && hour <= 18) { //Brennan changed from 12 and 6, to 14 to 18. Always vent during peak cooling period.
 									rivecOn = 1;
-								else if(hour >= 7 && hour <= 11){
+								} else if(hour >= 7 && hour <= 11){
 									rivecOn = 0;
 								} else {
 									if(relExp >= 2.5 || relDose > HiDose) {
