@@ -12,12 +12,12 @@ using namespace std;
 
 /*
  * WoodMoisture - Wood moisture class constructor
- * @param woodThick
- * @param atticVolume
- * @param atticArea
- * @param roofPitch
- * @param tempInit
- * @param mcInit
+ * @param woodThick - sheathing thickness (m)
+ * @param atticVolume - attic volume (m3)
+ * @param atticArea - attic area (m2)
+ * @param roofPitch - roof pitch (degrees)
+ * @param tempInit - node initialization temperature (deg K)
+ * @param mcInit - initial wood moisture content (%)
  *
  * The nodes are:
  * 0. surface of south sheathing (facing the attic) - corresponding thermal node is (4)
@@ -29,11 +29,11 @@ using namespace std;
  * 6. inside bulk wood  - corresponding thermal node is (6)
  */
 WoodMoisture::WoodMoisture(double woodThick, double atticVolume, double atticArea, double roofPitch, double tempInit, double mcInit) {
-    double RHout = 0.5;   // RHOREF * TREF / tempInit;
-    double pressure = 1000;
+   double RHout = 0.5;   // RHOREF * TREF / tempInit;
+   double pressure = 1000;
 
-    A.resize(7, vector<double>(7+1, 0));
-    PW.resize(7, 0);
+   A.resize(7, vector<double>(7+1, 0));		// set size of equation vectors to number of nodes (A contains both)
+   PW.resize(7, 0);
 	deltaX[0] = woodThick / 2;                // distance between the centers of the surface and bulk wood layers. it is half the characteristic thickness of the wood member
 	deltaX[1] = deltaX[0];                    // same as for the other sheathing surface
 	deltaX[2] = .015;									// assume 1.5 cm as approximate wood half thickness
@@ -58,6 +58,7 @@ WoodMoisture::WoodMoisture(double woodThick, double atticVolume, double atticAre
 
 	for(int i=0; i<7; i++) {
 		tempOld[i] = tempInit;
+		moistureContent[i] = mcInit;
 		if(i == 3) {	// Attic air node
             PWOld[3] = saturation_vapor_pressure(tempInit) * RHout;
 			}
@@ -92,8 +93,8 @@ void WoodMoisture::mass_cond_bal(double tempOut, double RHOut, double tempHouse,
 	const double lewis = 0.919;	// Lewis number from ASHRAE
 	const double diffCoef = 3E-10; // diffusion coefficient for pine from Cunningham 1990 (m2/s)
 	const int RWater = 462;			// gas constant for water vapor (J/KgK)
-	double PWOut;						// Outdoor air vapor pressure
-	double PWHouse;					// House air vapor pressure
+	double PWOut;						// Outdoor air vapor pressure (Pa)
+	double PWHouse;					// House air vapor pressure (Pa)
 	double hw;							// Mass transfer coefficient for water vapor (m/s)
 
 	PWOut = saturation_vapor_pressure(tempOut) * RHOut;
@@ -188,13 +189,13 @@ void WoodMoisture::mass_cond_bal(double tempOut, double RHOut, double tempHouse,
         }
     PW = gauss(A);
 	// once the attic moisture nodes have been calculated assuming no condensation (as above)
-	// then we call CONDBAL2 to check for condensation and redo the calculations if necessasry
-	// CONBAL2 PERFORMS AN ITERATIVE SCHEME THAT TESTS FOR CONDENSATION
+	// then we call cond_bal to check for condensation and redo the calculations if necessasry
+	// cond_bal performs an iterative scheme that tests for condensation
 	cond_bal(pressure);
 
 	for(int i=0; i<7; i++) {
 		tempOld[i] = temperature[i];
-		PWOld[i] = abs(PW[i]);			// IN CASE NEGATIVE PW'S ARE GENERATED
+		PWOld[i] = abs(PW[i]);			// in case negative PW's are generated
 		}
 }
 
@@ -204,29 +205,26 @@ void WoodMoisture::mass_cond_bal(double tempOut, double RHOut, double tempHouse,
  * @param pressure - atomospheric pressure (Pa)
  */
 void WoodMoisture::cond_bal(double pressure) {
-	double PWSaturation[7];			// saturation vapor pressure at each node
-	double PWTest[7];					// save original for test of convergence
-	double PWStart[7];				// starting vapor pressures (was B() in BASIC code)
-	double massCondensed[7];		// the mass condensed or removed (if negative) at each node
+	double PWSaturation[7];			// saturation vapor pressure at each node (Pa)
+	double PWTest[7];					// save original for test of convergence (Pa)
+	double PWInit[7];				// initial vapor pressure (was B() in BASIC code) (Pa)
+	double massCondensed[7];		// the mass condensed or removed (if negative) at each node (kg)
     //double massTO[3] = {0};
-	double fluxTotal;
 	double fluxTotalOld = 0;
-	double fluxTo[4];
-	bool hasCondensedMass[7];
-	bool redoMassBalance;
-	bool PWOutOfRange;
+	bool hasCondensedMass[7];	// flag indicates that node has condensed mass
+	bool redoMassBalance;		// flag for condensed mass loop exit
+	bool PWOutOfRange;			// flag for PW loop exit
 
 	// Calculate saturation vapor pressure for each node (moved from mass_cond_bal)
 	for(int i=0; i<7; i++) {
 		PWSaturation[i] = saturation_vapor_pressure(temperature[i]);
 		moistureContent[i] = max(moistureContent[i], 0.032);
-		PWStart[i] = PW[i];
+		PWInit[i] = PW[i];
 		}
 			
 //MASSTOOUT = 0
-//REDOIT:                ‘REDOIT means that the program restarts here if a node has gone from having condensed mass @ PWS (saturation vapor pressure) to not @ PWS
 	do {
-		redoMassBalance = false;
+		redoMassBalance = false;		// redo calc if a node has gone from having condensed mass @ PWS
 
 		do {		// this loops until every PW is within  0.1 Pa of the previous iteration
 			for(int i=0; i<7; i++)
@@ -234,18 +232,17 @@ void WoodMoisture::cond_bal(double pressure) {
 
 	   	// NODE 0:
 			if(PW[0] < PWSaturation[0] && mTotal[0] <= 0) {
-				// CHECKING FOR REMAINING CONDENSED MASS FROM PREVIOUS ITERATION
-				// MTOTAL is the current mass at the node of condensed water
+				// Checking for remaining condensed mass from previous iteration
 				// There may still be mass condensed at a node even when PW<PWS 
 				mTotal[0] = 0;
 				massCondensed[0] = 0;
 				double a00 = kappa1[0] + x1 + x2;
-				PW[0] = -1 / a00 * (x3 * PW[3] + x4 * PW[4]) + PWStart[0] / a00;
+				PW[0] = -1 / a00 * (x3 * PW[3] + x4 * PW[4]) + PWInit[0] / a00;
 				hasCondensedMass[0] = false;
 				}
 			else {
-				// if there is still condensed mass, then PW is set equal to PWS
-				// FLAG is set for this node to indicate that this node has condensed mass
+				// If there is still condensed mass, then PW is set equal to PWS
+				// hasCondensedMass is set for this node to indicate that this node has condensed mass
 				// to exchange moisture rather than changing the moisture contant and use the PW/MC relationship
 				PW[0] = PWSaturation[0];
 				hasCondensedMass[0] = true;
@@ -256,7 +253,7 @@ void WoodMoisture::cond_bal(double pressure) {
 				mTotal[1] = 0;
 				massCondensed[1] = 0;
 				double a11 = kappa1[1] + x5 + x6;
-				PW[1] = -1 / a11 * (x7 * PW[3] + x8 * PW[5]) + PWStart[1] / a11;
+				PW[1] = -1 / a11 * (x7 * PW[3] + x8 * PW[5]) + PWInit[1] / a11;
 				hasCondensedMass[1] = false;
 				}
 			else {
@@ -269,7 +266,7 @@ void WoodMoisture::cond_bal(double pressure) {
 				mTotal[2] = 0;
 				massCondensed[2] = 0;
 				double a22 = kappa1[2] + x9 + x10;
-				PW[2] = -1 / a22 * (x11 * PW[3] + x12 * PW[6]) + PWStart[2] / a22;
+				PW[2] = -1 / a22 * (x11 * PW[3] + x12 * PW[6]) + PWInit[2] / a22;
 				hasCondensedMass[2] = false;
 				}
 			else {
@@ -278,11 +275,11 @@ void WoodMoisture::cond_bal(double pressure) {
 				}
 
 			// NODE 3: the air node is treated differently as we do not have accumulating mass of moisture for the attic air - 
-			//         i.e., there is no MTOTAL
+			//         i.e., there is no mTotal
 			if(PW[3] < PWSaturation[3]) {
 				massCondensed[3] = 0;
 				double a33 = x13 - x3 - x7 - x11 + x14;
-				PW[3] = -1 / a33 * (-x1 * PW[0] - x5 * PW[1] - x9 * PW[2]) + PWStart[3] / a33;
+				PW[3] = -1 / a33 * (-x1 * PW[0] - x5 * PW[1] - x9 * PW[2]) + PWInit[3] / a33;
 				hasCondensedMass[3] = false;
 				}
 			else {
@@ -295,7 +292,7 @@ void WoodMoisture::cond_bal(double pressure) {
 				mTotal[4] = 0;
 				massCondensed[4] = 0;
 				double a44 = kappa1[4] - x4;
-				PW[4] = -1 / a44 * (-x2 * PW[0]) + PWStart[4] / a44;
+				PW[4] = -1 / a44 * (-x2 * PW[0]) + PWInit[4] / a44;
 				hasCondensedMass[4] = false;
 				}
 			else {
@@ -308,7 +305,7 @@ void WoodMoisture::cond_bal(double pressure) {
 				mTotal[5] = 0;
 				massCondensed[5] = 0;
 				double a55 = kappa1[5] - x8;
-				PW[5] = -1 / a55 * (-x6 * PW[1]) + PWStart[5] / a55;
+				PW[5] = -1 / a55 * (-x6 * PW[1]) + PWInit[5] / a55;
 				hasCondensedMass[5] = false;
 				}
 			else {
@@ -321,7 +318,7 @@ void WoodMoisture::cond_bal(double pressure) {
 				mTotal[6] = 0;
 				massCondensed[6] = 0;
 				double a66 = kappa1[6] - x12;
-				PW[6] = -1 / a66 * (-x10 * PW[2]) + PWStart[6] / a66;
+				PW[6] = -1 / a66 * (-x10 * PW[2]) + PWInit[6] / a66;
 				hasCondensedMass[6] = false;
 				}
 			else {
@@ -329,10 +326,9 @@ void WoodMoisture::cond_bal(double pressure) {
 				hasCondensedMass[6] = true;
 				}
 
-   		// THIS LOOP IS EXECUTED UNTIL EVERY PW IS WITHIN .1 Pa OF THE PREVIOUS ITERATION
 			PWOutOfRange = false;
 			for(int i=0; i<7; i++) {
-				if(fabs(PWTest[i] - PW[i]) > 0.1) {
+				if(abs(PWTest[i] - PW[i]) > 0.1) {
 					// it is possible that this 0.1Pa criterion is too “tight” and we may relax this 
 					// depending on the solution time requirements and program stability.
 					PWOutOfRange = true;
@@ -342,27 +338,24 @@ void WoodMoisture::cond_bal(double pressure) {
 		
 		// the following is the special case for condensation at the attic air node
 		if(hasCondensedMass[3]) {
-			massCondensed[3] = timeStep * (-A[3][3] * PW[3] + x1 * PW[0] + x5 * PW[1] + x9 * PW[2] + PWStart[3]);
-			// THIS MASS MUST BE DISTRIBUTED OVER THE OTHER ATTIC SURFACES
-			// THIS MAY PUSH THEM ACOVE PWS SO THE ITERATIVE PROCESS MUST BE REPEATED
-			// BY CALCULATING A NEW PW FOR EACH OF THE SURFACE NODES BASED ON THEIR
-			// MOISTURE CONTENT INCLUDING THIS TRANSFERRED FROM THE ATTIC AIR
-			// here the fluxes of water from the air to the other surface nodes in contact whith attic air is determined
-			fluxTotal = 0;
+			double fluxTotal = 0;
+			double fluxTo[4];
+			massCondensed[3] = timeStep * (-A[3][3] * PW[3] + x1 * PW[0] + x5 * PW[1] + x9 * PW[2] + PWInit[3]);
+			// This mass must be distributed over the other attic surfaces
+			// this may push them over pws so the iterative process must be repeated
+			// by calculating a new pw for each of the surface nodes based on their
+			// moisture content including this transferred from the attic air
+			// here the fluxes of water from the air to the other surface nodes in contact with attic air is determined
 			fluxTo[0] = -(x1 * PW[0] + x3 * PW[3]);
-			if(fluxTo[0] > 0)
-				fluxTotal = fluxTotal + fluxTo[0];
 			fluxTo[1] = -(x5 * PW[1] + x7 * PW[3]);
-			if(fluxTo[1] > 0)
-				fluxTotal = fluxTotal + fluxTo[1];
 			fluxTo[2] = -(x9 * PW[2] + x11 * PW[3]);
-			if(fluxTo[2] > 0)
-				fluxTotal = fluxTotal + fluxTo[2];
-			fluxTo[3] = x14 * PW[3];
-			if(fluxTo[3] > 0)
-				fluxTotal = fluxTotal + fluxTo[3];
+			fluxTo[3] = x14 * PW[3];		// this is the moisture in attic air going to and from outside/house
+			for(int i=0; i < 4; i++) {
+				if(fluxTo[i] > 0)
+					fluxTotal = fluxTotal + fluxTo[i];
+				}
 
-			if(fabs(fluxTotalOld - fluxTotal) >= .001) {   //THEN GOTO ENDITER  ‘ this stops the iteration for attic condensed moisture distribution upon convergence
+			if(abs(fluxTotalOld - fluxTotal) >= .001) { 
 				// if not converged, then the node moisture fluxes are recalculated to include the extra moisture from the attic air
 				for(int i=0; i < 3; i++) {
 					if(fluxTo[i] > 0) {
@@ -387,8 +380,8 @@ void WoodMoisture::cond_bal(double pressure) {
 			}
 		//ENDITER:
 
-		// CALCULATE MC'S BASED ON THESE NEW PW'S
-		// THIS USES THE INVERSE OF CLEARY'S RELATIONSHIP
+		// Calculate MC's based on these new PW's
+		// this uses the inverse of cleary's relationship
 		for(int i=0; i < 7; i++) {
 			if(i == 3) {		// Attic air node
 				moistureContent[i] = PW[i] / PWSaturation[i] * 100;
@@ -418,12 +411,12 @@ void WoodMoisture::cond_bal(double pressure) {
 					}
 					mTotal[i] = mTotal[i] + massCondensed[i];
 					if(mTotal[i] < 0) {
-						// NEED TO ESTIMATE HOW MUCH MC (AND PW) CHANGE. A REDUCTION IN PW MEANS MCOND
-						// EVEN MORE -VE SO AN ITERATIVE SCHEME IS NOT NEEDED
+						// Need to estimate how much MC (and PW) change. A reduction in PW means mass condensed
+						// even more -ve so an iterative scheme is not needed
 						double moistureReduction = mTotal[i] / (volume[i] * rhoWood);
 						moistureContent[i] = max(moistureContent[i] + moistureReduction, 0.032);
 						PW[i] = calc_vapor_pressure(moistureContent[i], temperature[i], pressure);
-						redoMassBalance = true;	// REDO MASS BALANCE WITH THIS PW because this node is no longer at saturation. 
+						redoMassBalance = true;	// Redo mass balance with this PW because this node is no longer at saturation. 
 														// this may become unnecessary at shorter time steps when the error due 
 														// to lost condensed mass not accounted for is small
 						}

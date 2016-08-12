@@ -20,13 +20,13 @@ void f_CpTheta(double CP[4][4], int& windAngle, double* wallCp);
 void f_flueFlow(double& tempHouse, double& flueShelterFactor, double& dPwind, double& dPtemp, double& h, double& Pint, int& numFlues, flue_struct* flue, double& mFlue,
 	double& airDensityOUT, double& airDensityIN, double& dPflue, double& tempOut, double& Aeq, double& houseVolume, double& windPressureExp);
 
-void f_floorFlow3(double& Cfloor, double& Cpfloor, double& dPwind, double& Pint, double& C,
-	double& n, double& mFloor, double& airDensityOUT, double& airDensityIN, double& dPfloor, double& Hfloor, double& dPtemp);
+void f_floorFlow3(double& Cfloor, double& Cpfloor, double& dPwind, double& Pint,
+	double& n, double& mFloor, double& airDensityOUT, double& airDensityIN, double& Hfloor, double& dPtemp);
 
-void f_ceilingFlow(int& AHflag, double& R, double& X, double& Patticint, double& h, double& dPtemp,
+void f_ceilingFlow(int& AHflag, double& Patticint, double& h, double& dPtemp,
 	double& dPwind, double& Pint, double& C, double& n, double& mCeiling, double& atticC, double& airDensityATTIC,
-	double& airDensityIN, double& dPceil, double& tempAttic, double& tempHouse, double& tempOut, double& airDensityOUT,
-	double& mSupAHoff, double& mRetAHoff, double& supC, double& supn, double& retC, double& retn, double& ceilingC);
+	double& airDensityIN, double& tempAttic, double& tempHouse, double& tempOut, double& airDensityOUT,
+	double& mSupAHoff, double& mRetAHoff, double& supC, double& supn, double& retC, double& retn, double CCeiling);
 
 void f_neutralLevel2(double& dPtemp, double& dPwind, double* Sw, double& Pint, double* wallCp, double* Bo, double& h);
 
@@ -863,11 +863,12 @@ void sub_houseLeak (
 	double& tempHouse, 
 	double& tempAttic, 
 	double& tempOut, 
-	double& C, 
+	double& envC, 
 	double& n, 
 	double& h, 
-	double& R, 
-	double& X, 
+	double leakFracCeil, 
+	double leakFracFloor,
+	double leakFracWall, 
 	int& numFlues, 
 	flue_struct* flue, 
 	double* wallFraction, 
@@ -888,8 +889,6 @@ void sub_houseLeak (
 	double* mFloor, 
 	double& atticC, 
 	double& dPflue, 
-	double& dPceil, 
-	double& dPfloor, 
 	int& Crawl, 
 	double& Hfloor, 
 	string& rowOrIsolated, 
@@ -915,7 +914,6 @@ void sub_houseLeak (
 	double& airDensityIN,
 	double& airDensityOUT,
 	double& airDensityATTIC,
-	double& ceilingC,
 	double& houseVolume,
 	double& windPressureExp
 	) {
@@ -937,9 +935,9 @@ void sub_houseLeak (
 		double dPtemp;
 		double dPwalltop = 0;
 		double dPwallbottom = 0;
-		double Cproof;
+		//double Cproof;
 		double Cpwalls;
-		double Cpattic;		
+		//double Cpattic;		
 		double Cpfloor;
 		double Cwall;
 		double Cfloor;
@@ -965,7 +963,7 @@ void sub_houseLeak (
 		
 		// the following are some typical pressure coefficients for rectangular houses
 		
-		Cproof = -.4;
+		//Cproof = -.4;
 
 		for(int i=0; i < 4; i++) {
 			CP[i][0] = .6;
@@ -994,14 +992,14 @@ void sub_houseLeak (
 		f_CpTheta(CP, windAngle, wallCp);
 
 		Cpwalls = 0;
-		Cpattic = 0;
+		//Cpattic = 0;
 
 		for(int i=0; i < 4; i++) {
-			Cpattic = Cpattic + Sw[i] * wallCp[i] * soffitFraction[i];
+			//Cpattic = Cpattic + Sw[i] * wallCp[i] * soffitFraction[i];
 			Cpwalls = Cpwalls + Sw[i] * wallCp[i] * wallFraction[i];			// Shielding weighted Cp
 		}
 
-		Cpattic = Cpattic + pow(flueShelterFactor, 2) * Cproof * soffitFraction[4];
+		//Cpattic = Cpattic + pow(flueShelterFactor, 2) * Cproof * soffitFraction[4];
 
 		//if(flag < 1) {        // Yihuan: delete the if condition for the flag
 			Pint = 0;			// a reasonable first guess   
@@ -1027,13 +1025,13 @@ void sub_houseLeak (
 			
 			
 
-			if((R - X) / 2) {
+			if(leakFracFloor > 0) {
 				if(Crawl == 1) {
 					// for a crawlspace the flow is put into array position 1
 					Cpfloor = Cpwalls;
-					Cfloor = C * (R - X) / 2;
+					Cfloor = envC * leakFracFloor;
 
-					f_floorFlow3(Cfloor, Cpfloor, dPwind, Pint, C, n, mFloor[0], airDensityOUT, airDensityIN, dPfloor, Hfloor, dPtemp);
+					f_floorFlow3(Cfloor, Cpfloor, dPwind, Pint, n, mFloor[0], airDensityOUT, airDensityIN, Hfloor, dPtemp);
 					
 					if(mFloor[0] >= 0) {
 						mIN = mIN + mFloor[0];
@@ -1044,9 +1042,9 @@ void sub_houseLeak (
 				} else {
 					for(int i=0; i < 4; i++) {
 						Cpfloor = Sw[i] * wallCp[i];
-						Cfloor = C * (R - X) / 2 * floorFraction[i];
+						Cfloor = envC * leakFracFloor * floorFraction[i];
 
-						f_floorFlow3(Cfloor, Cpfloor, dPwind, Pint, C, n, mFloor[i], airDensityOUT, airDensityIN, dPfloor, Hfloor, dPtemp);
+						f_floorFlow3(Cfloor, Cpfloor, dPwind, Pint, n, mFloor[i], airDensityOUT, airDensityIN, Hfloor, dPtemp);
 						
 						if(mFloor[i] >= 0) {							
 							mIN = mIN + mFloor[i];
@@ -1057,9 +1055,10 @@ void sub_houseLeak (
 				}
 			}
 			
-			if((R + X) / 2) {
+			if(leakFracCeil > 0) {
 
-				f_ceilingFlow(AHflag, R, X, Patticint, h, dPtemp, dPwind, Pint, C, n, mCeiling, atticC, airDensityATTIC, airDensityIN, dPceil, tempAttic, tempHouse, tempOut, airDensityOUT, mSupAHoff, mRetAHoff, supC, supn, retC, retn, ceilingC);
+				double CCeiling = envC * leakFracCeil;
+				f_ceilingFlow(AHflag, Patticint, h, dPtemp, dPwind, Pint, envC, n, mCeiling, atticC, airDensityATTIC, airDensityIN, tempAttic, tempHouse, tempOut, airDensityOUT, mSupAHoff, mRetAHoff, supC, supn, retC, retn, CCeiling);
 
 				if(mCeiling >= 0) {
 					mIN = mIN + mCeiling + mSupAHoff + mRetAHoff;
@@ -1071,10 +1070,10 @@ void sub_houseLeak (
 			// the neutral level is calculated for each wall:
 			f_neutralLevel2(dPtemp, dPwind, Sw, Pint, wallCp, Bo, h);
 			
-			if(R < 1) {
+			if(leakFracWall > 0) {
 				for(int i=0; i < 4; i++) {
 					Cpwallvar = Sw[i] * wallCp[i];
-					Cwall = C * (1 - R) * wallFraction[i];
+					Cwall = envC * leakFracWall * wallFraction[i];
 					
 					f_wallFlow3(tempHouse, tempOut, airDensityIN, airDensityOUT, Bo[i], Cpwallvar, n, Cwall, h, Pint, dPtemp, dPwind, Mwall[i], Mwallin[i], Mwallout[i], dPwalltop, dPwallbottom, Hfloor);
 					
@@ -1754,11 +1753,11 @@ void f_flueFlow(double& tempHouse, double& flueShelterFactor, double& dPwind, do
 }
 
 
-void f_floorFlow3(double& Cfloor, double& Cpfloor, double& dPwind, double& Pint, double& C,
-	double& n, double& mFloor, double& airDensityOUT, double& airDensityIN, double& dPfloor, double& Hfloor, double& dPtemp) {
+void f_floorFlow3(double& Cfloor, double& Cpfloor, double& dPwind, double& Pint,
+	double& n, double& mFloor, double& airDensityOUT, double& airDensityIN, double& Hfloor, double& dPtemp) {
 
 		// calculates flow through floor level leaks
-		dPfloor = Pint + Cpfloor * dPwind - Hfloor * dPtemp;
+		double dPfloor = Pint + Cpfloor * dPwind - Hfloor * dPtemp;
 
 		if(dPfloor >= 0)
 			mFloor = airDensityOUT * Cfloor * pow(dPfloor,n);
@@ -1766,20 +1765,15 @@ void f_floorFlow3(double& Cfloor, double& Cpfloor, double& dPwind, double& Pint,
 			mFloor = -airDensityIN * Cfloor * pow(-dPfloor,n);
 }
 
-void f_ceilingFlow(int& AHflag, double& R, double& X, double& Patticint, double& h, double& dPtemp,
+void f_ceilingFlow(int& AHflag, double& Patticint, double& h, double& dPtemp,
 	double& dPwind, double& Pint, double& C, double& n, double& mCeiling, double& atticC, double& airDensityATTIC,
-	double& airDensityIN, double& dPceil, double& tempAttic, double& tempHouse, double& tempOut, double& airDensityOUT,
-	double& mSupAHoff, double& mRetAHoff, double& supC, double& supn, double& retC, double& retn, double& ceilingC) {
+	double& airDensityIN, double& tempAttic, double& tempHouse, double& tempOut, double& airDensityOUT,
+	double& mSupAHoff, double& mRetAHoff, double& supC, double& supn, double& retC, double& retn, double CCeiling) {
 
-		//double ceilingC;
-
-		
-		// calculates flow through the ceiling
-		//ceilingC = C * (R + X) / 2;
-		dPceil = Pint - Patticint - airDensityOUT * g * ((tempHouse - tempOut) / tempHouse - (tempAttic - tempOut) / tempAttic) * h;
+		double dPceil = Pint - Patticint - airDensityOUT * g * ((tempHouse - tempOut) / tempHouse - (tempAttic - tempOut) / tempAttic) * h;
 
 		if(dPceil >= 0) {
-			mCeiling = airDensityATTIC * ceilingC * pow(dPceil,n);
+			mCeiling = airDensityATTIC * CCeiling * pow(dPceil,n);
 			if(AHflag == 0) {
 				mSupAHoff = airDensityATTIC * supC * pow(dPceil,supn);
 				mRetAHoff = airDensityATTIC * retC * pow(dPceil,retn);
@@ -1793,7 +1787,7 @@ void f_ceilingFlow(int& AHflag, double& R, double& X, double& Patticint, double&
 				mRetAHoff = 0;
 			}
 		} else {
-			mCeiling = -airDensityIN * ceilingC * pow(-dPceil,n);
+			mCeiling = -airDensityIN * CCeiling * pow(-dPceil,n);
 			if(AHflag == 0) {
 				mSupAHoff = -airDensityIN * supC * pow(-dPceil,supn);
 				mRetAHoff = -airDensityIN * retC * pow(-dPceil,retn);
