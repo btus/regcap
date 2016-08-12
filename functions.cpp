@@ -44,11 +44,11 @@ void f_winDoorFlow(double& tempHouse, double& tempOut, double& airDensityIN, dou
 
 void f_roofCpTheta(double* Cproof, int& windAngle, double* Cppitch, double& roofPitch);
 
-void f_neutralLevel3(double& dPtemp, double& dPwind, double& Patticint, double& Cpr, double& Broofo, double& roofPeakHeight);
+double f_neutralLevel3(double dPtemp, double dPwind, double Patticint, double Cpr, double roofPeakHeight);
 
-void f_roofFlow(double& tempAttic, double& tempOut, double& airDensityATTIC, double& airDensityOUT, double& Broofo, double& Cpr,
+void f_roofFlow(double& tempAttic, double& tempOut, double& airDensityATTIC, double& airDensityOUT, double& Cpr,
 	double& atticPressureExp, double& Croof, double& roofPeakHeight, double& Patticint, double& dPtemp, double& dPwind,
-	double& Mroof, double& Mroofin, double& Mroofout, double& dProoftop, double& dProofbottom, double& H);
+	double& mRoofIn, double& mRoofOut, double& H);
 
 void f_atticVentFlow(double& airDensityOUT, double& airDensityATTIC, double& CP, double& dPwind, double& dPtemp, double& Patticint,
 	atticVent_struct& atticVent, double& tempAttic, double& tempOut);
@@ -1192,9 +1192,7 @@ void sub_atticLeak (
 	double& airDensityATTIC
 ) {
 
-	double Matticwall[4];
-	double Matticwallin[4];
-	double Matticwallout[4];
+	double mRoofIn, mRoofOut;
 	double wallCp[4];
 	double Batto[4];
 	double Cproof[4];
@@ -1210,16 +1208,9 @@ void sub_atticLeak (
 	double dPatticint;
 	double Croof;
 	double Cpr;
-	double Broofo = 0;
-	double Mroof = 0;
-	double dProoftop = 0;
-	double dProofbottom = 0;
 	double CPvar;
 
 	for(int i=0; i < 4; i++) {
-		Matticwall[i] = 0;
-		Matticwallin[i] = 0;
-		Matticwallout[i] = 0;
 		wallCp[i] = 0;
 		Batto[i] = 0;
 		Cproof[i] = 0;
@@ -1326,14 +1317,11 @@ void sub_atticLeak (
 			Cpr = Cppitch[0] * Sw[0];
 		}
 
-		// the neutral level is calculated separately for each roof roofPitch
-		f_neutralLevel3(dPtemp, dPwind, Patticint, Cpr, Broofo, roofPeakHeight);
-		
 		// developed from wallflow3:
-		f_roofFlow(tempAttic, tempOut, airDensityATTIC, airDensityOUT, Broofo, Cpr, atticPressureExp, Croof, roofPeakHeight, Patticint, dPtemp, dPwind, Mroof, Matticwallin[0], Matticwallout[0], dProoftop, dProofbottom, h);
+		f_roofFlow(tempAttic, tempOut, airDensityATTIC, airDensityOUT, Cpr, atticPressureExp, Croof, roofPeakHeight, Patticint, dPtemp, dPwind, mRoofIn, mRoofOut, h);
 
-		mAtticIN = mAtticIN + Matticwallin[0];
-		mAtticOUT = mAtticOUT + Matticwallout[0];
+		mAtticIN = mAtticIN + mRoofIn;
+		mAtticOUT = mAtticOUT + mRoofOut;
 
 		// for second pitched part either back, above wall 2, or side above wall 4
 		if(strUppercase(roofPeakOrient) == "D") {
@@ -1342,13 +1330,11 @@ void sub_atticLeak (
 			Cpr = Cppitch[1] * Sw[1];
 		}
 
-		f_neutralLevel3(dPtemp, dPwind, Patticint, Cpr, Broofo, roofPeakHeight);
-
 		// developed from wallflow3:
-		f_roofFlow(tempAttic, tempOut, airDensityATTIC, airDensityOUT, Broofo, Cpr, atticPressureExp, Croof, roofPeakHeight, Patticint, dPtemp, dPwind, Mroof, Matticwallin[1], Matticwallout[1], dProoftop, dProofbottom, h);
+		f_roofFlow(tempAttic, tempOut, airDensityATTIC, airDensityOUT, Cpr, atticPressureExp, Croof, roofPeakHeight, Patticint, dPtemp, dPwind, mRoofIn, mRoofOut, h);
 
-		mAtticIN = mAtticIN + Matticwallin[1];
-		mAtticOUT = mAtticOUT + Matticwallout[1];
+		mAtticIN = mAtticIN + mRoofIn;
+		mAtticOUT = mAtticOUT + mRoofOut;
 
 		for(int i=0; i < numAtticVents; i++) {
 
@@ -2025,69 +2011,59 @@ void f_roofCpTheta(double* Cproof, int& windAngle, double* Cppitch, double& roof
 	}
 }
 
-void f_neutralLevel3(double& dPtemp, double& dPwind, double& Patticint, double& Cpr, double& Broofo, double& roofPeakHeight) {
-	// calculates the neutral level for the attic
+// calculates the neutral level for the attic
+double f_neutralLevel3(double dPtemp, double dPwind, double Patticint, double Cpr, double roofPeakHeight) {
 	if(dPtemp != 0)
-		Broofo = (Patticint + dPwind * Cpr) / dPtemp / roofPeakHeight;
+		return((Patticint + dPwind * Cpr) / dPtemp / roofPeakHeight);
 	else
-		Broofo = 0;
+		return(0);
 }
 
 
 
-void f_roofFlow(double& tempAttic, double& tempOut, double& airDensityATTIC, double& airDensityOUT, double& Broofo, double& Cpr,
+// calculates the flow through the pitched section of the roof
+void f_roofFlow(double& tempAttic, double& tempOut, double& airDensityATTIC, double& airDensityOUT, double& Cpr,
 	double& atticPressureExp, double& Croof, double& roofPeakHeight, double& Patticint, double& dPtemp, double& dPwind,
-	double& Mroof, double& Mroofin, double& Mroofout, double& dProoftop, double& dProofbottom, double& H) {
+	double& mRoofIn, double& mRoofOut, double& H) {
 		
-		double Hroof;
-		double dummy1;
-		double dummy2;
-
-		// calculates the flow through the pitched section of the roof
-		Mroofin = 0;
-		Mroofout = 0;
-		Hroof = roofPeakHeight - H;
-		
-		dummy1 = Patticint + dPwind * Cpr - dPtemp * roofPeakHeight;
-		dProoftop = dummy1;
-		dummy2 = Patticint + dPwind * Cpr - dPtemp * H;
-		dProofbottom = dummy2;
+		double Hroof = roofPeakHeight - H;
+		double dProoftop = Patticint + dPwind * Cpr - dPtemp * roofPeakHeight;
+		double dProofbottom = Patticint + dPwind * Cpr - dPtemp * H;
+		double bRoof = f_neutralLevel3(dPtemp, dPwind, Patticint, Cpr, roofPeakHeight);
 
 		if(tempAttic == tempOut) {
-			if(dummy2 > 0) {
-				Mroofin = airDensityOUT * Croof * pow(dummy2, atticPressureExp);
-				Mroofout = 0;
+			if(dProofbottom > 0) {
+				mRoofIn = airDensityOUT * Croof * pow(dProofbottom, atticPressureExp);
+				mRoofOut = 0;
 			} else {
-				Mroofin = 0;
-				Mroofout = -airDensityATTIC * Croof * pow(-dummy2, atticPressureExp);
+				mRoofIn = 0;
+				mRoofOut = -airDensityATTIC * Croof * pow(-dProofbottom, atticPressureExp);
 			}
 		} else {
 			if(tempAttic > tempOut) {
-				if(Broofo <= H / roofPeakHeight) {
-					Mroofin = 0;
-					Mroofout = airDensityATTIC * Croof / Hroof / dPtemp / (atticPressureExp + 1) * (dummy1 * pow(abs(dummy1), atticPressureExp) - dummy2 * pow(abs(dummy2), atticPressureExp));
-				} else if(Broofo >= 1) {
-					Mroofin = -airDensityOUT * Croof / Hroof / dPtemp / (atticPressureExp + 1) * (dummy1 * pow(abs(dummy1), atticPressureExp) - dummy2 * pow(abs(dummy2), atticPressureExp));
-					Mroofout = 0;
+				if(bRoof <= H / roofPeakHeight) {
+					mRoofIn = 0;
+					mRoofOut = airDensityATTIC * Croof / Hroof / dPtemp / (atticPressureExp + 1) * (dProoftop * pow(abs(dProoftop), atticPressureExp) - dProofbottom * pow(abs(dProofbottom), atticPressureExp));
+				} else if(bRoof >= 1) {
+					mRoofIn = -airDensityOUT * Croof / Hroof / dPtemp / (atticPressureExp + 1) * (dProoftop * pow(abs(dProoftop), atticPressureExp) - dProofbottom * pow(abs(dProofbottom), atticPressureExp));
+					mRoofOut = 0;
 				} else {
-					Mroofin = airDensityOUT * Croof / Hroof / dPtemp / (atticPressureExp + 1) * dummy2 * pow(abs(dummy2), atticPressureExp);
-					Mroofout = airDensityATTIC * Croof / Hroof / dPtemp / (atticPressureExp + 1) * dummy1 * pow(abs(dummy1), atticPressureExp);
+					mRoofIn = airDensityOUT * Croof / Hroof / dPtemp / (atticPressureExp + 1) * dProofbottom * pow(abs(dProofbottom), atticPressureExp);
+					mRoofOut = airDensityATTIC * Croof / Hroof / dPtemp / (atticPressureExp + 1) * dProoftop * pow(abs(dProoftop), atticPressureExp);
 				}
 			} else {
-				if(Broofo <= H / roofPeakHeight) {
-					Mroofin = -airDensityOUT * Croof / Hroof / dPtemp / (atticPressureExp + 1) * (dummy1 * pow(abs(dummy1), atticPressureExp) - dummy2 * pow(abs(dummy2), atticPressureExp));
-					Mroofout = 0;
-				} else if(Broofo >= 1) {
-					Mroofin = 0;
-					Mroofout = airDensityATTIC * Croof / Hroof / dPtemp / (atticPressureExp + 1) * (dummy1 * pow(abs(dummy1), atticPressureExp) - dummy2 * pow(abs(dummy2), atticPressureExp));
+				if(bRoof <= H / roofPeakHeight) {
+					mRoofIn = -airDensityOUT * Croof / Hroof / dPtemp / (atticPressureExp + 1) * (dProoftop * pow(abs(dProoftop), atticPressureExp) - dProofbottom * pow(abs(dProofbottom), atticPressureExp));
+					mRoofOut = 0;
+				} else if(bRoof >= 1) {
+					mRoofIn = 0;
+					mRoofOut = airDensityATTIC * Croof / Hroof / dPtemp / (atticPressureExp + 1) * (dProoftop * pow(abs(dProoftop), atticPressureExp) - dProofbottom * pow(abs(dProofbottom), atticPressureExp));
 				} else {
-					Mroofin = -airDensityOUT * Croof / Hroof / dPtemp / (atticPressureExp + 1) * dummy1 * pow(abs(dummy1), atticPressureExp);
-					Mroofout = -airDensityATTIC * Croof / Hroof / dPtemp / (atticPressureExp + 1) * dummy2 * pow(abs(dummy2), atticPressureExp);
+					mRoofIn = -airDensityOUT * Croof / Hroof / dPtemp / (atticPressureExp + 1) * dProoftop * pow(abs(dProoftop), atticPressureExp);
+					mRoofOut = -airDensityATTIC * Croof / Hroof / dPtemp / (atticPressureExp + 1) * dProofbottom * pow(abs(dProofbottom), atticPressureExp);
 				}
 			}
 		}
-
-		Mroof = Mroofin + Mroofout;
 }
 
 void f_atticVentFlow(double& airDensityOUT, double& airDensityATTIC, double& CP, double& dPwind, double& dPtemp, double& Patticint,
