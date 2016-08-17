@@ -19,22 +19,22 @@ class WoodMoisture {
 		double PWOld[7];							// previous time step vapor pressure (Pa)
 		double tempOld[7];						// previous time step temperature (deg K)
 
-		void cond_bal(double pressure);
-		double calc_kappa_1(double pressure, double temp, double mc, double volume);
+		void cond_bal(int pressure);
+		double calc_kappa_1(int pressure, double temp, double mc, double volume);
 		double calc_kappa_2(double mc, double volume);
-        double mc_cubic(double pw, double pressure, double temp);
-        double calc_vapor_pressure(double mc, double temp, double pressure);
+        double mc_cubic(double pw, int pressure, double temp);
+        double calc_vapor_pressure(double mc, double temp, int pressure);
 		
 	public:
 		double temperature[7];					// Node temperature (deg K)
 		double moistureContent[7];				// Node moisture content (%)
 		vector <double> PW;						// Node vapor pressure (Pa). vector so it can be passed to gauss()
-		double mTotal[7] = {0};					// Node mass of condensed water (kg)
+		double mTotal[7];							// Node mass of condensed water (kg)
 
 		WoodMoisture(double woodThick, double atticVolume, double atticArea, double roofPitch, double tempInit, double mcInit);
         void mass_cond_bal(double tempOut, double RHOut, double tempHouse, double RHHouse,
                              double airDensityOut, double airDensityAttic, double airDensityHouse,
-                             double pressure, double hU0, double hU1, double hU2,
+                             int pressure, double hU0, double hU1, double hU2,
                              double mAttic, double mCeiling);
 };
 

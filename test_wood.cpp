@@ -8,33 +8,71 @@
    #include <cmath>        // needed for mac g++
 #endif
 #include "wood.h"
-#include "gauss.h"
+//#include "gauss.h"
 #include "constants.h"
 
 using namespace std;
 
+// to compile: g++ test_wood.cpp wood.cpp psychro.cpp gauss.cpp -o test_wood
+
 int main() {
-double woodThick = 1;
-double atticVolume = 100;
-double atticArea = 10;
-double roofPitch = 14;
+double woodThick = 0.015;   // should match what is set in sub_heat for now
+double atticVolume = 300;
+double atticArea = 300;
+double roofPitch = 18;
 double tempInit = airTempRef;
 double mcInit = 0.15;
 
 	// initialize attic moisture nodes
 	WoodMoisture attic(woodThick, atticVolume, atticArea, roofPitch, tempInit, mcInit);
 	
-	double tempOut = airTempRef-10;
-	double RHOut = 0.5;
+	double tempOut = airTempRef - 10;
+	double RHOut = 50.0;
 	double tempHouse = airTempRef;
-	double RHHouse = 0.4;
-	double airDensityAttic = airDensityRef * airTempRef / airTempRef;
-	double airDensityHouse = airDensityRef * airTempRef / tempHouse;
-	double pressure;
-	double hU0, hU1, hU2;
-   double mAttic, mCeiling;
+	double RHHouse = 40.0;
+	double airDensityOUT;
+	double airDensityATTIC;
+	double airDensityIN;
+	int pressure = 101325;
+	double H2, H4, H6;
+   double mAttic = 1.0;
+   double mCeiling = 0.5;
+   double b[16];
    
-	mass_cond_bal(tempOut, RHOut, tempHouse, RHHouse, airDensityOut, airDensityAttic, airDensityHouse, pressure,
-	              hU0, hU1, hU2, mAttic,  mCeiling);
+   // initial temps
+   b[0] = 273;	// attic
+   b[1] = 273;	// inner north
+   b[2] = 273;	// outer north
+   b[3] = 273;	// inner south
+   b[4] = 273;	// outer south
+   b[5] = 273;	// bulk wood
+   
+   // mAttic = matticenvin - matticenvout;
+      
+   // set node temperatures 
+   attic.temperature[0] = b[3];
+   attic.temperature[1] = b[1];
+   attic.temperature[2] = b[5];
+   attic.temperature[3] = b[0];
+   attic.temperature[4] = (b[3] + b[4]) / 2;
+   attic.temperature[5] = (b[1] + b[2]) / 2;
+   attic.temperature[6] = b[5];
+   
+   // set heat transfer coefficients to natural value
+   H4 = 3.2 * pow(abs(b[3] - b[0]), 1.0/3.0);	// inner south
+   H2 = 3.2 * pow(abs(b[1] - b[0]), 1.0/3.0);	// inner north
+   H6 = 3.2 * pow(abs(b[5] - b[0]), 1.0/3.0);	// bulk wood
+
+	// set air densities
+	airDensityOUT = airDensityRef * airTempRef / tempOut;
+	airDensityATTIC = airDensityRef * airTempRef / b[0];
+	airDensityIN = airDensityRef * airTempRef / tempHouse;
+   
+	attic.mass_cond_bal(tempOut, RHOut, tempHouse, RHHouse, airDensityOUT, airDensityATTIC, airDensityIN, pressure,
+	              H4, H2, H6, mAttic,  mCeiling);
+	
+	for(int i = 0; i < 7; i++) {
+		cout << i << "," << attic.temperature[i] << "," << attic.moistureContent[i] << "," << attic.PW[i] << "," << attic.mTotal[i] << endl;
+		}
 }
 

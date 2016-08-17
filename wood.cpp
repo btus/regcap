@@ -12,7 +12,7 @@ using namespace std;
 
 /*
  * WoodMoisture - Wood moisture class constructor
- * @param woodThick - sheathing thickness (m)
+ * @param woodThick - roof deck wood thickness (m)
  * @param atticVolume - attic volume (m3)
  * @param atticArea - attic area (m2)
  * @param roofPitch - roof pitch (degrees)
@@ -30,7 +30,7 @@ using namespace std;
  */
 WoodMoisture::WoodMoisture(double woodThick, double atticVolume, double atticArea, double roofPitch, double tempInit, double mcInit) {
    double RHout = 0.5;   // RHOREF * TREF / tempInit;
-   double pressure = 1000;
+   int pressure = 101325;	// 1 atmosphere
 
    A.resize(7, vector<double>(7+1, 0));		// set size of equation vectors to number of nodes (A contains both)
    PW.resize(7, 0);
@@ -59,6 +59,7 @@ WoodMoisture::WoodMoisture(double woodThick, double atticVolume, double atticAre
 	for(int i=0; i<7; i++) {
 		tempOld[i] = tempInit;
 		moistureContent[i] = mcInit;
+		mTotal[i] = 0;
 		if(i == 3) {	// Attic air node
             PWOld[3] = saturation_vapor_pressure(tempInit) * RHout;
 			}
@@ -72,22 +73,23 @@ WoodMoisture::WoodMoisture(double woodThick, double atticVolume, double atticAre
 /*
  * mass_cond_bal - Uses the results of the ventilation and heat transfer models to predict
  *                 moisture transport. Includes effects of surfaces at saturation pressure.
- * @param tempOut -
- * @param RHOut -
- * @param tempHouse -
- * @param airDensityOut -
- * @param airDensityAttic -
- * @param airDensityHouse -
- * @param pressure -
- * @param hU0 - surface heat transfer coefficient for node 0 (J/sm2K) - was H4
- * @param hU1 - surface heat transfer coefficient for node 1 (J/sm2K) - was H6
- * @param hU2 - surface heat transfer coefficient for node 2 (J/sm2K) - was H10
- * @param mAttic -
- * @param mCeiling -
+ * @param tempOut - Outdoor temperature (deg K)
+ * @param RHOut - Outdoor relative humidity (%)
+ * @param tempHouse - Indoor temperature (deg K)
+ * @param RHHouse - Indoor relative humidity (%)
+ * @param airDensityOut - Outdoor air density (kg/m3)
+ * @param airDensityAttic - Attic air density (kg/m3)
+ * @param airDensityHouse - Indoor air density (kg/m3)
+ * @param pressure - atmospheric pressure (Pa)
+ * @param hU0 - surface heat transfer coefficient for node 0 (inner south) (J/sm2K) - was H4
+ * @param hU1 - surface heat transfer coefficient for node 1 (inner north) (J/sm2K) - was H6
+ * @param hU2 - surface heat transfer coefficient for node 2 (bulk wood) (J/sm2K) - was H10
+ * @param mAttic - attic air mass flow (kg/s)
+ * @param mCeiling - ceiling air mass flow (kg/s)
  */
 void WoodMoisture::mass_cond_bal(double tempOut, double RHOut, double tempHouse, double RHHouse,
                                    double airDensityOut, double airDensityAttic, double airDensityHouse,
-                                   double pressure, double hU0, double hU1, double hU2,
+                                   int pressure, double hU0, double hU1, double hU2,
                                    double mAttic, double mCeiling)
                                    {
 	const double lewis = 0.919;	// Lewis number from ASHRAE
@@ -204,7 +206,7 @@ void WoodMoisture::mass_cond_bal(double tempOut, double RHOut, double tempHouse,
  *            to adapt for this condensation.
  * @param pressure - atomospheric pressure (Pa)
  */
-void WoodMoisture::cond_bal(double pressure) {
+void WoodMoisture::cond_bal(int pressure) {
 	double PWSaturation[7];			// saturation vapor pressure at each node (Pa)
 	double PWTest[7];					// save original for test of convergence (Pa)
 	double PWInit[7];				// initial vapor pressure (was B() in BASIC code) (Pa)
@@ -443,7 +445,7 @@ static const double B7 =  0.233;		// was MCE
  * @param volume   - wood volume (m3)
  * @return kappa1  -
  */
-double WoodMoisture::calc_kappa_1(double pressure, double temp, double mc, double volume) {
+double WoodMoisture::calc_kappa_1(int pressure, double temp, double mc, double volume) {
 	double k1;
 	k1 = 1 / (pressure / 0.622 * exp((temp - C_TO_K) / B3) * (B5 + 2 * B6 * mc + 3 * B7 * pow(mc,2)));
 	k1 = volume * rhoWood * k1 / timeStep;
@@ -470,7 +472,7 @@ double WoodMoisture::calc_kappa_2(double mc, double volume) {
  * @param temp     - temperature (deg K)
  * @return mc		 - wood moisture content
  */
-double WoodMoisture::mc_cubic(double pw, double pressure, double temp) {
+double WoodMoisture::mc_cubic(double pw, int pressure, double temp) {
 	double W = 0.622 * pw / (pressure - pw);
 	const double a1 = B6 / B7;
 	const double a2 = B5 / B7;
@@ -490,7 +492,7 @@ double WoodMoisture::mc_cubic(double pw, double pressure, double temp) {
  * @param pressure - atmospheric pressure (Pa)
  * @return pw      - vapor pressure
  */
-double WoodMoisture::calc_vapor_pressure(double mc, double temp, double pressure) {
+double WoodMoisture::calc_vapor_pressure(double mc, double temp, int pressure) {
 	double w = exp((temp - C_TO_K) / B3) * (B4 + B5 * mc + B6 * pow(mc, 2) + B7 * pow(mc, 3));
 	return (w * pressure / (0.622 * (1 + w / 0.622)));
 	}
