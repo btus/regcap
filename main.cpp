@@ -42,6 +42,24 @@ New inputs:
 	Number of bedrooms (numBedrooms)
 	Number of stories (numStories)
 	Addendum N weather factors (weatherFactor)
+	
+	Node 1 is the Attic Air
+	Node 2 is the Inner North Sheathing
+	Node 3 is the Outer North Sheathing
+	Node 4 is the Inner South Sheathing
+	Node 5 is the Outer South Sheathing
+	Node 6 is all of the Wood (joists, trusses, etc.) lumped together
+	Node 7 is the Ceiling of the House
+	Node 8 is the Floor of the Attic
+	Node 9 is the Inner Gable Wall (both lumped together)
+	Node 10 is the Outer Gable Wall (both lumped together)
+	Node 11 is the Return Duct Outer Surface
+	Node 12 is the Return Duct Air
+	Node 13 is The Mass of the House
+	Node 14 is the Supply Duct Outer Surface
+	Node 15 is the Supply Duct Air
+	Node 16 is the House Air (all one zone)
+
 */
 
 // ============================= FUNCTIONS ==============================================================
@@ -948,18 +966,6 @@ int main(int argc, char *argv[], char* envp[])
 		double mHouseOUT = 0;
 		//double RHOATTIC;
 		double internalGains;
-		double tempCeiling;
-		double tempAtticFloor;
-		double tempInnerSheathS;
-		double tempOuterSheathS;
-		double tempInnerSheathN;
-		double tempOuterSheathN;
-		double tempInnerGable;
-		double tempOuterGable;
-		double tempWood;
-		double tempRetSurface;
-		double tempSupSurface;
-		double tempHouseMass;
 		double mIN = 0;
 		double mOUT = 0;
 		double Pint = 0;
@@ -2955,24 +2961,10 @@ int main(int argc, char *argv[], char* envp[])
 							capacityc, capacityh, evapcap, internalGains, airDensityIN, airDensityOUT, airDensityATTIC, airDensitySUP, airDensityRET, numStories, storyHeight, dh.sensible);
 
 						if((abs(b[0] - tempAttic) < .2) || (mainIterations > 10)) {	// Testing for convergence
-
 							tempAttic        = b[0];					
-							tempInnerSheathN = b[1];
-							tempOuterSheathN = b[2];
-							tempInnerSheathS = b[3];
-							tempOuterSheathS = b[4];					
-							tempWood         = b[5];
-							tempCeiling      = b[6];
-							tempAtticFloor   = b[7];
-							tempInnerGable   = b[8];
-							tempOuterGable   = b[9];
-							tempRetSurface   = b[10];
 							tempReturn       = b[11];
-							tempHouseMass    = b[12];
-							tempSupSurface   = b[13];					
 							tempSupply       = b[14];
 							tempHouse        = b[15];
-
 							break;
 						}
 
@@ -2981,26 +2973,10 @@ int main(int argc, char *argv[], char* envp[])
 					}
 
 					// setting "old" temps for next timestep to be current temps:
-					tempOld[0]  = tempAttic;			// Node 1 is the Attic Air
-					tempOld[1]  = tempInnerSheathN;		// Node 2 is the Inner North Sheathing
-					tempOld[2]  = tempOuterSheathN;		// Node 3 is the Outer North Sheathing
-					tempOld[3]  = tempInnerSheathS;		// Node 4 is the Inner South Sheathing
-					tempOld[4]  = tempOuterSheathS;		// Node 5 is the Outer South Sheathing
-					tempOld[5]  = tempWood;				// Node 6 is all of the Wood (joists, trusses, etc.) lumped together
-					tempOld[6]  = tempCeiling;			// Node 7 is the Ceiling of the House
-					tempOld[7]  = tempAtticFloor;		// Node 8 is the Floor of the Attic
-					tempOld[8]  = tempInnerGable;		// Node 9 is the Inner Gable Wall (both lumped together)
-					tempOld[9]  = tempOuterGable;		// Node 10 is the Outer Gable Wall (both lumped together)
-					tempOld[10] = tempRetSurface;		// Node 11 is the Return Duct Outer Surface
-					tempOld[11] = tempReturn;			// Node 12 is the Return Duct Air
-					tempOld[12] = tempHouseMass;		// Node 13 is The Mass of the House
-					tempOld[13] = tempSupSurface;		// Node 14 is the Supply Duct Outer Surface
-					tempOld[14] = tempSupply;			// Node 15 is the Supply Duct Air
-					tempOld[15] = tempHouse;			// Node 16 is the House Air (all one zone)
-
-
-			
-			
+					for(int i = 0; i < ATTIC_NODES; i++) {
+						tempOld[i]  = b[i];
+						}
+		
 
 					// ************** house ventilation rate  - what would be measured with a tracer gas i.e., not just envelope and vent fan flows
 					// mIN has msupreg added in mass balance calculations and mRetLeak contributes to house ventilation rate
