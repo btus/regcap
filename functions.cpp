@@ -11,8 +11,6 @@ using namespace std;
 
 
 string strUppercase(string stringvar);
-int sgn(double sgnvar);
-
 
 // ============================= FUNCTIONS ==============================================================
 void f_CpTheta(double CP[4][4], int& windAngle, double* wallCp);
@@ -1116,7 +1114,7 @@ void sub_houseLeak (
 			mIN = mIN + mSupReg;
 			mOUT = mOUT + mRetReg; // Note Mret should be negative
 
-			Pint = Pint - sgn(mIN + mOUT) * dPint;
+			Pint = Pint - copysign(dPint, mIN + mOUT);
 			dPint = dPint / 2;
 		} while (dPint > .0001);
 		//} while (dPint > .01);
@@ -1370,7 +1368,7 @@ void sub_atticLeak (
 		mAtticIN = mAtticIN + mSupLeak;
 		mAtticOUT = mAtticOUT + mRetLeak;
 
-		Patticint = Patticint - sgn(mAtticIN + mAtticOUT) * dPatticint;
+		Patticint = Patticint - copysign(dPatticint, mAtticIN + mAtticOUT);
 		dPatticint = dPatticint / 2;
 	} while(dPatticint > .0001);
 
@@ -1644,13 +1642,6 @@ string strUppercase(string stringvar) {
 
    return stringvar;
 }
-
-// This function substitutes for BASIC SGN command, it returns +1 if variable is positive, -1 if negative, 0 if its 0
-int sgn(double sgnvar) {
-
-	return (sgnvar > 0) - (sgnvar < 0);
-}
-
 
 void f_CpTheta(double CP[4][4], int& windAngle, double* wallCp) {
 	// this function takes Cps from a single wind angle perpendicular to the
