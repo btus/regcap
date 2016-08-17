@@ -9,9 +9,6 @@
 
 using namespace std;
 
-
-string strUppercase(string stringvar);
-
 // ============================= FUNCTIONS ==============================================================
 void f_CpTheta(double CP[4][4], int& windAngle, double* wallCp);
 
@@ -887,7 +884,7 @@ void sub_houseLeak (
 	double& dPflue, 
 	int& Crawl, 
 	double& Hfloor, 
-	string& rowOrIsolated, 
+	bool rowHouse, 
 	double* soffitFraction, 
 	double& Patticint, 
 	double* wallCp, 
@@ -957,7 +954,7 @@ void sub_houseLeak (
 		// here the variation of each wall Cp with wind angle is accounted for:
 		// for row houses:
 
-		if(strUppercase(rowOrIsolated) == "R") {
+		if(rowHouse) {
 			CP[0][2] = -0.2;
 			CP[0][3] = -0.2;
 			CP[1][2] = -0.2;
@@ -1149,10 +1146,10 @@ void sub_atticLeak (
 	double& mAtticOUT, 
 	double& Patticint, 
 	double& mCeiling, 
-	string& rowOrIsolated, 
+	bool rowHouse, 
 	double* soffitFraction, 
 	double& roofPitch, 
-	string& roofPeakOrient, 
+	bool roofPeakPerpendicular, 
 	int& numAtticFans, 
 	fan_struct* atticFan, 
 	//double& airDensityRef, 
@@ -1219,7 +1216,7 @@ void sub_atticLeak (
 		Cproof[0] = -.4;
 		Cproof[1] = -.4;
 	}
-	if(strUppercase(rowOrIsolated) == "R") {
+	if(rowHouse) {
 		Cproof[2] = -.2;
 		Cproof[3] = -.2;
 	} else {
@@ -1227,10 +1224,10 @@ void sub_atticLeak (
 		Cproof[2] = -.6;
 		Cproof[3] = -.6;
 	}
-	if(strUppercase(roofPeakOrient) == "D") {
+	if(roofPeakPerpendicular) {
 		Cproof[2] = Cproof[0];
 		Cproof[3] = Cproof[1];
-		if(strUppercase(rowOrIsolated) == "R") {
+		if(rowHouse) {
 			Cproof[0] = -.2;
 			Cproof[1] = -.2;
 		} else {
@@ -1251,7 +1248,7 @@ void sub_atticLeak (
 	// here the variation of each wall Cp with wind angle is accounted for:
 	// for row houses:
 
-	if(strUppercase(rowOrIsolated) == "R") {
+	if(rowHouse) {
 		CP[0][2] = -.2;
 		CP[0][3] = -.2;
 		CP[1][2] = -.2;
@@ -1288,7 +1285,7 @@ void sub_atticLeak (
 		Croof = atticC * soffitFraction[4] / 2;
 		
 		// for first pitched part either front, above wall 1, or side above wall 3
-		if(strUppercase(roofPeakOrient) == "D") {
+		if(roofPeakPerpendicular) {
 			Cpr = Cppitch[2] * Sw[2];
 		} else {
 			Cpr = Cppitch[0] * Sw[0];
@@ -1301,7 +1298,7 @@ void sub_atticLeak (
 		mAtticOUT = mAtticOUT + mRoofOut;
 
 		// for second pitched part either back, above wall 2, or side above wall 4
-		if(strUppercase(roofPeakOrient) == "D") {
+		if(roofPeakPerpendicular) {
 			Cpr = Cppitch[3] * Sw[3];
 		} else {
 			Cpr = Cppitch[1] * Sw[1];
@@ -1634,14 +1631,6 @@ void sub_filterLoading (
 			k_DL = k_DL_array[loadingRate][MERV_n];					// Return duct leakage gradient
 		}
 	}
-
-// This function substitutes for BASIC UCASE command, it returns a string that is an uppercase version of original
-string strUppercase(string stringvar) {
-   for(unsigned int i=0; i < stringvar.length(); i++)
-	   stringvar[i] = toupper(stringvar[i]);
-
-   return stringvar;
-}
 
 void f_CpTheta(double CP[4][4], int& windAngle, double* wallCp) {
 	// this function takes Cps from a single wind angle perpendicular to the

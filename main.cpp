@@ -160,6 +160,7 @@ int main(int argc, char *argv[], char* envp[])
 		int numPipes;					// Number of passive vents but appears to do much the same as flues
 		double Hfloor;
 		string rowOrIsolated;		// House in a row (R) or isolated (any string other than R)
+		bool rowHouse;					// Flag that house is in a row
 		double houseVolume;			// Conditioned volume of house (m3)
 		double floorArea;				// Conditioned floor area (m2)
 		double planArea;				// Footprint of house (m2)
@@ -185,6 +186,7 @@ int main(int argc, char *argv[], char* envp[])
 		int numAtticVents;
 		double roofPitch;
 		string roofPeakOrient;		// Roof peak orientation, D = perpendicular to front of house (Wall 1), P = parrallel to front of house
+		bool roofPeakPerpendicular;
 		double roofPeakHeight;
 		int numAtticFans;
 		double roofRval;
@@ -542,6 +544,9 @@ int main(int argc, char *argv[], char* envp[])
 			supLF0 = supLF0 / 100;
 		if(retLF0 > 1)
 			retLF0 = retLF0 / 100;
+		
+		rowHouse = (rowOrIsolated.compare("R") == 0);
+		roofPeakPerpendicular = (roofPeakOrient.compare("D") == 0);
 
 		double supCp = 753.624;										// Specific heat capacity of steel [j/kg/K]
 		double suprho = 16.018 * 2;									// Supply duct density. The factor of two represents the plastic and sprical [kg/m^3]
@@ -2929,7 +2934,7 @@ int main(int argc, char *argv[], char* envp[])
 							sub_houseLeak(AHflag, flag, weather.windSpeed, weather.windDirection, tempHouse, tempAttic, weather.dryBulb, envC, envPressureExp, eaveHeight,
 								leakFracCeil, leakFracFloor, leakFracWall, numFlues, flue, wallFraction, floorFraction, Sw, flueShelterFactor, numWinDoor, winDoor, numFans, fan, numPipes,
 								Pipe, mIN, mOUT, Pint, mFlue, mCeiling, mFloor, atticC, dPflue, Crawl,
-								Hfloor, rowOrIsolated, soffitFraction, Patticint, wallCp, mSupReg, mAH, mRetLeak, mSupLeak,
+								Hfloor, rowHouse, soffitFraction, Patticint, wallCp, mSupReg, mAH, mRetLeak, mSupLeak,
 								mRetReg, mHouseIN, mHouseOUT, supC, supn, retC, retn, mSupAHoff, mRetAHoff, Aeq, airDensityIN, airDensityOUT, airDensityATTIC, houseVolume, windPressureExp);
 							//Yihuan : put the mCeilingIN on comment 
 							flag = flag + 1;
@@ -2941,8 +2946,8 @@ int main(int argc, char *argv[], char* envp[])
 
 							// call atticleak subroutine to calculate air flow to/from the attic
 							sub_atticLeak(flag, weather.windSpeed, weather.windDirection, tempHouse, weather.dryBulb, tempAttic, atticC, atticPressureExp, eaveHeight, roofPeakHeight,
-								flueShelterFactor, Sw, numAtticVents, atticVent, soffit, mAtticIN, mAtticOUT, Patticint, mCeiling, rowOrIsolated,
-								soffitFraction, roofPitch, roofPeakOrient, numAtticFans, atticFan, mSupReg, mRetLeak, mSupLeak, matticenvin,
+								flueShelterFactor, Sw, numAtticVents, atticVent, soffit, mAtticIN, mAtticOUT, Patticint, mCeiling, rowHouse,
+								soffitFraction, roofPitch, roofPeakPerpendicular, numAtticFans, atticFan, mSupReg, mRetLeak, mSupLeak, matticenvin,
 								matticenvout, mSupAHoff, mRetAHoff, airDensityIN, airDensityOUT, airDensityATTIC);
 						}
 
