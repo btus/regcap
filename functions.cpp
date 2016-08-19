@@ -371,11 +371,15 @@ void sub_heat (
 		
 		// reset array A to 0
 		if(heatIterations > 1) {
-			for(int i=0; i < ATTIC_NODES; i++) {
-				for(int j=0; j < ATTIC_NODES+1; j++) {
-					A[i][j] = 0;
-				}
-			}
+//			for(int i=0; i < ATTIC_NODES; i++) {
+//				for(int j=0; j < ATTIC_NODES+1; j++) {
+//					A[i][j] = 0;
+//				}
+//			}
+			//A.assign(A.size(), 0.0);
+			//fill(A.begin(), A.end(), 0.0);
+			A.clear();
+			A.resize(ATTIC_NODES, vector<double>(ATTIC_NODES+1));
 		}
 
 		// convection heat transfer coefficients

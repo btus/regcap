@@ -32,8 +32,8 @@ WoodMoisture::WoodMoisture(double woodThick, double atticVolume, double atticAre
    double RHout = 0.5;   // RHOREF * TREF / tempInit;
    int pressure = 101325;	// 1 atmosphere
 
-   A.resize(7, vector<double>(7+1, 0));		// set size of equation vectors to number of nodes (A contains both)
-   PW.resize(7, 0);
+   A.resize(MOISTURE_NODES, vector<double>(MOISTURE_NODES+1, 0));		// set size of equation vectors to number of nodes (A contains both)
+   PW.resize(MOISTURE_NODES, 0);
 	deltaX[0] = woodThick / 2;                // distance between the centers of the surface and bulk wood layers. it is half the characteristic thickness of the wood member
 	deltaX[1] = deltaX[0];                    // same as for the other sheathing surface
 	deltaX[2] = .015;									// assume 1.5 cm as approximate wood half thickness
@@ -56,7 +56,7 @@ WoodMoisture::WoodMoisture(double woodThick, double atticVolume, double atticAre
 	volume[5] = 2 * volume[1];
 	volume[6] = 0.02 * area[2] - volume[2];	// this is close for 2x4 construction and may change a bit if 2x6 (I redid the calculations and for 2x4 this would be 0.017 but I dont think we can really justify that second significant digit!
 
-	for(int i=0; i<7; i++) {
+	for(int i=0; i<MOISTURE_NODES; i++) {
 		tempOld[i] = tempInit;
 		moistureContent[i] = mcInit;
 		mTotal[i] = 0;
@@ -186,16 +186,26 @@ void WoodMoisture::mass_cond_bal(double tempOut, double RHOut, double tempHouse,
 
 	// MATSEQND%() SIMULTANEOUSLY SOLVES THE MASS BALANCE EQUATIONS
 	// ERRCODE = MatSEqn(A, PW);
-    for (int i=0; i<7; i++) {
-        A[i][7] = PW[i];
+cout << "Before gauss";
+for(int i=0; i<MOISTURE_NODES; i++) {
+	cout << ", " << PW[i];
+	}
+cout << endl;
+    for (int i=0; i<MOISTURE_NODES; i++) {
+        A[i][MOISTURE_NODES] = PW[i];
         }
     PW = gauss(A);
 	// once the attic moisture nodes have been calculated assuming no condensation (as above)
 	// then we call cond_bal to check for condensation and redo the calculations if necessasry
 	// cond_bal performs an iterative scheme that tests for condensation
+cout << "After gauss";
+for(int i=0; i<MOISTURE_NODES; i++) {
+	cout << ", " << PW[i];
+	}
+cout << endl;
 	cond_bal(pressure);
 
-	for(int i=0; i<7; i++) {
+	for(int i=0; i<MOISTURE_NODES; i++) {
 		tempOld[i] = temperature[i];
 		PWOld[i] = abs(PW[i]);			// in case negative PW's are generated
 		}
@@ -207,29 +217,37 @@ void WoodMoisture::mass_cond_bal(double tempOut, double RHOut, double tempHouse,
  * @param pressure - atomospheric pressure (Pa)
  */
 void WoodMoisture::cond_bal(int pressure) {
-	double PWSaturation[7];			// saturation vapor pressure at each node (Pa)
-	double PWTest[7];					// save original for test of convergence (Pa)
-	double PWInit[7];				// initial vapor pressure (was B() in BASIC code) (Pa)
-	double massCondensed[7];		// the mass condensed or removed (if negative) at each node (kg)
+	double PWSaturation[MOISTURE_NODES];			// saturation vapor pressure at each node (Pa)
+	double PWTest[MOISTURE_NODES];					// save original for test of convergence (Pa)
+	double PWInit[MOISTURE_NODES];					// initial vapor pressure (was B() in BASIC code) (Pa)
+	double massCondensed[MOISTURE_NODES];			// the mass condensed or removed (if negative) at each node (kg)
     //double massTO[3] = {0};
 	double fluxTotalOld = 0;
-	bool hasCondensedMass[7];	// flag indicates that node has condensed mass
-	bool redoMassBalance;		// flag for condensed mass loop exit
-	bool PWOutOfRange;			// flag for PW loop exit
+	bool hasCondensedMass[MOISTURE_NODES];			// flag indicates that node has condensed mass
+	bool redoMassBalance;								// flag for condensed mass loop exit
+	bool PWOutOfRange;									// flag for PW loop exit
+	int outIter;											// number of outer loop iterations
+	int inIter;												// number of inner loop iterations
 
 	// Calculate saturation vapor pressure for each node (moved from mass_cond_bal)
-	for(int i=0; i<7; i++) {
+	for(int i=0; i<MOISTURE_NODES; i++) {
 		PWSaturation[i] = saturation_vapor_pressure(temperature[i]);
 		moistureContent[i] = max(moistureContent[i], 0.032);
 		PWInit[i] = PW[i];
+cout << "PW=" << PW[i] << " PWSat=" << PWSaturation[i] << " MC=" << moistureContent[i] << endl;
 		}
 			
 //MASSTOOUT = 0
+	outIter = 0;
 	do {
+		outIter++;
+		inIter = 0;
 		redoMassBalance = false;		// redo calc if a node has gone from having condensed mass @ PWS
 
 		do {		// this loops until every PW is within  0.1 Pa of the previous iteration
-			for(int i=0; i<7; i++)
+			inIter++;
+cout << "iterations: " << outIter << ":" << inIter << endl;
+			for(int i=0; i<MOISTURE_NODES; i++)
 				PWTest[i] = PW[i];
 
 	   	// NODE 0:
@@ -329,7 +347,7 @@ void WoodMoisture::cond_bal(int pressure) {
 				}
 
 			PWOutOfRange = false;
-			for(int i=0; i<7; i++) {
+			for(int i=0; i<MOISTURE_NODES; i++) {
 				if(abs(PWTest[i] - PW[i]) > 0.1) {
 					// it is possible that this 0.1Pa criterion is too “tight” and we may relax this 
 					// depending on the solution time requirements and program stability.
@@ -384,7 +402,7 @@ void WoodMoisture::cond_bal(int pressure) {
 
 		// Calculate MC's based on these new PW's
 		// this uses the inverse of cleary's relationship
-		for(int i=0; i < 7; i++) {
+		for(int i=0; i < MOISTURE_NODES; i++) {
 			if(i == 3) {		// Attic air node
 				moistureContent[i] = PW[i] / PWSaturation[i] * 100;
 				}
@@ -449,6 +467,7 @@ double WoodMoisture::calc_kappa_1(int pressure, double temp, double mc, double v
 	double k1;
 	k1 = 1 / (pressure / 0.622 * exp((temp - C_TO_K) / B3) * (B5 + 2 * B6 * mc + 3 * B7 * pow(mc,2)));
 	k1 = volume * rhoWood * k1 / timeStep;
+//cout << "kappa1 in: p=" << pressure << " temp=" << temp << " mc=" << mc << " volume=" << volume << " out: " << k1 << endl;
 	return (k1);
 }
 
@@ -482,6 +501,7 @@ double WoodMoisture::mc_cubic(double pw, int pressure, double temp) {
 	double disc = pow(q, 3) + pow(r, 2);
 	double s = pow(r + pow(disc, 0.5), 1/3);
 	double t = -pow(abs(r - pow(disc,0.5)),1/3);
+cout << "mc_cubic in: pw=" << pw << " pressure=" << pressure << " temp=" << temp << " out: " << s + t - a1 / 3 << endl;
 	return (s + t - a1 / 3);
 	}
 
