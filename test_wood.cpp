@@ -20,16 +20,17 @@ int main() {
 	double atticVolume = 300;
 	double atticArea = 300;
 	double roofPitch = 18;
-	double tempInit = airTempRef;
+	double tempInit = 293;
 	double mcInit = 0.15;
+	double RHAttic = 0.50;
 
 	// initialize attic moisture nodes
-	WoodMoisture attic(woodThick, atticVolume, atticArea, roofPitch, tempInit, mcInit);
+	WoodMoisture attic(woodThick, atticVolume, atticArea, roofPitch, tempInit, mcInit, RHAttic);
 	
-	double tempOut = airTempRef - 10;
-	double RHOut = 50.0;
-	double tempHouse = airTempRef;
-	double RHHouse = 40.0;
+	double tempOut = 293;
+	double RHOut = 0.60;
+	double tempHouse = 293;
+	double RHHouse = 0.40;
 	double airDensityOUT;
 	double airDensityATTIC;
 	double airDensityIN;

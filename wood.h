@@ -19,6 +19,7 @@ class WoodMoisture {
 		vector< vector<double> > A;
 		double PWOld[MOISTURE_NODES];							// previous time step vapor pressure (Pa)
 		double tempOld[MOISTURE_NODES];						// previous time step temperature (deg K)
+        double PWInit[MOISTURE_NODES];					// initial vapor pressure (was B() in BASIC code) (Pa)
 
 		void cond_bal(int pressure);
 		double calc_kappa_1(int pressure, double temp, double mc, double volume);
@@ -32,7 +33,7 @@ class WoodMoisture {
 		vector <double> PW;										// Node vapor pressure (Pa). vector so it can be passed to gauss()
 		double mTotal[MOISTURE_NODES];						// Node mass of condensed water (kg)
 
-		WoodMoisture(double woodThick, double atticVolume, double atticArea, double roofPitch, double tempInit, double mcInit);
+		WoodMoisture(double woodThick, double atticVolume, double atticArea, double roofPitch, double tempInit, double mcInit, double RHAtticInit);
       void mass_cond_bal(double tempOut, double RHOut, double tempHouse, double RHHouse,
                              double airDensityOut, double airDensityAttic, double airDensityHouse,
                              int pressure, double hU0, double hU1, double hU2,

@@ -376,8 +376,6 @@ void sub_heat (
 //					A[i][j] = 0;
 //				}
 //			}
-			//A.assign(A.size(), 0.0);
-			//fill(A.begin(), A.end(), 0.0);
 			A.clear();
 			A.resize(ATTIC_NODES, vector<double>(ATTIC_NODES+1));
 		}

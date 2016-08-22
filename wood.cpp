@@ -17,7 +17,8 @@ using namespace std;
  * @param atticArea - attic area (m2)
  * @param roofPitch - roof pitch (degrees)
  * @param tempInit - node initialization temperature (deg K)
- * @param mcInit - initial wood moisture content (%)
+ * @param mcInit - initial wood moisture content (fraction)
+ * @param RHAtticInit - initial attic RH (fraction)
  *
  * The nodes are:
  * 0. surface of south sheathing (facing the attic) - corresponding thermal node is (4)
@@ -28,8 +29,7 @@ using namespace std;
  * 5. inside north sheathing  - corresponding thermal node is ((2+3)/2)
  * 6. inside bulk wood  - corresponding thermal node is (6)
  */
-WoodMoisture::WoodMoisture(double woodThick, double atticVolume, double atticArea, double roofPitch, double tempInit, double mcInit) {
-   double RHout = 0.5;   // RHOREF * TREF / tempInit;
+WoodMoisture::WoodMoisture(double woodThick, double atticVolume, double atticArea, double roofPitch, double tempInit, double mcInit, double RHAtticInit) {
    int pressure = 101325;	// 1 atmosphere
 
    A.resize(MOISTURE_NODES, vector<double>(MOISTURE_NODES+1, 0));		// set size of equation vectors to number of nodes (A contains both)
@@ -58,12 +58,13 @@ WoodMoisture::WoodMoisture(double woodThick, double atticVolume, double atticAre
 
 	for(int i=0; i<MOISTURE_NODES; i++) {
 		tempOld[i] = tempInit;
-		moistureContent[i] = mcInit;
 		mTotal[i] = 0;
 		if(i == 3) {	// Attic air node
-            PWOld[3] = saturation_vapor_pressure(tempInit) * RHout;
+			moistureContent[i] = RHAtticInit;
+			PWOld[3] = saturation_vapor_pressure(tempInit) * RHAtticInit;
 			}
 		else {
+			moistureContent[i] = mcInit;
 			PWOld[i] = calc_vapor_pressure(mcInit, tempInit, pressure);
 			}
 		}
@@ -74,9 +75,9 @@ WoodMoisture::WoodMoisture(double woodThick, double atticVolume, double atticAre
  * mass_cond_bal - Uses the results of the ventilation and heat transfer models to predict
  *                 moisture transport. Includes effects of surfaces at saturation pressure.
  * @param tempOut - Outdoor temperature (deg K)
- * @param RHOut - Outdoor relative humidity (%)
+ * @param RHOut - Outdoor relative humidity (fraction)
  * @param tempHouse - Indoor temperature (deg K)
- * @param RHHouse - Indoor relative humidity (%)
+ * @param RHHouse - Indoor relative humidity (fraction)
  * @param airDensityOut - Outdoor air density (kg/m3)
  * @param airDensityAttic - Attic air density (kg/m3)
  * @param airDensityHouse - Indoor air density (kg/m3)
@@ -114,7 +115,7 @@ void WoodMoisture::mass_cond_bal(double tempOut, double RHOut, double tempHouse,
 	A[0][0] = kappa1[0] + x1 + x2;
 	A[0][3] = x3;
 	A[0][4] = x4;
-	PW[0] = kappa1[0] * PWOld[0] - kappa2[0] * (temperature[0] - tempOld[0]);
+	PWInit[0] = kappa1[0] * PWOld[0] - kappa2[0] * (temperature[0] - tempOld[0]);
 
 
 	//NODE 1 INSIDE OF NORTH SHEATHING
@@ -128,7 +129,7 @@ void WoodMoisture::mass_cond_bal(double tempOut, double RHOut, double tempHouse,
 	A[1][1] = kappa1[1] + x5 + x6;
 	A[1][3] = x7;
 	A[1][5] = x8;
-	PW[1] = kappa1[1] * PWOld[1] - kappa2[1] * (temperature[1] - tempOld[1]);
+	PWInit[1] = kappa1[1] * PWOld[1] - kappa2[1] * (temperature[1] - tempOld[1]);
 
 	//NODE 2 IS OUTSIDE mass OF WOOD IN ATTIC JOISTS AND TRUSSES
     hw = hU2 / CpAir / pow(lewis, 2/3) / airDensityAttic;
@@ -141,7 +142,7 @@ void WoodMoisture::mass_cond_bal(double tempOut, double RHOut, double tempHouse,
 	A[2][2] = kappa1[2] + x9 + x10;
 	A[2][3] = x11;
 	A[2][6] = x12;
-	PW[2] = kappa1[2] * PWOld[2] - kappa2[2] * (temperature[2] - tempOld[2]);
+	PWInit[2] = kappa1[2] * PWOld[2] - kappa2[2] * (temperature[2] - tempOld[2]);
 
 	//NODE 3 IS ATTIC AIR
 	x13 = volume[3] / RWater / temperature[3] / timeStep;
@@ -161,28 +162,28 @@ void WoodMoisture::mass_cond_bal(double tempOut, double RHOut, double tempHouse,
 	A[3][1] = -x5;
 	A[3][2] = -x9;
 	A[3][3] = x13 - x3 - x7 - x11 + x14;
-	PW[3] = x15 + x16 + x17;
+	PWInit[3] = x15 + x16 + x17;
 
 	//NODE 4 IS  SOUTH SHEATHING
 	kappa1[4] = calc_kappa_1(pressure, tempOld[4], moistureContent[4], volume[4]);
 	kappa2[4] = calc_kappa_2(moistureContent[4], volume[4]);
 	A[4][0] = -x2;
 	A[4][4] = kappa1[4] - x4;
-	PW[4] = kappa1[4] * PWOld[4] - kappa2[4] * (temperature[4] - tempOld[4]);
+	PWInit[4] = kappa1[4] * PWOld[4] - kappa2[4] * (temperature[4] - tempOld[4]);
 
 	//NODE 5 IS NORTH SHEATHING
 	kappa1[5] = calc_kappa_1(pressure, tempOld[5], moistureContent[5], volume[5]);
 	kappa2[5] = calc_kappa_2(moistureContent[5], volume[5]);
 	A[5][1] = -x6;
 	A[5][5] = kappa1[5] - x8;
-	PW[5] = kappa1[5] * PWOld[5] - kappa2[5] * (temperature[5] - tempOld[5]);
+	PWInit[5] = kappa1[5] * PWOld[5] - kappa2[5] * (temperature[5] - tempOld[5]);
 
 	//NODE 6 IS INNER BULK WOOD
 	kappa1[6] = calc_kappa_1(pressure, tempOld[6], moistureContent[6], volume[6]);
 	kappa2[6] = calc_kappa_2(moistureContent[6], volume[6]);
 	A[6][2] = -x10;
 	A[6][6] = kappa1[6] - x12;
-	PW[6] = kappa1[6] * PWOld[6] - kappa2[6] * (temperature[6] - tempOld[6]);
+	PWInit[6] = kappa1[6] * PWOld[6] - kappa2[6] * (temperature[6] - tempOld[6]);
 
 	// MATSEQND%() SIMULTANEOUSLY SOLVES THE MASS BALANCE EQUATIONS
 	// ERRCODE = MatSEqn(A, PW);
@@ -192,7 +193,7 @@ for(int i=0; i<MOISTURE_NODES; i++) {
 	}
 cout << endl;
     for (int i=0; i<MOISTURE_NODES; i++) {
-        A[i][MOISTURE_NODES] = PW[i];
+        A[i][MOISTURE_NODES] = PWInit[i];
         }
     PW = gauss(A);
 	// once the attic moisture nodes have been calculated assuming no condensation (as above)
@@ -219,7 +220,6 @@ cout << endl;
 void WoodMoisture::cond_bal(int pressure) {
 	double PWSaturation[MOISTURE_NODES];			// saturation vapor pressure at each node (Pa)
 	double PWTest[MOISTURE_NODES];					// save original for test of convergence (Pa)
-	double PWInit[MOISTURE_NODES];					// initial vapor pressure (was B() in BASIC code) (Pa)
 	double massCondensed[MOISTURE_NODES];			// the mass condensed or removed (if negative) at each node (kg)
     //double massTO[3] = {0};
 	double fluxTotalOld = 0;
@@ -232,8 +232,8 @@ void WoodMoisture::cond_bal(int pressure) {
 	// Calculate saturation vapor pressure for each node (moved from mass_cond_bal)
 	for(int i=0; i<MOISTURE_NODES; i++) {
 		PWSaturation[i] = saturation_vapor_pressure(temperature[i]);
-		moistureContent[i] = max(moistureContent[i], 0.032);
-		PWInit[i] = PW[i];
+		//moistureContent[i] = max(moistureContent[i], 0.032);	// no need to do this here as it is checked when set
+		//PWInit[i] = PW[i];
 cout << "PW=" << PW[i] << " PWSat=" << PWSaturation[i] << " MC=" << moistureContent[i] << endl;
 		}
 			
@@ -403,8 +403,8 @@ cout << "iterations: " << outIter << ":" << inIter << endl;
 		// Calculate MC's based on these new PW's
 		// this uses the inverse of cleary's relationship
 		for(int i=0; i < MOISTURE_NODES; i++) {
-			if(i == 3) {		// Attic air node
-				moistureContent[i] = PW[i] / PWSaturation[i] * 100;
+			if(i == 3) {		// Attic air node RH
+				moistureContent[i] = PW[i] / PWSaturation[i];
 				}
 			else {
 				moistureContent[i] = max(mc_cubic(PW[i], pressure, temperature[i]), 0.032);
