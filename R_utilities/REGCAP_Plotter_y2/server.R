@@ -34,6 +34,10 @@ shinyServer(
 			checkboxGroupInput("colSelection", "Columns to Plot", variables_list)
 		})
 		
+		output$Second_yaxis <- renderUI({
+			checkboxGroupInput("SecYaxis", "Variables on 2nd y-axis", input$colSelection)
+		})
+		
 		output$list_of_indices <- renderUI({
 			#filepath<-input$file1[input$file1[,'name']==input$path,'datapath']
 			#variables_list<-colnames(fread(filepath))
@@ -42,7 +46,7 @@ shinyServer(
 			#Ind_cols<-grep('Index', variables_list)
 			#Ind_cols2<-grep('illage', variables_list)
 			#checkboxGroupInput("colSelection", "Columns to Plot", variables_list[-Ind_cols])
-			checkboxGroupInput("IndcolSelection", "Index Values to Plot (Must Select Two Buttons)", Ind_cols)
+			checkboxGroupInput("IndcolSelection", "Index Values to Plot", Ind_cols)
 		})
  		
  		data.xts<-reactive({
@@ -74,37 +78,46 @@ shinyServer(
  		})
  		
  		starts<-reactive({
-  			start_vals<-which(diff(as.numeric(data.xts()[,input$IndcolSelection[[1]]]))==1)
-			index(data.xts())[start_vals]
+ 			dates_text <- paste(as.character(input$dateRange), collapse ="/")
+ 			diffs<-diff(as.numeric(data.xts()[,input$IndcolSelection[[1]]][dates_text]))
+ 			diffs[1]<-0
+ 			#diffs[length(diffs)]<-0
+  			start_vals<-which(diffs==1)
+			index(data.xts()[dates_text])[start_vals]
 		})
 		
 		ends<-reactive({
-  			end_vals<-which(diff(as.numeric(data.xts()[,input$IndcolSelection[[1]]]))==-1)
-			index(data.xts())[end_vals]
+			dates_text <- paste(as.character(input$dateRange), collapse ="/")
+			diffs<-diff(as.numeric(data.xts()[,input$IndcolSelection[[1]]][dates_text]))
+ 			#diffs[1]<-0
+ 			diffs[length(diffs)]<-0
+  			end_vals<-which(diffs==-1)
+			index(data.xts()[dates_text])[end_vals]
 		})
 		
-		starts_2<-reactive({
-			#if(length(input$IndcolSelection)>1){
-  			start_vals2<-which(diff(as.numeric(data.xts()[,input$IndcolSelection[[2]]]))==1)
-			index(data.xts())[start_vals2]
-			#}
-		})
+		# starts_2<-reactive({
+			# #if(length(input$IndcolSelection)>1){
+  			# start_vals2<-which(diff(as.numeric(data.xts()[,input$IndcolSelection[[2]]]))==1)
+			# index(data.xts())[start_vals2]
+			# #}
+		# })
 		
-		ends_2<-reactive({
-			#if(length(input$IndcolSelection)>1){
-  			end_vals2<-which(diff(as.numeric(data.xts()[,input$IndcolSelection[[2]]]))==-1)
-			index(data.xts())[end_vals2]
-			#}
-		})
+		# ends_2<-reactive({
+			# #if(length(input$IndcolSelection)>1){
+  			# end_vals2<-which(diff(as.numeric(data.xts()[,input$IndcolSelection[[2]]]))==-1)
+			# index(data.xts())[end_vals2]
+			# #}
+		# })
 
  		output$map <- renderDygraph({
 			dygraph(data.fig()) %>% 
+				dySeries(input$SecYaxis, axis = 'y2') %>%
 				dySeries(strokeWidth=2) %>%
 				dyRangeSelector(retainDateWindow=TRUE) %>%
 				dyRoller(rollPeriod=1) %>%
 				dyOptions(useDataTimezone=TRUE) %>%
-				add_shades(starts(), ends()) %>%
-				add_shades(starts_2(), ends_2(), color = "#FFE6E6")
+				add_shades(starts(), ends()) #%>%
+				#add_shades(starts_2(), ends_2(), color = "#FFE6E6")
    })
   }
 )

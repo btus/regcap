@@ -706,7 +706,7 @@ int main(int argc, char *argv[], char* envp[])
 				cout << "Cannot open output file: " << outputFileName << endl;
 				return 1; 
 			}
-			outputFile << "Time\tMin\twindSpeed\ttempOut\ttempHouse\tsetpoint\ttempAttic\ttempSupply\ttempReturn\tAHflag\tAHpower\tcompressPower\tmechVentPower\tHR\tSHR\tMcoil\thousePress\tQhouse\tACH\tACHflue\tventSum\tnonRivecVentSum\tfan1\tfan2\tfan3\tfan4\tfan5\tfan6\tfan7\trivecOn\tturnover\trelExpRIVEC\trelDoseRIVEC\toccupiedExpReal\toccupiedDoseReal\toccupied\toccupiedExp\toccupiedDose\tDAventLoad\tMAventLoad\tHROUT\tHRhouse\tRH%house\tRHind60\tRHind70\tHumidityIndex\tDHcondensate" << endl; 
+			outputFile << "Time\tMin\twindSpeed\ttempOut\ttempHouse\tsetpoint\ttempAttic\ttempSupply\ttempReturn\tAHflag\tAHpower\tcompressPower\tmechVentPower\tHR\tSHR\tMcoil\thousePress\tQhouse\tACH\tACHflue\tventSum\tnonRivecVentSum\tfan1\tfan2\tfan3\tfan4\tfan5\tfan6\tfan7\trivecOn\tturnover\trelExpRIVEC\trelDoseRIVEC\toccupiedExpReal\toccupiedDoseReal\toccupied\toccupiedExp\toccupiedDose\tHROUT\tHRattic\tHRreturn\tHRsupply\tHRhouse\tHRmaterials\tRHhouse\tRHind60\tRHind70\tHumidityIndex\tDHcondensate" << endl; 
 		}
 		
 		// 5 HR nodes
@@ -1121,7 +1121,7 @@ int main(int argc, char *argv[], char* envp[])
 					double solgain = 0;
 					double tsolair;
 
-					target = minute - 40;			// Target is used for fan cycler operation currently set for 20 minutes operation, in the last 20 minutes of the hour.
+					target = minute - 39;			// Target is used for fan cycler operation currently set for 20 minutes operation, in the last 20 minutes of the hour.
 					if(target < 0)
 						target = 0;						// For other time periods, replace the "40" with 60 - operating minutes
 
@@ -1601,21 +1601,21 @@ if(minuteYear > 1000) return 0;
 						//Indoor and Outdoor sensor based control.
 						if(HumContType == 7) { 
 							if(weather.humidityRatio > HR[3]) { //do not want to vent. 
-								if(RHhouse >= 55){
-									if(AHflag == 2) {
-										rivecOn = 1;
-									} else if(relExp >= 2.5 || relDose > HiDose) { 
-										rivecOn = 1;
-									} else { //otherwise off
-										rivecOn = 0;
-									}
-								}
-								else if(relExp >= 0.95 || relDose > 1){ 
+								//if(RHhouse >= 55){
+								if(AHflag == 2) {
 									rivecOn = 1;
-								} 
-								else{
+								} else if(relExp >= 2.5 || relDose > HiDose) { 
+									rivecOn = 1;
+								} else { //otherwise off
 									rivecOn = 0;
-								}		
+								}
+// 								}
+// 								else if(relExp >= 0.95 || relDose > 1){ 
+// 									rivecOn = 1;
+// 								} 
+// 								else{
+// 									rivecOn = 0;
+// 								}		
 							}		
 							else { //want to vent due to high indoor humidity, so maybe we just let it run, without relExp control?
 								if(relDose > doseTarget) { 
@@ -1632,7 +1632,7 @@ if(minuteYear > 1000) return 0;
 						if(HumContType == 8) {
 							if(month <= FirstCut || month >= SecondCut) { //High ventilation months with net-humidity transport from inside to outside.
 								if(hour >= 3 && hour <= 7) { //Was 3 and 7. Maybe change this to the warmest hours of the day.
-									rivecOn = 0; //Brennan changed from 1 to 0. 
+									rivecOn = 1; //Relatively dry time of day, vent more.
 								} else {
 									if(relDose > doseTarget) {
 										rivecOn = 1;
@@ -1643,8 +1643,8 @@ if(minuteYear > 1000) return 0;
 							} else { //Low ventilation months with net-humidity transport from outside to inside.
 								if(hour >= 14 && hour <= 18) { //Brennan changed from 12 and 6, to 14 to 18. Always vent during peak cooling period.
 									rivecOn = 1;
-								//} if(hour >= 15 && hour <=18) {
-									//rivecOn = 1;
+								} else if(hour >= 7 && hour <= 11){
+									rivecOn = 0;
 								} else {
 									if(relExp >= 2.5 || relDose > HiDose) {
 										rivecOn = 1;
@@ -1677,20 +1677,20 @@ if(minuteYear > 1000) return 0;
 // 						Indoor and Outdoor sensor based control.
 						if(HumContType == 9) { 
 							if(weather.humidityRatio > HR[3]) { //do not want to vent. Add some "by what amount" deadband value. 
-								if(RHhouse >= 55) {
-									if(relExp >= 2.5 || relDose > HiDose) { //have to with high exp 0.61
-										rivecOn = 1;
-									} 
-									else { //otherwise off
-										rivecOn = 0;
-									}
-								}	
-								else if(relExp >= 0.95 || relDose > 1){ 
+								//if(RHhouse >= 55) {
+								if(relExp >= 2.5 || relDose > HiDose) { //have to with high exp 0.61
 									rivecOn = 1;
 								} 
-								else{
+								else { //otherwise off
 									rivecOn = 0;
-								}	
+								}
+// 								}	
+// 								else if(relExp >= 0.95 || relDose > 1){ 
+// 									rivecOn = 1;
+// 								} 
+// 								else{
+// 									rivecOn = 0;
+// 								}	
 							}			
 							else if(relDose > doseTarget){ //want to vent due to high indoor humidity, so maybe we just let it run, without relExp control?
 								rivecOn = 1; //OR we can change the does calculation based on expected periods of contol function (i.e., 1-week,1-month, etc.)
@@ -1897,20 +1897,20 @@ if(minuteYear > 1000) return 0;
 						}
 
 						//Rivec control of number 50 fan type, algorithm v6					     
-						if(HumContType == 0) {
-							if(occupied[weekend][hour]) {				            	// Base occupied
-								if(relExp >= 0.95 || relDose >= 1.0)
-									rivecOn = 1;
-							} else {						                	// Base unoccupied
-								if(relExp >= expLimit)
-									rivecOn = 1;
-							}
-							if(hour >= peakStart && hour < peakEnd && peakFlag == 0) {		// PEAK Time Period
-								rivecOn = 0;												// Always off
-								if(relExp >= expLimit)
-									rivecOn = 1;
-							}
-						}
+// 						if(HumContType == 0) {
+// 							if(occupied[weekend][hour]) {				            	// Base occupied
+// 								if(relExp >= 0.95 || relDose >= 1.0)
+// 									rivecOn = 1;
+// 							} else {						                	// Base unoccupied
+// 								if(relExp >= expLimit)
+// 									rivecOn = 1;
+// 							}
+// 							if(hour >= peakStart && hour < peakEnd && peakFlag == 0) {		// PEAK Time Period
+// 								rivecOn = 0;												// Always off
+// 								if(relExp >= expLimit)
+// 									rivecOn = 1;
+// 							}
+// 						}
 						// ================== End Humidity Control Logic ================================
 					}
 				
@@ -2030,7 +2030,7 @@ if(minuteYear > 1000) return 0;
 								if(fan[i].oper == 13) {
 									if((rivecFlag == 0 && AHminutes <= 20) || (rivecFlag == 1 && rivecOn == 1)){ //This allows RIVEC to operate this fan until it reaches its Exposure setpoint?
 									mFanCycler = fan[i].q * airDensityIN;
-									mRetReg = mRetReg1 - mFanCycler;
+									mRetReg = mRetReg1 - mFanCycler;								
 									ventSumIN = ventSumIN + abs(fan[i].q) * 3600 / houseVolume;
 									//nonRivecVentSumIN = nonRivecVentSumIN + abs(fan[i].q) * 3600 / houseVolume;
 									}
@@ -2076,7 +2076,7 @@ if(minuteYear > 1000) return 0;
 								if(fan[i].oper == 13) { 
 									if((rivecFlag == 0 && AHminutes <= 20) || (rivecFlag == 1 && rivecOn == 1)){ //This allow RIVEC to operate this fan until it reaches its Exposure setpoint?
 									mFanCycler = fan[i].q * airDensityIN;
-									mRetReg = mRetReg1 - mFanCycler;
+									mRetReg = mRetReg1 - mFanCycler;								
 									ventSumIN = ventSumIN + abs(fan[i].q) * 3600 / houseVolume;
 									//nonRivecVentSumIN = nonRivecVentSumIN + abs(fan[i].q) * 3600 / houseVolume;
 									}
@@ -2106,7 +2106,7 @@ if(minuteYear > 1000) return 0;
 								mRetLeak = qRetLeak * airDensityIN;
 								mFanCycler = fan[i].q * airDensityIN;
 								mSupReg = qSupReg * airDensityIN;
-								mRetReg = qRetReg * airDensityIN - mFanCycler;
+								mRetReg = qRetReg * airDensityIN - mFanCycler;							
 								mAH = qAH * airDensityIN;
 								mechVentPower = mechVentPower + fanPower_cooling;			// note ah operates at cooling speed
 								AHfanHeat = fanPower_cooling * .85;							// for heat
@@ -2834,12 +2834,17 @@ if(minuteYear > 1000) return 0;
 					// [END] Hybrid Systems ==================================================================================================================================
 
 					// [START] Equipment Model ===============================================================================================================================
+					
 					evapcap = 0;
 					latcap = 0;
 					capacity = 0;
 					capacityh = 0;
 					powercon = 0;
 					compressorPower = 0;
+					
+					// hret is in btu/lb and is used in capacity calculations
+					hret = .24 * ((b[11] - 273.15) * 9 / 5 + 32) + HR[1] * (1061 + .444 * ((b[11] - 273.15) * 9 / 5 + 32));
+					
 
 					if(AHflag == 0) {										// AH OFF
 						capacityc = 0;
@@ -2960,29 +2965,6 @@ if(minuteYear > 1000) return 0;
 					
 					// [END] Equipment Model ======================================================================================================================================
 
-					// [START] Moisture Balance ===================================================================================================================================
-
-					// Call moisture subroutine
-					sub_moisture(HR, M1, M12, M15, M16, Mw5, matticenvout, mCeiling, mSupAHoff, mRetAHoff,
-						matticenvin, weather.humidityRatio, mSupLeak, mAH, mRetReg, mRetLeak, mSupReg, latcap, mHouseIN, mHouseOUT,
-						latentLoad, mFanCycler, mHRV_AH, mERV_AH, ERV_TRE, MWha, airDensityIN, airDensityOUT, dh.condensate);
-
-					SatVaporPressure = saturationVaporPressure(tempHouse);
-
-					//Calculate Saturation Humidity Ratio, Equation 23 in ASHRAE HoF
-					HRsaturation = 0.621945*(SatVaporPressure/(weather.pressure-SatVaporPressure)); 
-
-					if(HR[1] == 0)
-						HR[1] = weather.humidityRatio;
-					if(HR[3] > HRsaturation) // Previously set by Iain to 0.02. Here we've replaced it with the saturation humidity ratio (Ws).
-						HR[3] = HRsaturation; //consider adding calculate saturation humidity ratio by indoor T and Pressure and lmit HR[3] to that.
-
-					// hret is in btu/lb and is used in capacity calculations
-					hret = .24 * ((b[11] - 273.15) * 9 / 5 + 32) + HR[1] * (1061 + .444 * ((b[11] - 273.15) * 9 / 5 + 32));
-
-
-
-					// [END] Moisture Balance =======================================================================================================================================
 
 					// [START] Heat and Mass Transport ==============================================================================================================================
 					mCeilingOld = -1000;														// inital guess
@@ -3098,7 +3080,26 @@ if(minuteYear > 1000) return 0;
 					tempOld[15] = tempHouse;			// Node 16 is the House Air (all one zone)
 
 
-			
+					// [START] Moisture Balance ===================================================================================================================================
+
+					// Call moisture subroutine
+					
+					sub_moisture(HR, M1, M12, M15, M16, Mw5, matticenvout, mCeiling, mSupAHoff, mRetAHoff,
+						matticenvin, weather.humidityRatio, mSupLeak, mAH, mRetReg, mRetLeak, mSupReg, latcap, mHouseIN, mHouseOUT,
+						latentLoad, mFanCycler, mHRV_AH, mERV_AH, ERV_TRE, MWha, airDensityIN, airDensityOUT, dh.condensate);
+
+					SatVaporPressure = saturationVaporPressure(tempHouse);
+
+					//Calculate Saturation Humidity Ratio, Equation 23 in ASHRAE HoF
+					HRsaturation = 0.621945*(SatVaporPressure/(weather.pressure-SatVaporPressure)); 
+
+					if(HR[1] == 0)
+						HR[1] = weather.humidityRatio;
+					if(HR[3] > HRsaturation) // Previously set by Iain to 0.02. Here we've replaced it with the saturation humidity ratio (Ws).
+						HR[3] = HRsaturation; //consider adding calculate saturation humidity ratio by indoor T and Pressure and lmit HR[3] to that.
+
+					// [END] Moisture Balance =======================================================================================================================================
+
 			
 
 					// ************** house ventilation rate  - what would be measured with a tracer gas i.e., not just envelope and vent fan flows
@@ -3278,9 +3279,10 @@ if(minuteYear > 1000) return 0;
 						outputFile << Pint << "\t"<< qHouse << "\t" << houseACH << "\t" << flueACH << "\t" << ventSum << "\t" << nonRivecVentSum << "\t";
 						outputFile << fan[0].on << "\t" << fan[1].on << "\t" << fan[2].on << "\t" << fan[3].on << "\t" << fan[4].on << "\t" << fan[5].on << "\t" << fan[6].on << "\t";
 						outputFile << rivecOn << "\t" << turnover << "\t" << relExp << "\t" << relDose << "\t" << occupiedExpReal << "\t" << occupiedDoseReal << "\t";
-						outputFile << occupied[weekend][hour] << "\t" << occupiedExp << "\t" << occupiedDose << "\t" << DAventLoad << "\t" << MAventLoad << "\t"; 
-						outputFile << weather.humidityRatio << "\t" << HR[3] << "\t" << RHhouse << "\t" << RHind60 << "\t" << RHind70 << "\t" << HumidityIndex << "\t" << dh.condensate << endl;
-						//outputFile << mCeiling << "\t" << mHouseIN << "\t" << mHouseOUT << "\t" << mSupReg << "\t" << mRetReg << "\t" << mSupAHoff << "\t" ;
+						outputFile << occupied[weekend][hour] << "\t" << occupiedExp << "\t" << occupiedDose << "\t"; 
+						outputFile << weather.humidityRatio << "\t" << HR[0] << "\t" << HR[1] << "\t" << HR[2] << "\t" << HR[3] << "\t" << HR[4] << "\t" << RHhouse << "\t" << RHind60 << "\t" << RHind70 << "\t" << HumidityIndex << "\t" << dh.condensate << endl;
+						//outputFile << mHouse << "\t" << mHouseIN << "\t" << mHouseOUT << "\t" << mIN << "\t" << mOUT << "\t" << mCeiling << "\t" << mSupReg << "\t" << mSupAHoff << "\t" << mRetAHoff << "\t" << mRetReg << "\t" << mFanCycler << "\t" << mFlue << "\t" << mFloor << "\t" << mAH << endl;
+						//outputFile << mHouse << "\t" << mHouseIN << "\t" << mHouseOUT << mCeiling << "\t" << mHouseIN << "\t" << mHouseOUT << "\t" << mSupReg << "\t" << mRetReg << "\t" << mSupAHoff << "\t" ;
 						//outputFile << mRetAHoff << "\t" << mHouse << "\t"<< flag << "\t"<< AIM2 << "\t" << AEQaim2FlowDiff << "\t" << qFanFlowRatio << "\t" << C << endl; //Breann/Yihuan added these for troubleshooting
 					}
 

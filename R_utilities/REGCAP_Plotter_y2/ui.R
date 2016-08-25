@@ -41,6 +41,8 @@ shinyUI(fluidPage(
       
       uiOutput('list_of_variables'),
       
+      uiOutput('Second_yaxis'),
+    
       uiOutput('list_of_indices')
       
 
