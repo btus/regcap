@@ -53,10 +53,10 @@ void test_roofCp(double roofPitch, bool rowHouse, bool ridgeParallel) {
 		}
 
 		f_roofCpTheta(Cproof, windAngle, Cppitch, roofPitch);
-		cout << windAngle;
-		for(int i = 0; i < 4; i++) {
-			cout << "," << Cppitch[i];
-		}
+		cout << windAngle << "," << Cppitch[0];
+		//for(int i = 0; i < 4; i++) {
+		//	cout << "," << Cppitch[i];
+		//}
 		cout << endl;
 	}
 }

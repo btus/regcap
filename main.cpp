@@ -42,6 +42,24 @@ New inputs:
 	Number of bedrooms (numBedrooms)
 	Number of stories (numStories)
 	Addendum N weather factors (weatherFactor)
+	
+	Node 1 is the Attic Air
+	Node 2 is the Inner North Sheathing
+	Node 3 is the Outer North Sheathing
+	Node 4 is the Inner South Sheathing
+	Node 5 is the Outer South Sheathing
+	Node 6 is all of the Wood (joists, trusses, etc.) lumped together
+	Node 7 is the Ceiling of the House
+	Node 8 is the Floor of the Attic
+	Node 9 is the Inner Gable Wall (both lumped together)
+	Node 10 is the Outer Gable Wall (both lumped together)
+	Node 11 is the Return Duct Outer Surface
+	Node 12 is the Return Duct Air
+	Node 13 is The Mass of the House
+	Node 14 is the Supply Duct Outer Surface
+	Node 15 is the Supply Duct Air
+	Node 16 is the House Air (all one zone)
+
 */
 
 // ============================= FUNCTIONS ==============================================================
@@ -119,8 +137,8 @@ int main(int argc, char *argv[], char* envp[])
 		double soffitFraction[5];
 		double wallCp[4] = {0,0,0,0};
 		double mechVentPower;
-		double b[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-		double tempOld[16];
+		double b[ATTIC_NODES];
+		double tempOld[ATTIC_NODES];
 		double HR[5];		
 		double heatThermostat[24];
 		double coolThermostat[24];
@@ -132,7 +150,7 @@ int main(int argc, char *argv[], char* envp[])
 		string tstatFileName;
 		string occupancyFileName;
 		string shelterFileName;
-		double C;
+		double envC;					// Envelope leakage coefficient
 		double envPressureExp;		// Envelope Pressure Exponent
 		double eaveHeight;			// Eave Height [m]
 		double R;						// Ceiling Floor Leakage Sum
@@ -142,6 +160,7 @@ int main(int argc, char *argv[], char* envp[])
 		int numPipes;					// Number of passive vents but appears to do much the same as flues
 		double Hfloor;
 		string rowOrIsolated;		// House in a row (R) or isolated (any string other than R)
+		bool rowHouse;					// Flag that house is in a row
 		double houseVolume;			// Conditioned volume of house (m3)
 		double floorArea;				// Conditioned floor area (m2)
 		double planArea;				// Footprint of house (m2)
@@ -167,6 +186,7 @@ int main(int argc, char *argv[], char* envp[])
 		int numAtticVents;
 		double roofPitch;
 		string roofPeakOrient;		// Roof peak orientation, D = perpendicular to front of house (Wall 1), P = parrallel to front of house
+		bool roofPeakPerpendicular;
 		double roofPeakHeight;
 		int numAtticFans;
 		double roofRval;
@@ -176,8 +196,8 @@ int main(int argc, char *argv[], char* envp[])
 		double retThickness;
 		double supRval;
 		double retRval;
-		double supLF0;					//Supply duct leakage fraction (e.g., 0.01 = 1% leakage).					
-		double retLF0;					//Return duct leakage fraction (e.g., 0.01 = 1% leakage)
+		double supLF;					//Supply duct leakage fraction (e.g., 0.01 = 1% leakage).					
+		double retLF;					//Return duct leakage fraction (e.g., 0.01 = 1% leakage)
 		double supLength;
 		double retLength;
 		double supDiameter;
@@ -237,9 +257,6 @@ int main(int argc, char *argv[], char* envp[])
 		// Zeroing the variables to create the sums for the .ou2 file
 		long int minuteYear = 1;
 		int endrunon = 0;
-		int prerunon = 0;
-		//int timeSteps = 0;
-		//int bsize = 0;
 		double Mcoil = 0;
 		double SHR = 0;		
 		double meanOutsideTemp = 0;
@@ -299,7 +316,7 @@ int main(int argc, char *argv[], char* envp[])
 		buildingFile >> shelterFileName;
 		shelterFileName = schedulePath + shelterFileName;
 
-		buildingFile >> C;
+		buildingFile >> envC;
 		buildingFile >> envPressureExp;
 		buildingFile >> eaveHeight;
 		buildingFile >> R;
@@ -413,8 +430,8 @@ int main(int argc, char *argv[], char* envp[])
 		buildingFile >> retThickness;
 		buildingFile >> supRval;
 		buildingFile >> retRval;
-		buildingFile >> supLF0;
-		buildingFile >> retLF0;
+		buildingFile >> supLF;
+		buildingFile >> retLF;
 		buildingFile >> supLength;
 		buildingFile >> retLength;
 		buildingFile >> supDiameter;
@@ -517,15 +534,13 @@ int main(int argc, char *argv[], char* envp[])
 		}
 		occupancyFile.close();
 
-		double lc = (R + X) * 50;		// Percentage of leakage in the ceiling
-		double lf = (R - X) * 50;		// Percentage of leakage in the floor
-		double lw = 100 - lf - lc;		// Percentage of leakage in the walls
+		// Leakage fractions
+		double leakFracCeil = (R + X) / 2 ;					// Fraction of leakage in the ceiling
+		double leakFracFloor = (R - X) / 2;					// Fraction of leakage in the floor
+		double leakFracWall = 1 - leakFracFloor - leakFracCeil;	// Fraction of leakage in the walls
 
-		// In case the user enters leakage fraction in % rather than as a fraction
-		if(supLF0 > 1)
-			supLF0 = supLF0 / 100;
-		if(retLF0 > 1)
-			retLF0 = retLF0 / 100;
+		rowHouse = (rowOrIsolated.compare("R") == 0);
+		roofPeakPerpendicular = (roofPeakOrient.compare("D") == 0);
 
 		double supCp = 753.624;										// Specific heat capacity of steel [j/kg/K]
 		double suprho = 16.018 * 2;									// Supply duct density. The factor of two represents the plastic and sprical [kg/m^3]
@@ -548,8 +563,6 @@ int main(int argc, char *argv[], char* envp[])
 		double qAH_cool = qAH_cool0;
 		double fanPower_heating = fanPower_heating0;
 		double fanPower_cooling = fanPower_cooling0;
-		double retLF = retLF0;
-		double supLF = supLF0;
 
 		double massFilter_cumulative = 0;	// Cumulative mass that has flown through the filter
 		double massAH_cumulative = 0;			// Cumulative mass that has flown through the AH
@@ -589,7 +602,7 @@ int main(int argc, char *argv[], char* envp[])
 		int peakFlag = 0;						// Peak flag (0 or 1) prevents two periods during same day
 		int rivecFlag = 0;					// Dose controlled ventilation (RIVEC) flag 0 = off, 1 = use rivec (mainly for HRV/ERV control)
 		double qRivec = 1.0;					// Airflow rate of RIVEC fan for max allowed dose and exposure [L/s]
-		int numFluesActual = numFlues;	// numFluesActual used to remember the number of flues for when RIVEC blocks them off as part of a hybrid ventilation strategy
+		// int numFluesActual = numFlues;	// numFluesActual used to remember the number of flues for when RIVEC blocks them off as part of a hybrid ventilation strategy
 
 		// For Economizer calculations
 		int economizerUsed = 0;			// 1 = use economizer and change C (house leakage) for pressure relief while economizer is running (changes automatically)
@@ -618,7 +631,7 @@ int main(int argc, char *argv[], char* envp[])
 
 		// Presure Relief for Economizer, increase envelope leakage C while economizer is operating
 		if(economizerUsed == 1) {
-			Coriginal = C;
+			Coriginal = envC;
 			if(qAH_cool >= qAH_heat) {			// Dependent on the largest of the heating/cooling AH fan power
 				// sized to 2Pa of pressure while economizer running
 				ELAeconomizer = qAH_cool * (sqrt(airDensityRef / (2 * 2)) / 1);
@@ -686,17 +699,12 @@ int main(int argc, char *argv[], char* envp[])
 		//double windSpeedCorrection = pow((80/ 10), .15) * pow((h / 80), .3);		// The old wind speed correction
 		// [END] Terrain ============================================================================================
 
-		double ceilingC = C * (R + X) / 2;
-
 		// AL4 is used to estimate flow velocities in the attic
 		double AL4 = atticC * sqrt(airDensityRef / 2) * pow(4, (atticPressureExp - .5));
 
 		// New char velocity for unvented attics
 		if(AL4 == 0)
-			AL4 = ceilingC * sqrt(airDensityRef / 2) * pow(4, (atticPressureExp - .5));
-
-		// AL5 is use to estimate flow velocities in the house
-		double AL5 = C * sqrt(airDensityRef / 2) * pow(4, (envPressureExp - .5));
+			AL4 = envC * leakFracCeil * sqrt(airDensityRef / 2) * pow(4, (atticPressureExp - .5));
 
 		// ================= CREATE OUTPUT FILE =================================================
 		ofstream outputFile;
@@ -759,7 +767,7 @@ int main(int argc, char *argv[], char* envp[])
 		int econoFlag = 0;		// Economizer Flag (0/1 = OFF/ON)
 
 		// ---------------- Attic and duct system heat transfer nodes --------------------
-		for(int k=0; k < 16; k++) {
+		for(int k=0; k < ATTIC_NODES; k++) {
 			tempOld[k] = airTempRef;
 		}
 		tempOld[2] = 278;
@@ -788,13 +796,12 @@ int main(int argc, char *argv[], char* envp[])
 		int recoveryStart = 0;
 		int recoveryEnd = 0;
 
-		double ELA = C * sqrt(airDensityRef / 2) * pow(4, (envPressureExp - .5));			// Effective Leakage Area
+		double ELA = envC * sqrt(airDensityRef / 2) * pow(4, (envPressureExp - .5));			// Effective Leakage Area
 		double NL = 1000 * (ELA / floorArea) * pow(numStories, .3);				// Normalized Leakage Calculation. Iain! Brennan! this does not match 62.2-2013 0.4 exponent assumption.
 		double wInfil = weatherFactor * NL;										// Infiltration credit from updated ASHRAE 136 weather factors [ACH]
 		double defaultInfil = .001 * ((floorArea / 100) * 10) * 3600 / houseVolume;	// Default infiltration credit [ACH] (ASHRAE 62.2, 4.1.3 p.4). This NO LONGER exists in 62.2-2013
 		double rivecX = (.05 * floorArea + 3.5 * (numBedrooms + 1)) / qRivec;
 		double rivecY = 0;
-		double Q622 = .001 * (.05 * floorArea + 3.5 * (numBedrooms + 1)) * (3600 / houseVolume); // ASHRAE 62.2 Mechanical Ventilation Rate [ACH]
 		double Aeq = 0;		// Equivalent air change rate of house to meet 62.2 minimum for RIVEC calculations. Choose one of the following:
 
 		switch (AeqCalcs) {
@@ -877,7 +884,6 @@ int main(int argc, char *argv[], char* envp[])
 
 		int AHminutes;
 		int target;
-		int day = 1;
 		int dryerFan = 0;			// Dynamic schedule flag for dryer fan (0 or 1)
 		int kitchenFan = 0;		// Dynamic schedule flag for kitchen fan (0 or 1)
 		int bathOneFan = 0;		// Dynamic schedule flag for first bathroom fan (0 or 1)
@@ -889,7 +895,6 @@ int main(int argc, char *argv[], char* envp[])
 		int rivecOn = 0;		   // 0 (off) or 1 (on) for RIVEC devices
 		int mainIterations;
 		int ERRCODE = 0;
-		int economizerRan = 0;	// 0 or else 1 if economizer has run that day
 		int hcFlag = 1;         // Start with HEATING (simulations start in January)
 
 		weatherData weather;		// current minute of weather data
@@ -937,11 +942,9 @@ int main(int argc, char *argv[], char* envp[])
 		double latcap = 0;
 		double capacity = 0;
 		double capacityh = 0;
-		double powercon = 0;
 		double compressorPower = 0;
 		double capacityc = 0;
 		double Toutf = 0;
-		double tretf = 0;
 		double dhret = 0;
 		double chargecapd = 0;
 		double chargeeerd = 0;
@@ -960,31 +963,15 @@ int main(int argc, char *argv[], char* envp[])
 		double mHouseOUT = 0;
 		//double RHOATTIC;
 		double internalGains;
-		double tempCeiling;
-		double tempAtticFloor;
-		double tempInnerSheathS;
-		double tempOuterSheathS;
-		double tempInnerSheathN;
-		double tempOuterSheathN;
-		double tempInnerGable;
-		double tempOuterGable;
-		double tempWood;
-		double tempRetSurface;
-		double tempSupSurface;
-		double tempHouseMass;
-		double flag;				// Should be an int?
 		double mIN = 0;
 		double mOUT = 0;
 		double Pint = 0;
 		double mFlue = 0;
 		double dPflue = 0;
-		double dPceil = 0;
-		double dPfloor = 0;
 		double Patticint = 0;
 		double mAtticIN = 0;
 		double mAtticOUT = 0;
 		double TSKY = 0;
-		double w = 0;
 		double mHouse = 0;
 		double qHouse = 0;
 		double houseACH = 0;
@@ -1014,12 +1001,12 @@ int main(int argc, char *argv[], char* envp[])
 		double dailyCumulativeTemp = 0;
 		double dailyAverageTemp = 0;
 		double runningAverageTemp = 0;
-		double AIM2 = 0; //Brennan added
-		double AEQaim2FlowDiff = 0; //Brennan added
-		double FlowDiff = 0; //Brennan added
-		double qFanFlowRatio = 0; //Brennan added
+		//double AIM2 = 0; //Brennan added
+		//double AEQaim2FlowDiff = 0; //Brennan added
+		//double FlowDiff = 0; //Brennan added
+		//double qFanFlowRatio = 0; //Brennan added
 		double FanQ = fan[0].q; //Brennan's attempt to fix the airflow outside of the if() structures in the fan.oper section. fan[0].q was always the whole house exhaust fan, to be operated continuously or controlled by temperature controls.
-		double FanP = fan[0].power; //Brennan's attempt to fix the fan power outside of the if() structures in the fan.oper section.
+		//double FanP = fan[0].power; //Brennan's attempt to fix the fan power outside of the if() structures in the fan.oper section.
 		Dehumidifier dh(dhCapacity, dhEnergyFactor, dhSetPoint, dhDeadBand);	// Initialize Dehumidifier 
 
 		cout << endl;
@@ -1133,14 +1120,7 @@ int main(int argc, char *argv[], char* envp[])
 	
 					// Resets leakage in case economizer has operated previously (increased leakage for pressure relief)
 					if(economizerUsed == 1) {
-						C = Coriginal;
-						ceilingC = C * (R + X) / 2;
-						AL4 = atticC * sqrt(airDensityRef / 2) * pow(4, (atticPressureExp - .5));
-
-						if(AL4 == 0)
-							AL4 = ceilingC * sqrt(airDensityRef / 2) * pow(4, (atticPressureExp - .5));
-
-						AL5 = C * sqrt(airDensityRef / 2) * pow(4, (envPressureExp - .5));
+						envC = Coriginal;
 					}
 						
 					// [START] Filter loading calculations ===============================================================
@@ -1154,7 +1134,7 @@ int main(int argc, char *argv[], char* envp[])
 						fanPower_cooling = fanPower_cooling0 * A_wAH_cool + (k_wAH/100) * fanPower_cooling0 * massFilter_cumulative;
 				
 						// Return duct leakage alterations due to filter loading
-						retLF = retLF0 * A_DL + (k_DL/100) * retLF0 * massFilter_cumulative;
+						retLF = retLF * A_DL + (k_DL/100) * retLF * massFilter_cumulative;
 				
 						// Change filter when airflow rate drops to half lowest speed (reset AH airflow, power and duct leakage)
 						if((qAH_heat <= (0.5 * qAH_low)) || (qAH_cool <= (0.5 * qAH_low))) {
@@ -1162,7 +1142,7 @@ int main(int argc, char *argv[], char* envp[])
 								qAH_cool = qAH_cool0 * A_qAH_cool;
 								fanPower_heating = fanPower_heating0 * A_wAH_heat;
 								fanPower_cooling = fanPower_cooling0 * A_wAH_cool;
-								retLF = retLF0 * A_DL;
+								retLF = retLF * A_DL;
 								massFilter_cumulative = 0;
 								filterChanges++;
 							}
@@ -1200,7 +1180,7 @@ int main(int argc, char *argv[], char* envp[])
 					tsolair = weather.dryBulb;
 
 					for(int k=0; k < 4; k++)			// Wind direction as a compass direction?
-						Sw[k] = Swinit[k][weather.windDirection];		// -1 in order to allocate from array (1 to n) to array (0 to n-1)
+						Sw[k] = pow(Swinit[k][weather.windDirection],2);		// store square of Sw to pass to attic_leak and house_leak
 
 					// Fan Schedule Inputs
 					// Assumes operation of dryer and kitchen fans, then 1 - 3 bathroom fans
@@ -1243,13 +1223,6 @@ int main(int argc, char *argv[], char* envp[])
 						}
 						solgain = winShadingCoef * (windowS * incsolar[0] + windowWE / 2 * incsolar[1] + windowN * incsolar[2] + windowWE / 2 * incsolar[3]);
 						tsolair = totalSolar / 4 * .03 + weather.dryBulb;		// the .03 is from 1993 AHSRAE Fund. SI 26.5
-/*
-cout << "time=" << day << ":" << hour << ":" << minute << ":";
-cout << " direct=" << weather.directNormal << " diffuse=" << diffuse << " ssol=" << ssolrad << " nsol=" << nsolrad;
-cout << " incS=" << incsolar[0] << " incW=" << incsolar[1] << " incN=" << incsolar[2] << " incE=" << incsolar[3];
-cout << " totalSolar=" << totalSolar << " solargain=" << solgain << " tsolair=" << tsolair << endl;
-if(minuteYear > 1000) return 0;
-*/
 					}
 					// 7 day outdoor temperature running average. If <= 60F we're heating. If > 60F we're cooling
 					if(runningAverageTemp <= (60 - 32) * 5.0 / 9.0)
@@ -1257,13 +1230,6 @@ if(minuteYear > 1000) return 0;
 					else
 						hcFlag = 2;					// Cooling
 			
-					// Setting thermostat heat/cool mode:
-					/*if(tempOld[15] < 295.35 && economizerRan == 0)			// 295.35K = 22.2C = 71.96F
-						//if(day <= 152 || day >= 283)							// EISG settings for Oakland/San Fran
-						hcFlag = 1;                 // Turn on HEATING
-					else
-						hcFlag = 2;                 // Turn on COOLING
-					*/
 					// ====================== HEATING THERMOSTAT CALCULATIONS ============================
 					if(hcFlag == 1) {
 						qAH = qAH_heat;            // Heating Air Flow Rate [m3/s]
@@ -1305,7 +1271,6 @@ if(minuteYear > 1000) return 0;
 						uaTOut = uaWindow;
 						rceil = ceilRval_cool;
 						endrunon = 0;
-						prerunon = 0;
 
 						if(tempOld[15] < (coolThermostat[hour] - .5))
 							AHflag = 0;
@@ -1347,15 +1312,7 @@ if(minuteYear > 1000) return 0;
 							//if(AHflag == 0 && econodt >= 3.333 && tempHouse > 294.15 && economizerUsed == 1) {
 						if(AHflag == 0 && econodt >= 3.33 && tempHouse > 294.15 && economizerUsed == 1 && hcFlag == 2) {
 								econoFlag = 1;
-												
-								C = Ceconomizer;
-								ceilingC = C * (R + X) / 2;
-								AL4 = atticC * sqrt(airDensityRef / 2) * pow(4, (atticPressureExp - .5));
-
-								if(AL4 == 0)
-									AL4 = ceilingC * sqrt(airDensityRef / 2) * pow(4, (atticPressureExp - .5));
-
-								AL5 = C * sqrt(airDensityRef / 2) * pow(4, (envPressureExp - .5));
+								envC = Ceconomizer;
 							} else {
 								econoFlag = 0;
 							}
@@ -2318,7 +2275,6 @@ if(minuteYear > 1000) return 0;
 								AHfanPower = AHfanPower + fan[i].power;			// vent fan power
 								//ventSumIN = ventSumIN + abs(fan[i].q) * 3600 / houseVolume;
 								nonRivecVentSumIN = nonRivecVentSumIN + abs(fan[i].q) * 3600 / houseVolume;
-								economizerRan = 1;
 							} else
 								fan[i].on = 0;
 
@@ -2371,34 +2327,6 @@ if(minuteYear > 1000) return 0;
 								
 //sum the non-Rivec ventilation airflows (prior section) and set nonRivecVentSum to the largest of inflow/outflow.								
 								
-
-						
-						//} else if(fan[i].oper == 28) {					// Single Cut-Off Ventilation Temperature Controller. Brennan.
-						//	if(weatherTemp >= ventcutoff) {
-						//		fan[i].on = 1;
-						//		mechVentPower = mechVentPower + fan[i].power;
-						//		ventSumOUT = ventSumOUT + abs(fan[i].q) * 3600 / houseVolume;
-						//		//nonRivecVentSumOUT = nonRivecVentSumOUT + abs(fan[i].q) * 3600 / houseVolume;
-						//	} else
-						//		fan[i].on = 0;
-
-						//} else if(fan[i].oper == 29) {					// Two Cut-Off Ventilation Temperature Controller. Brennan.
-						//	if(weatherTemp >= ventcutoff && weatherTemp < ventcutoff2) {
-						//		fan[i].on = 1; //Brennan, this needs to equal 50% fan airflow.
-						//		fan[i].q = FanQ * 0.50 ; //FanQ is set outside the loop, so it is fixed, based on the imnput file. This modifies it by cutting in half.
-						//		fan[i].power = FanP * 0.50 ;
-						//		mechVentPower = mechVentPower + fan[i].power; 
-						//		ventSumOUT = ventSumOUT + abs(fan[i].q) * 3600 / houseVolume;
-						//	} else
-						//		if(weatherTemp >= ventcutoff2) {
-						//			fan[i].on = 1; //Brennan, this needs to equal 100% fan airflow
-						//			fan[i].q = FanQ;
-						//			fan[i].power = FanP;
-						//			mechVentPower = mechVentPower + fan[i].power;
-						//			ventSumOUT = ventSumOUT + abs(fan[i].q) * 3600 / houseVolume;
-						//		} else
-						//			fan[i].on = 0;
-
 						//} else if(fan[i].oper == 30) {// Continuous, Infiltration-Balanced Ventilation Temperature Controller ("Gold Standard"). Brennan.
 						//	if(numStories == 1){
 						//		AIM2 = pow(abs((tempHouse - 273.15) - weatherTemp) , 0.67) * 0.069 * C; //estimated stack infiltration (m3/s). Alwasy positive.
@@ -2430,7 +2358,7 @@ if(minuteYear > 1000) return 0;
 
 						//} else if(fan[i].oper == 31) {// Continuous, Infiltration-Balanced Ventilation Temperature Controller ("Gold Standard"). Brennan. Quadrature!
 						//	if(numStories == 1){
-						//		AIM2 = 0.069 * C * pow(abs((tempHouse - 273.15) - weatherTemp), n); //estimated stack infiltration (m3/s).
+						//		AIM2 = 0.069 * envC * pow(abs((tempHouse - 273.15) - weatherTemp), n); //estimated stack infiltration (m3/s).
 						//		AEQaim2FlowDiff = pow((Aeq * houseVolume / 3600),2) - pow(AIM2,2); //difference between squares of 62.2-2013 AEQ flow rate (m3/s) and the estimated infiltration. Tells us if AIM2 inf > Aeq
 						//		if(AEQaim2FlowDiff > 0){ 
 						//			fan[i].on = 1;
@@ -2443,7 +2371,7 @@ if(minuteYear > 1000) return 0;
 						//			fan[i].on = 0;
 						//	} else 
 						//			if(numStories == 2){
-						//			AIM2 = 0.089 * C * pow(abs((tempHouse - 273.15) - weatherTemp), n); 
+						//			AIM2 = 0.089 * envC * pow(abs((tempHouse - 273.15) - weatherTemp), n); 
 						//			AEQaim2FlowDiff = pow((Aeq * houseVolume / 3600),2) - pow(AIM2,2); 
 						//				if(AEQaim2FlowDiff > 0){
 						//					fan[i].on = 1;
@@ -2839,7 +2767,6 @@ if(minuteYear > 1000) return 0;
 					latcap = 0;
 					capacity = 0;
 					capacityh = 0;
-					powercon = 0;
 					compressorPower = 0;
 					
 					// hret is in btu/lb and is used in capacity calculations
@@ -2849,7 +2776,6 @@ if(minuteYear > 1000) return 0;
 					if(AHflag == 0) {										// AH OFF
 						capacityc = 0;
 						capacityh = 0;
-						powercon = 0;
 						compressorPower = 0;
 					} else if(AHflag == 100) {								// Fan on no heat/cool
 						capacityh = AHfanHeat;								// Include fan heat
@@ -2862,7 +2788,6 @@ if(minuteYear > 1000) return 0;
 						capacityc = 0;
 					} else {												// we have cooling
 						Toutf = (weather.dryBulb - 273.15) * (9.0 / 5.0) + 32;
-						tretf = (tempOld[11] - 273.15 + AHfanHeat / 1005 / mAH) * (9.0 / 5.0) + 32;		// return in F used for capacity includes fan heat
 						dhret = AHfanHeat / mAH / 2326;										// added to hret in capacity caluations for wet coil - converted to Btu/lb
 
 						// the following corerctions are for TXV only
@@ -2965,26 +2890,25 @@ if(minuteYear > 1000) return 0;
 					
 					// [END] Equipment Model ======================================================================================================================================
 
-
 					// [START] Heat and Mass Transport ==============================================================================================================================
 					mCeilingOld = -1000;														// inital guess
 					mainIterations = 0;
-					limit = C / 10;
+					limit = envC / 10;
 					if(limit < .00001)
 						limit = .00001;
 
 					// Ventilation and heat transfer calculations
 					while(1) {
 						mainIterations = mainIterations + 1;	// counting # of temperature/ventilation iterations
-						flag = 0;
+						int flag = 0;
 
 						while(1) {
 							// Call houseleak subroutine to calculate air flow. Brennan added the variable mCeilingIN to be passed to the subroutine. Re-add between mHouseIN and mHouseOUT
-							sub_houseLeak(AHflag, flag, weather.windSpeed, weather.windDirection, tempHouse, tempAttic, weather.dryBulb, C, envPressureExp, eaveHeight, R, X, numFlues,
-								flue, wallFraction, floorFraction, Sw, flueShelterFactor, numWinDoor, winDoor, numFans, fan, numPipes,
-								Pipe, mIN, mOUT, Pint, mFlue, mCeiling, mFloor, atticC, dPflue, dPceil, dPfloor, Crawl,
-								Hfloor, rowOrIsolated, soffitFraction, Patticint, wallCp, mSupReg, mAH, mRetLeak, mSupLeak,
-								mRetReg, mHouseIN, mHouseOUT, supC, supn, retC, retn, mSupAHoff, mRetAHoff, Aeq, airDensityIN, airDensityOUT, airDensityATTIC, ceilingC, houseVolume, windPressureExp, Q622);
+							sub_houseLeak(AHflag, flag, weather.windSpeed, weather.windDirection, tempHouse, tempAttic, weather.dryBulb, envC, envPressureExp, eaveHeight,
+								leakFracCeil, leakFracFloor, leakFracWall, numFlues, flue, wallFraction, floorFraction, Sw, flueShelterFactor, numWinDoor, winDoor, numFans, fan, numPipes,
+								Pipe, mIN, mOUT, Pint, mFlue, mCeiling, mFloor, atticC, dPflue, Crawl,
+								Hfloor, rowHouse, soffitFraction, Patticint, wallCp, mSupReg, mAH, mRetLeak, mSupLeak,
+								mRetReg, mHouseIN, mHouseOUT, supC, supn, retC, retn, mSupAHoff, mRetAHoff, Aeq, airDensityIN, airDensityOUT, airDensityATTIC, houseVolume, windPressureExp);
 							//Yihuan : put the mCeilingIN on comment 
 							flag = flag + 1;
 
@@ -2995,8 +2919,8 @@ if(minuteYear > 1000) return 0;
 
 							// call atticleak subroutine to calculate air flow to/from the attic
 							sub_atticLeak(flag, weather.windSpeed, weather.windDirection, tempHouse, weather.dryBulb, tempAttic, atticC, atticPressureExp, eaveHeight, roofPeakHeight,
-								flueShelterFactor, Sw, numAtticVents, atticVent, soffit, mAtticIN, mAtticOUT, Patticint, mCeiling, rowOrIsolated,
-								soffitFraction, roofPitch, roofPeakOrient, numAtticFans, atticFan, mSupReg, mRetLeak, mSupLeak, matticenvin,
+								flueShelterFactor, Sw, numAtticVents, atticVent, soffit, mAtticIN, mAtticOUT, Patticint, mCeiling, rowHouse,
+								soffitFraction, roofPitch, roofPeakPerpendicular, numAtticFans, atticFan, mSupReg, mRetLeak, mSupLeak, matticenvin,
 								matticenvout, mSupAHoff, mRetAHoff, airDensityIN, airDensityOUT, airDensityATTIC);
 						}
 
@@ -3014,72 +2938,19 @@ if(minuteYear > 1000) return 0;
 							roofType, M1, M12, M15, M16, roofRval, rceil, AHflag, mERV_AH, ERV_SRE, mHRV, HRV_ASE, mHRV_AH,
 							capacityc, capacityh, evapcap, internalGains, airDensityIN, airDensityOUT, airDensityATTIC, airDensitySUP, airDensityRET, numStories, storyHeight, dh.sensible);
 
-						if(abs(b[0] - tempAttic) < .2) {	// Testing for convergence
-
+						if((abs(b[0] - tempAttic) < .2) || (mainIterations > 10)) {	// Testing for convergence
 							tempAttic        = b[0];					
-							tempInnerSheathN = b[1];
-							tempOuterSheathN = b[2];
-							tempInnerSheathS = b[3];
-							tempOuterSheathS = b[4];					
-							tempWood         = b[5];
-							tempCeiling      = b[6];
-							tempAtticFloor   = b[7];
-							tempInnerGable   = b[8];
-							tempOuterGable   = b[9];
-							tempRetSurface   = b[10];
 							tempReturn       = b[11];
-							tempHouseMass    = b[12];
-							tempSupSurface   = b[13];					
 							tempSupply       = b[14];
 							tempHouse        = b[15];
-
 							break;
 						}
 
-						if(mainIterations > 10) {			// Assume convergence
-
-							tempAttic        = b[0];
-							tempInnerSheathN = b[1];
-							tempOuterSheathN = b[2];
-							tempInnerSheathS = b[3];
-							tempOuterSheathS = b[4];					
-							tempWood         = b[5];
-							tempCeiling      = b[6];
-							tempAtticFloor   = b[7];
-							tempInnerGable   = b[8];
-							tempOuterGable   = b[9];
-							tempRetSurface   = b[10];
-							tempReturn       = b[11];
-							tempHouseMass	 = b[12];
-							tempSupSurface   = b[13];					
-							tempSupply       = b[14];
-							tempHouse	     = b[15];
-
-							break;
-						}
 						tempAttic = b[0];
 						tempHouse = b[15];
 					}
 
 					// setting "old" temps for next timestep to be current temps:
-					tempOld[0]  = tempAttic;			// Node 1 is the Attic Air
-					tempOld[1]  = tempInnerSheathN;		// Node 2 is the Inner North Sheathing
-					tempOld[2]  = tempOuterSheathN;		// Node 3 is the Outer North Sheathing
-					tempOld[3]  = tempInnerSheathS;		// Node 4 is the Inner South Sheathing
-					tempOld[4]  = tempOuterSheathS;		// Node 5 is the Outer South Sheathing
-					tempOld[5]  = tempWood;				// Node 6 is all of the Wood (joists, trusses, etc.) lumped together
-					tempOld[6]  = tempCeiling;			// Node 7 is the Ceiling of the House
-					tempOld[7]  = tempAtticFloor;		// Node 8 is the Floor of the Attic
-					tempOld[8]  = tempInnerGable;		// Node 9 is the Inner Gable Wall (both lumped together)
-					tempOld[9]  = tempOuterGable;		// Node 10 is the Outer Gable Wall (both lumped together)
-					tempOld[10] = tempRetSurface;		// Node 11 is the Return Duct Outer Surface
-					tempOld[11] = tempReturn;			// Node 12 is the Return Duct Air
-					tempOld[12] = tempHouseMass;		// Node 13 is The Mass of the House
-					tempOld[13] = tempSupSurface;		// Node 14 is the Supply Duct Outer Surface
-					tempOld[14] = tempSupply;			// Node 15 is the Supply Duct Air
-					tempOld[15] = tempHouse;			// Node 16 is the House Air (all one zone)
-
-
 					// [START] Moisture Balance ===================================================================================================================================
 
 					// Call moisture subroutine
@@ -3100,7 +2971,10 @@ if(minuteYear > 1000) return 0;
 
 					// [END] Moisture Balance =======================================================================================================================================
 
-			
+					for(int i = 0; i < ATTIC_NODES; i++) {
+						tempOld[i]  = b[i];
+						}
+		
 
 					// ************** house ventilation rate  - what would be measured with a tracer gas i.e., not just envelope and vent fan flows
 					// mIN has msupreg added in mass balance calculations and mRetLeak contributes to house ventilation rate
@@ -3382,12 +3256,12 @@ if(minuteYear > 1000) return 0;
 		ou2File << "Temp_out\tTemp_attic\tTemp_house";
 		ou2File << "\tAH_kWh\tfurnace_kWh\tcompressor_kWh\tmechVent_kWh\ttotal_kWh\tmean_ACH\tflue_ACH";
 		ou2File << "\tmeanRelExpReal\tmeanRelDoseReal\tmeanOccupiedExpReal\tmeanOccupiedDoseReal";
-		ou2File << "\toccupiedMinCount\trivecMinutes\tNL\tC\tAeq\tfilterChanges\tMERV\tloadingRate\tDryAirVentLoad\tMoistAirVentLoad\tRHexcAnnual60\tRHexcAnnual70\tHumidityIndex_Avg\tdehumidifier_kWh" << endl;
+		ou2File << "\toccupiedMinCount\trivecMinutes\tNL\tenvC\tAeq\tfilterChanges\tMERV\tloadingRate\tDryAirVentLoad\tMoistAirVentLoad\tRHexcAnnual60\tRHexcAnnual70\tHumidityIndex_Avg\tdehumidifier_kWh" << endl;
 		//Values
 		ou2File << meanOutsideTemp << "\t" << meanAtticTemp << "\t" << meanHouseTemp << "\t";
 		ou2File << AH_kWh << "\t" << furnace_kWh << "\t" << compressor_kWh << "\t" << mechVent_kWh << "\t" << total_kWh << "\t" << meanHouseACH << "\t" << meanFlueACH << "\t";
 		ou2File << meanRelExp << "\t" << meanRelDose << "\t" << meanOccupiedExpReal << "\t" << meanOccupiedDoseReal << "\t"; //Brennan. changed all the exp/dose outputs to be "real"
-		ou2File << occupiedMinCount << "\t" << rivecMinutes << "\t" << NL << "\t" << C << "\t" << Aeq << "\t" << filterChanges << "\t" << MERV << "\t" << loadingRate << "\t" << TotalDAventLoad << "\t" << TotalMAventLoad;
+		ou2File << occupiedMinCount << "\t" << rivecMinutes << "\t" << NL << "\t" << envC << "\t" << Aeq << "\t" << filterChanges << "\t" << MERV << "\t" << loadingRate << "\t" << TotalDAventLoad << "\t" << TotalMAventLoad;
 		ou2File << "\t" << RHexcAnnual60 << "\t" << RHexcAnnual70 << "\t" << HumidityIndex_Avg << "\t" << dehumidifier_kWh << endl;
 
 		ou2File.close();

@@ -1,6 +1,7 @@
 #include "functions.h"
 #include "psychro.h"
 #include "constants.h"
+#include "gauss.h"
 #include <iomanip> // RAD: so far used only for setprecission() in cmd output
 #ifdef __APPLE__
    #include <cmath>        // needed for mac g++
@@ -8,46 +9,39 @@
 
 using namespace std;
 
-
-string strUppercase(string stringvar);
-int sgn(double sgnvar);
-
-
 // ============================= FUNCTIONS ==============================================================
 void f_CpTheta(double CP[4][4], int& windAngle, double* wallCp);
 
 void f_flueFlow(double& tempHouse, double& flueShelterFactor, double& dPwind, double& dPtemp, double& h, double& Pint, int& numFlues, flue_struct* flue, double& mFlue,
-	double& airDensityOUT, double& airDensityIN, double& dPflue, double& tempOut, double& Aeq, double& houseVolume, double& windPressureExp, double& Q622);
+	double& airDensityOUT, double& airDensityIN, double& dPflue, double& tempOut, double& Aeq, double& houseVolume, double& windPressureExp);
 
-void f_floorFlow3(double& Cfloor, double& Cpfloor, double& dPwind, double& Pint, double& C,
-	double& n, double& mFloor, double& airDensityOUT, double& airDensityIN, double& dPfloor, double& Hfloor, double& dPtemp);
+void f_floorFlow3(double& Cfloor, double& Cpfloor, double& dPwind, double& Pint,
+	double& n, double& mFloor, double& airDensityOUT, double& airDensityIN, double& Hfloor, double& dPtemp);
 
-void f_ceilingFlow(int& AHflag, double& R, double& X, double& Patticint, double& h, double& dPtemp,
+void f_ceilingFlow(int& AHflag, double& Patticint, double& h, double& dPtemp,
 	double& dPwind, double& Pint, double& C, double& n, double& mCeiling, double& atticC, double& airDensityATTIC,
-	double& airDensityIN, double& dPceil, double& tempAttic, double& tempHouse, double& tempOut, double& airDensityOUT,
-	double& mSupAHoff, double& mRetAHoff, double& supC, double& supn, double& retC, double& retn, double& ceilingC);
+	double& airDensityIN, double& tempAttic, double& tempHouse, double& tempOut, double& airDensityOUT,
+	double& mSupAHoff, double& mRetAHoff, double& supC, double& supn, double& retC, double& retn, double CCeiling);
 
-void f_neutralLevel2(double& dPtemp, double& dPwind, double* Sw, double& Pint, double* wallCp, double* Bo, double& h);
-
-void f_wallFlow3(double& tempHouse, double& tempOut, double& airDensityIN, double& airDensityOUT, double& Bo, double& wallCp,
-	double& n, double& Cwall, double& h, double& Pint, double& dPtemp, double& dPwind, double& Mwall,
-	double& Mwallin, double& Mwallout, double& dPwalltop, double& dPwallbottom, double& Hfloor);
+void f_wallFlow3(double& tempHouse, double& tempOut, double& airDensityIN, double& airDensityOUT, double& wallCp,
+	double& n, double& Cwall, double& h, double& Pint, double& dPtemp, double& dPwind,
+	double& mWallIn, double& mWallOut, double& Hfloor);
 
 void f_fanFlow(fan_struct& fan, double& airDensityOUT, double& airDensityIN);
 
 void f_pipeFlow(double& airDensityOUT, double& airDensityIN, double& CP, double& dPwind, double& dPtemp,
 	double& Pint, pipe_struct& Pipe, double& tempHouse, double& tempOut);
 
-void f_winDoorFlow(double& tempHouse, double& tempOut, double& airDensityIN, double& airDensityOUT, double& h, double& Bo,
+void f_winDoorFlow(double& tempHouse, double& tempOut, double& airDensityIN, double& airDensityOUT, double& h,
 	double& wallCp, double& n, double& Pint, double& dPtemp, double& dPwind, winDoor_struct& winDoor);
 
 void f_roofCpTheta(double* Cproof, int& windAngle, double* Cppitch, double& roofPitch);
 
-void f_neutralLevel3(double& dPtemp, double& dPwind, double& Patticint, double& Cpr, double& Broofo, double& roofPeakHeight);
+double f_neutralLevel(double dPtemp, double dPwind, double Pint, double Cpr, double h);
 
-void f_roofFlow(double& tempAttic, double& tempOut, double& airDensityATTIC, double& airDensityOUT, double& Broofo, double& Cpr,
+void f_roofFlow(double& tempAttic, double& tempOut, double& airDensityATTIC, double& airDensityOUT, double& Cpr,
 	double& atticPressureExp, double& Croof, double& roofPeakHeight, double& Patticint, double& dPtemp, double& dPwind,
-	double& Mroof, double& Mroofin, double& Mroofout, double& dProoftop, double& dProofbottom, double& H);
+	double& mRoofIn, double& mRoofOut, double& H);
 
 void f_atticVentFlow(double& airDensityOUT, double& airDensityATTIC, double& CP, double& dPwind, double& dPtemp, double& Patticint,
 	atticVent_struct& atticVent, double& tempAttic, double& tempOut);
@@ -60,27 +54,6 @@ void f_atticFanFlow(fan_struct& atticFan, double& airDensityOUT, double& airDens
 double heatTranCoef(double tempi, double tempa, double velocity);
 
 double radTranCoef(double emissivity, double tempi, double tempj, double shapeFactor, double areaRatio);
-
-// ----- MatSEqn forward declarations -----
-/*
-===================================================================
-In theory, a matrix can be exactly singular.  Numerically, exact singularity is a rare occurrence because 
-round off error turns exact zeroes into very small numbers. This data corruption makes it necessary to set
-a criterion to determine how small a number has to be before we flag it as zero and call the matrix singular.
-
-The following constants set the maximum drop allowed in weighted pivot values without error code -1 (matrix singular) 
-being returned.  To increase the singularity sensitivity of the MatSEqn routine, increase the size of feps for 
-floating precision calls or deps for double precision calls.  Similarly, decreasing the size of the constants will 
-make the routines less sensitive to singularity.
-===================================================================
-*/
-
-const float feps = .00001f;
-const double deps = .00000000001;
-
-int MatSEqn(double A[][ArraySize], double* b);
-int matlu(double A[][ArraySize], int* rpvt, int* cpvt, int& continuevar);
-int matbs(double A[][ArraySize], double* b, double* x, int* rpvt, int* cpvt);
 
 //**********************************
 // Functions definitions...
@@ -98,7 +71,7 @@ void sub_heat (
 	double& atticVolume, 
 	double& houseVolume, 
 	double& sc, 
-	double* b, 
+	double* x,
 	int& ERRCODE, 
 	double& TSKY, 
 	double& floorArea, 
@@ -174,17 +147,18 @@ void sub_heat (
 	
 	int rhoSheathing;
 	int rhoWood;
-	int rhoDrywall;
 	int heatIterations;
 	//int asize;
 	//int asize2;
 	int cpShingles;
 	
-	double incsolar[4] = {0,0,0,0};
-	double A[16][ArraySize] = {0};
-	double toldcur[16];
+	//double incsolar[4] = {0,0,0,0};
+	vector<double> b(ATTIC_NODES+1,0);
+	vector< vector<double> > A(ATTIC_NODES,b);
+	//double A[ATTIC_NODES][ATTIC_NODES] = {0};
+	double toldcur[ATTIC_NODES];
 	double woodThickness;
-	double pws;
+	//double pws;
 	double PW;
 	double A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16;
 	double denShingles;
@@ -280,13 +254,12 @@ void sub_heat (
 	
 	// the following are commented out for ConSOl becasue cement tile is flat and does not have increased surface area
 	if(roofType == 2 || roofType == 3) {
-	   A3 = 1.5 * A2;	   // tile roof has more surface area for convection heat transfer
-		A5 = A3;
+        A3 = 1.5 * A2;	   // tile roof has more surface area for convection heat transfer
 	} else {
 		A3 = A2;																
-		A5 = A3;
 	}
 
+    A5 = A3;
 	A6 = planArea * 1.5;							// Attic wood surface area
 	A7 = planArea;									// Ceiling
 	A8 = A7;											// Attic floor
@@ -307,7 +280,6 @@ void sub_heat (
 	// Material densities
 	rhoSheathing = 450;							// Sheathing
 	rhoWood = 500;									// Wood
-	rhoDrywall = 800;								// Drywall
 
 	// masses
 	M1 = atticVolume * airDensityATTIC;					// mass of attic air
@@ -389,7 +361,7 @@ void sub_heat (
 	// ITERATION OF TEMPERATURES WITHIN HEAT SUBROUTINE
 	// THIS ITERATES BETWEEN ALL TEMPERATURES BEFORE RETURNING TO MAIN PROGRAM
 	heatIterations = 0;
-	for(int i=0; i < 16; i++) {
+	for(int i=0; i < ATTIC_NODES; i++) {
 		toldcur[i] = tempOld[i];
 	}
 
@@ -399,11 +371,13 @@ void sub_heat (
 		
 		// reset array A to 0
 		if(heatIterations > 1) {
-			for(int i=0; i < 16; i++) {
-				for(int j=0; j < 16; j++) {
-					A[i][j] = 0;
-				}
-			}
+//			for(int i=0; i < ATTIC_NODES; i++) {
+//				for(int j=0; j < ATTIC_NODES+1; j++) {
+//					A[i][j] = 0;
+//				}
+//			}
+			A.clear();
+			A.resize(ATTIC_NODES, vector<double>(ATTIC_NODES+1));
 		}
 
 		// convection heat transfer coefficients
@@ -761,16 +735,23 @@ void sub_heat (
 		//asize = sizeof(A)/sizeof(A[0]);
 		//asize2 = sizeof(A[0])/sizeof(A[0][0]);
 
-		ERRCODE = MatSEqn(A, b);
+		//ERRCODE = MatSEqn(A, b);
+		for (int i=0; i<ATTIC_NODES; i++) {
+			A[i][ATTIC_NODES] = b[i];
+		}
+		b = gauss(A);
 
 		if(abs(b[0] - toldcur[0]) < .1) {
 			break;
 		} else {
-			for(int i=0; i < 16; i++) {
+			for(int i=0; i < ATTIC_NODES; i++) {
 				toldcur[i] = b[i];
 			}
 		}
 	} // END of DO LOOP
+	for (int i=0; i<ATTIC_NODES; i++) {
+		x[i] = b[i];
+		}
 }
 
 // void sub_moisture ( 
@@ -971,17 +952,18 @@ void sub_moisture (
 
 void sub_houseLeak (
 	int& AHflag,
-	double& flag, 
+	int& flag, 
 	double& windSpeed, 
 	int& windAngle, 
 	double& tempHouse, 
 	double& tempAttic, 
 	double& tempOut, 
-	double& C, 
+	double& envC, 
 	double& n, 
 	double& h, 
-	double& R, 
-	double& X, 
+	double leakFracCeil, 
+	double leakFracFloor,
+	double leakFracWall, 
 	int& numFlues, 
 	flue_struct* flue, 
 	double* wallFraction, 
@@ -1002,11 +984,9 @@ void sub_houseLeak (
 	double* mFloor, 
 	double& atticC, 
 	double& dPflue, 
-	double& dPceil, 
-	double& dPfloor, 
 	int& Crawl, 
 	double& Hfloor, 
-	string& rowOrIsolated, 
+	bool rowHouse, 
 	double* soffitFraction, 
 	double& Patticint, 
 	double* wallCp, 
@@ -1029,35 +1009,23 @@ void sub_houseLeak (
 	double& airDensityIN,
 	double& airDensityOUT,
 	double& airDensityATTIC,
-	double& ceilingC,
 	double& houseVolume,
-	double& windPressureExp,
-	double& Q622
+	double& windPressureExp
 	) {
-		double dtheta = 11.3;
-		int nofirst = 0;
-
 		double Cpwallvar = 0;		// This variable replaces the non-array wallCp var
 		double CPvar = 0;			// This variable replaces the non-array CP var
-		double Bovar = 0;			// This variable is to replace Bo[-1] and to account for Bo(0) in BASIC version
-
-		double Mwall[4];
-		double Mwallin[4];
-		double Mwallout[4];
-		double Bo[4];
 		double CP[4][4];
 		double dPint;
+		double mWallIn, mWallOut;
 		//double rhoi;
 		//double rhoo;
 		//double rhoa;
 		//double fluePressureExp;
 		double dPwind;
 		double dPtemp;
-		double dPwalltop = 0;
-		double dPwallbottom = 0;
-		double Cproof;
+		//double Cproof;
 		double Cpwalls;
-		double Cpattic;		
+		//double Cpattic;		
 		double Cpfloor;
 		double Cwall;
 		double Cfloor;
@@ -1067,11 +1035,7 @@ void sub_houseLeak (
 
 		for(int i=0; i < 4; i++) {
 			mFloor[i] = 0;			
-			Mwall[i] = 0;
-			Mwallin[i] = 0;
-			Mwallout[i] = 0;
 			wallCp[i] = 0;
-			Bo[i] = 0;
 			for(int j=0; j < 4; j++) {
 				CP[i][j] = 0;
 			}
@@ -1083,7 +1047,7 @@ void sub_houseLeak (
 		
 		// the following are some typical pressure coefficients for rectangular houses
 		
-		Cproof = -.4;
+		//Cproof = -.4;
 
 		for(int i=0; i < 4; i++) {
 			CP[i][0] = .6;
@@ -1092,7 +1056,7 @@ void sub_houseLeak (
 		// here the variation of each wall Cp with wind angle is accounted for:
 		// for row houses:
 
-		if(strUppercase(rowOrIsolated) == "R") {
+		if(rowHouse) {
 			CP[0][2] = -0.2;
 			CP[0][3] = -0.2;
 			CP[1][2] = -0.2;
@@ -1112,14 +1076,14 @@ void sub_houseLeak (
 		f_CpTheta(CP, windAngle, wallCp);
 
 		Cpwalls = 0;
-		Cpattic = 0;
+		//Cpattic = 0;
 
 		for(int i=0; i < 4; i++) {
-			Cpattic = Cpattic + pow(Sw[i], 2) * wallCp[i] * soffitFraction[i];
-			Cpwalls = Cpwalls + pow(Sw[i], 2) * wallCp[i] * wallFraction[i];			// Shielding weighted Cp
+			//Cpattic = Cpattic + Sw[i] * wallCp[i] * soffitFraction[i];
+			Cpwalls = Cpwalls + Sw[i] * wallCp[i] * wallFraction[i];			// Shielding weighted Cp
 		}
 
-		Cpattic = Cpattic + pow(flueShelterFactor, 2) * Cproof * soffitFraction[4];
+		//Cpattic = Cpattic + pow(flueShelterFactor, 2) * Cproof * soffitFraction[4];
 
 		//if(flag < 1) {        // Yihuan: delete the if condition for the flag
 			Pint = 0;			// a reasonable first guess   
@@ -1134,7 +1098,7 @@ void sub_houseLeak (
 			mOUT = 0;
 			
 			if(numFlues) {					//FF: This IF behaves as if(numFlues != 0)
-				f_flueFlow(tempHouse, flueShelterFactor, dPwind, dPtemp, h, Pint, numFlues, flue, mFlue, airDensityOUT, airDensityIN, dPflue, tempOut, Aeq, houseVolume, windPressureExp, Q622);
+				f_flueFlow(tempHouse, flueShelterFactor, dPwind, dPtemp, h, Pint, numFlues, flue, mFlue, airDensityOUT, airDensityIN, dPflue, tempOut, Aeq, houseVolume, windPressureExp);
 
 				if(mFlue >= 0) {
 					mIN = mIN + mFlue;		// Add mass flow through flue
@@ -1145,13 +1109,13 @@ void sub_houseLeak (
 			
 			
 
-			if((R - X) / 2) {
+			if(leakFracFloor > 0) {
 				if(Crawl == 1) {
 					// for a crawlspace the flow is put into array position 1
 					Cpfloor = Cpwalls;
-					Cfloor = C * (R - X) / 2;
+					Cfloor = envC * leakFracFloor;
 
-					f_floorFlow3(Cfloor, Cpfloor, dPwind, Pint, C, n, mFloor[0], airDensityOUT, airDensityIN, dPfloor, Hfloor, dPtemp);
+					f_floorFlow3(Cfloor, Cpfloor, dPwind, Pint, n, mFloor[0], airDensityOUT, airDensityIN, Hfloor, dPtemp);
 					
 					if(mFloor[0] >= 0) {
 						mIN = mIN + mFloor[0];
@@ -1161,10 +1125,10 @@ void sub_houseLeak (
 
 				} else {
 					for(int i=0; i < 4; i++) {
-						Cpfloor = pow(Sw[i], 2) * wallCp[i];
-						Cfloor = C * (R - X) / 2 * floorFraction[i];
+						Cpfloor = Sw[i] * wallCp[i];
+						Cfloor = envC * leakFracFloor * floorFraction[i];
 
-						f_floorFlow3(Cfloor, Cpfloor, dPwind, Pint, C, n, mFloor[i], airDensityOUT, airDensityIN, dPfloor, Hfloor, dPtemp);
+						f_floorFlow3(Cfloor, Cpfloor, dPwind, Pint, n, mFloor[i], airDensityOUT, airDensityIN, Hfloor, dPtemp);
 						
 						if(mFloor[i] >= 0) {							
 							mIN = mIN + mFloor[i];
@@ -1175,9 +1139,10 @@ void sub_houseLeak (
 				}
 			}
 			
-			if((R + X) / 2) {
+			if(leakFracCeil > 0) {
 
-				f_ceilingFlow(AHflag, R, X, Patticint, h, dPtemp, dPwind, Pint, C, n, mCeiling, atticC, airDensityATTIC, airDensityIN, dPceil, tempAttic, tempHouse, tempOut, airDensityOUT, mSupAHoff, mRetAHoff, supC, supn, retC, retn, ceilingC);
+				double CCeiling = envC * leakFracCeil;
+				f_ceilingFlow(AHflag, Patticint, h, dPtemp, dPwind, Pint, envC, n, mCeiling, atticC, airDensityATTIC, airDensityIN, tempAttic, tempHouse, tempOut, airDensityOUT, mSupAHoff, mRetAHoff, supC, supn, retC, retn, CCeiling);
 
 				if(mCeiling >= 0) {
 					mIN = mIN + mCeiling + mSupAHoff + mRetAHoff;
@@ -1186,18 +1151,16 @@ void sub_houseLeak (
 				}
 			}
 
-			// the neutral level is calculated for each wall:
-			f_neutralLevel2(dPtemp, dPwind, Sw, Pint, wallCp, Bo, h);
 			
-			if(R < 1) {
+			if(leakFracWall > 0) {
 				for(int i=0; i < 4; i++) {
-					Cpwallvar = pow(Sw[i], 2) * wallCp[i];
-					Cwall = C * (1 - R) * wallFraction[i];
+					Cpwallvar = Sw[i] * wallCp[i];
+					Cwall = envC * leakFracWall * wallFraction[i];
 					
-					f_wallFlow3(tempHouse, tempOut, airDensityIN, airDensityOUT, Bo[i], Cpwallvar, n, Cwall, h, Pint, dPtemp, dPwind, Mwall[i], Mwallin[i], Mwallout[i], dPwalltop, dPwallbottom, Hfloor);
+					f_wallFlow3(tempHouse, tempOut, airDensityIN, airDensityOUT, Cpwallvar, n, Cwall, h, Pint, dPtemp, dPwind, mWallIn, mWallOut, Hfloor);
 					
-					mIN = mIN + Mwallin[i];
-					mOUT = mOUT + Mwallout[i];
+					mIN = mIN + mWallIn;
+					mOUT = mOUT + mWallOut;
 				}
 			}
 
@@ -1221,7 +1184,7 @@ void sub_houseLeak (
 				// it would try to find Sw[-1] and cause error.
 
 				if(Pipe[i].wall - 1 >= 0)
-					CPvar = pow(Sw[Pipe[i].wall - 1], 2) * wallCp[Pipe[i].wall - 1];
+					CPvar = Sw[Pipe[i].wall - 1] * wallCp[Pipe[i].wall - 1];
 				else
 					CPvar = 0;
 
@@ -1236,17 +1199,11 @@ void sub_houseLeak (
 			
 			for(int i=0; i < numWinDoor; i++) {
 				if(winDoor[i].wall-1 >= 0) {
-					Cpwallvar = pow(Sw[winDoor[i].wall-1], 2) * wallCp[winDoor[i].wall-1];
-					Bovar = Bo[winDoor[i].wall-1];
-				} else {
-					Cpwallvar = 0;
-					Bovar = 0;
-				}
-
-				f_winDoorFlow(tempHouse, tempOut, airDensityIN, airDensityOUT, h, Bovar, Cpwallvar, n, Pint, dPtemp, dPwind, winDoor[i]);
-				
-				mIN = mIN + winDoor[i].mIN;
-				mOUT = mOUT + winDoor[i].mOUT;
+					Cpwallvar = Sw[winDoor[i].wall-1] * wallCp[winDoor[i].wall-1];
+					f_winDoorFlow(tempHouse, tempOut, airDensityIN, airDensityOUT, h, Cpwallvar, n, Pint, dPtemp, dPwind, winDoor[i]);
+					mIN = mIN + winDoor[i].mIN;
+					mOUT = mOUT + winDoor[i].mOUT;
+					}
 			}
 
 			// DUCT MASS FLOWS
@@ -1256,7 +1213,7 @@ void sub_houseLeak (
 			mIN = mIN + mSupReg;
 			mOUT = mOUT + mRetReg; // Note Mret should be negative
 
-			Pint = Pint - sgn(mIN + mOUT) * dPint;
+			Pint = Pint - copysign(dPint, mIN + mOUT);
 			dPint = dPint / 2;
 		} while (dPint > .0001);
 		//} while (dPint > .01);
@@ -1272,7 +1229,7 @@ void sub_houseLeak (
 }
 
 void sub_atticLeak ( 
-	double& flag, 
+	int& flag, 
 	double& windSpeed, 
 	int& windAngle, 
 	double& tempHouse, 
@@ -1291,10 +1248,10 @@ void sub_atticLeak (
 	double& mAtticOUT, 
 	double& Patticint, 
 	double& mCeiling, 
-	string& rowOrIsolated, 
+	bool rowHouse, 
 	double* soffitFraction, 
 	double& roofPitch, 
-	string& roofPeakOrient, 
+	bool roofPeakPerpendicular, 
 	int& numAtticFans, 
 	fan_struct* atticFan, 
 	//double& airDensityRef, 
@@ -1311,10 +1268,7 @@ void sub_atticLeak (
 	double& airDensityATTIC
 ) {
 
-	double dtheta = 0;	
-	double Matticwall[4];
-	double Matticwallin[4];
-	double Matticwallout[4];
+	double mRoofIn, mRoofOut;
 	double wallCp[4];
 	double Batto[4];
 	double Cproof[4];
@@ -1330,18 +1284,9 @@ void sub_atticLeak (
 	double dPatticint;
 	double Croof;
 	double Cpr;
-	double Broofo = 0;
-	double Mroof = 0;
-	double dProoftop = 0;
-	double dProofbottom = 0;
 	double CPvar;
 
-	dtheta = 11.3;
-
 	for(int i=0; i < 4; i++) {
-		Matticwall[i] = 0;
-		Matticwallin[i] = 0;
-		Matticwallout[i] = 0;
 		wallCp[i] = 0;
 		Batto[i] = 0;
 		Cproof[i] = 0;
@@ -1373,7 +1318,7 @@ void sub_atticLeak (
 		Cproof[0] = -.4;
 		Cproof[1] = -.4;
 	}
-	if(strUppercase(rowOrIsolated) == "R") {
+	if(rowHouse) {
 		Cproof[2] = -.2;
 		Cproof[3] = -.2;
 	} else {
@@ -1381,10 +1326,10 @@ void sub_atticLeak (
 		Cproof[2] = -.6;
 		Cproof[3] = -.6;
 	}
-	if(strUppercase(roofPeakOrient) == "D") {
+	if(roofPeakPerpendicular) {
 		Cproof[2] = Cproof[0];
 		Cproof[3] = Cproof[1];
-		if(strUppercase(rowOrIsolated) == "R") {
+		if(rowHouse) {
 			Cproof[0] = -.2;
 			Cproof[1] = -.2;
 		} else {
@@ -1405,7 +1350,7 @@ void sub_atticLeak (
 	// here the variation of each wall Cp with wind angle is accounted for:
 	// for row houses:
 
-	if(strUppercase(rowOrIsolated) == "R") {
+	if(rowHouse) {
 		CP[0][2] = -.2;
 		CP[0][3] = -.2;
 		CP[1][2] = -.2;
@@ -1422,7 +1367,6 @@ void sub_atticLeak (
 		}
 	}
 
-	// f_CpTheta CP(), windAngle, wallCp()
 	f_CpTheta(CP, windAngle, wallCp);
 
 	// for pitched roof leaks
@@ -1443,44 +1387,38 @@ void sub_atticLeak (
 		Croof = atticC * soffitFraction[4] / 2;
 		
 		// for first pitched part either front, above wall 1, or side above wall 3
-		if(strUppercase(roofPeakOrient) == "D") {
-			Cpr = Cppitch[2] * pow(Sw[2], 2);
+		if(roofPeakPerpendicular) {
+			Cpr = Cppitch[2] * Sw[2];
 		} else {
-			Cpr = Cppitch[0] * pow(Sw[0], 2);
+			Cpr = Cppitch[0] * Sw[0];
 		}
 
-		// the neutral level is calculated separately for each roof roofPitch
-		f_neutralLevel3(dPtemp, dPwind, Patticint, Cpr, Broofo, roofPeakHeight);
-		
 		// developed from wallflow3:
-		f_roofFlow(tempAttic, tempOut, airDensityATTIC, airDensityOUT, Broofo, Cpr, atticPressureExp, Croof, roofPeakHeight, Patticint, dPtemp, dPwind, Mroof, Matticwallin[0], Matticwallout[0], dProoftop, dProofbottom, h);
+		f_roofFlow(tempAttic, tempOut, airDensityATTIC, airDensityOUT, Cpr, atticPressureExp, Croof, roofPeakHeight, Patticint, dPtemp, dPwind, mRoofIn, mRoofOut, h);
 
-		mAtticIN = mAtticIN + Matticwallin[0];
-		mAtticOUT = mAtticOUT + Matticwallout[0];
+		mAtticIN = mAtticIN + mRoofIn;
+		mAtticOUT = mAtticOUT + mRoofOut;
 
 		// for second pitched part either back, above wall 2, or side above wall 4
-		if(strUppercase(roofPeakOrient) == "D") {
-			Cpr = Cppitch[3] * pow(Sw[3], 2);
+		if(roofPeakPerpendicular) {
+			Cpr = Cppitch[3] * Sw[3];
 		} else {
-			Cpr = Cppitch[1] * pow(Sw[1], 2);
+			Cpr = Cppitch[1] * Sw[1];
 		}
 
-		f_neutralLevel3(dPtemp, dPwind, Patticint, Cpr, Broofo, roofPeakHeight);
-
 		// developed from wallflow3:
-		f_roofFlow(tempAttic, tempOut, airDensityATTIC, airDensityOUT, Broofo, Cpr, atticPressureExp, Croof, roofPeakHeight, Patticint, dPtemp, dPwind, Mroof, Matticwallin[1], Matticwallout[1], dProoftop, dProofbottom, h);
+		f_roofFlow(tempAttic, tempOut, airDensityATTIC, airDensityOUT, Cpr, atticPressureExp, Croof, roofPeakHeight, Patticint, dPtemp, dPwind, mRoofIn, mRoofOut, h);
 
-		mAtticIN = mAtticIN + Matticwallin[1];
-		mAtticOUT = mAtticOUT + Matticwallout[1];
+		mAtticIN = mAtticIN + mRoofIn;
+		mAtticOUT = mAtticOUT + mRoofOut;
 
 		for(int i=0; i < numAtticVents; i++) {
 
 			// FF: This if is to counter the 0 index out of bound present in BASIC version
 			// example: if atticVent[i].wall = 0 then it would look for Sw[0] in BASIC version, which defaults to 0 while in the C++ version
-			// it would try to find Sw[-1] and cause error. Original version:
-			// CPvar = pow(Sw[atticVent[i].wall], 2) * Cppitch[atticVent[i].wall];
+			// it would try to find Sw[-1] and cause error.
 			if(atticVent[i].wall - 1 >= 0)
-				CPvar = pow(Sw[atticVent[i].wall - 1], 2) * Cppitch[atticVent[i].wall - 1];
+				CPvar = Sw[atticVent[i].wall - 1] * Cppitch[atticVent[i].wall - 1];
 			else
 				CPvar = 0;
 
@@ -1494,7 +1432,7 @@ void sub_atticLeak (
 		}
 		// note that gable vents are the same as soffits
 		for(int i=0; i < 4; i++) {
-			CPvar = pow(Sw[i], 2) * wallCp[i];
+			CPvar = Sw[i] * wallCp[i];
 
 			f_soffitFlow(airDensityOUT, airDensityATTIC, CPvar, dPwind, dPtemp, Patticint, soffit[i], soffitFraction[i], atticC, atticPressureExp, tempAttic, tempOut);
 
@@ -1529,7 +1467,7 @@ void sub_atticLeak (
 		mAtticIN = mAtticIN + mSupLeak;
 		mAtticOUT = mAtticOUT + mRetLeak;
 
-		Patticint = Patticint - sgn(mAtticIN + mAtticOUT) * dPatticint;
+		Patticint = Patticint - copysign(dPatticint, mAtticIN + mAtticOUT);
 		dPatticint = dPatticint / 2;
 	} while(dPatticint > .0001);
 
@@ -1796,21 +1734,6 @@ void sub_filterLoading (
 		}
 	}
 
-// This function substitutes for BASIC UCASE command, it returns a string that is an uppercase version of original
-string strUppercase(string stringvar) {
-   for(unsigned int i=0; i < stringvar.length(); i++)
-	   stringvar[i] = toupper(stringvar[i]);
-
-   return stringvar;
-}
-
-// This function substitutes for BASIC SGN command, it returns +1 if variable is positive, -1 if negative, 0 if its 0
-int sgn(double sgnvar) {
-
-	return (sgnvar > 0) - (sgnvar < 0);
-}
-
-
 void f_CpTheta(double CP[4][4], int& windAngle, double* wallCp) {
 	// this function takes Cps from a single wind angle perpendicular to the
 	// upwind wall and finds Cps for all the walls for any wind angle
@@ -1839,7 +1762,7 @@ void f_CpTheta(double CP[4][4], int& windAngle, double* wallCp) {
 }
 
 void f_flueFlow(double& tempHouse, double& flueShelterFactor, double& dPwind, double& dPtemp, double& h, double& Pint, int& numFlues, flue_struct* flue, double& mFlue,
-	double& airDensityOUT, double& airDensityIN, double& dPflue, double& tempOut, double& Aeq, double& houseVolume, double& windPressureExp, double& Q622) {
+	double& airDensityOUT, double& airDensityIN, double& dPflue, double& tempOut, double& Aeq, double& houseVolume, double& windPressureExp) {
 
 		// calculates flow through the flue
 
@@ -1873,44 +1796,15 @@ void f_flueFlow(double& tempHouse, double& flueShelterFactor, double& dPwind, do
 			}
 		}
 
-
-		//125% Mechanical 62.2 Flow Controller
-		//if (massflue > 1.25 * Q622 * houseVolume / 3600 * airDensityOUT)
-		//	massflue = 1.25 * Q622 * houseVolume / 3600 * airDensityOUT;
-
-		//if (massflue < 1.25 * -Q622 * houseVolume / 3600 * airDensityIN)
-		//	massflue = 1.25 * -Q622 * houseVolume / 3600 * airDensityIN;
-
-		//100% Mechanical 62.2 Flow Controller
-		/*if (massflue > 1.00 * Q622 * houseVolume / 3600 * airDensityOUT)
-			massflue = 1.00 * Q622 * houseVolume / 3600 * airDensityOUT;
-
-		if (massflue < 1.00 * -Q622 * houseVolume / 3600 * airDensityIN)
-			massflue = 1.00 * -Q622 * houseVolume / 3600 * airDensityIN;*/
-			
-		//100% Flow Controller
-		/*if (massflue >= Aeq * houseVolume / 3600 * airDensityOUT * 1)
-			massflue = Aeq * houseVolume / 3600 * airDensityOUT * 1;
-
-		if (massflue <= -Aeq * houseVolume / 3600 * airDensityIN * 1)
-			massflue = -Aeq * houseVolume / 3600 * airDensityIN * 1;*/		
-
-		//125% Flow Controller
-		/*if (massflue >= Aeq * houseVolume / 3600 * airDensityOUT * 1.25)
-			massflue = Aeq * houseVolume / 3600 * airDensityOUT * 1.25;
-
-		if (massflue <= -Aeq * houseVolume / 3600 * airDensityIN * 1.25)
-			massflue = -Aeq * houseVolume / 3600 * airDensityIN * 1.25;*/
-		
 		mFlue = massflue;
 }
 
 
-void f_floorFlow3(double& Cfloor, double& Cpfloor, double& dPwind, double& Pint, double& C,
-	double& n, double& mFloor, double& airDensityOUT, double& airDensityIN, double& dPfloor, double& Hfloor, double& dPtemp) {
+void f_floorFlow3(double& Cfloor, double& Cpfloor, double& dPwind, double& Pint,
+	double& n, double& mFloor, double& airDensityOUT, double& airDensityIN, double& Hfloor, double& dPtemp) {
 
 		// calculates flow through floor level leaks
-		dPfloor = Pint + Cpfloor * dPwind - Hfloor * dPtemp;
+		double dPfloor = Pint + Cpfloor * dPwind - Hfloor * dPtemp;
 
 		if(dPfloor >= 0)
 			mFloor = airDensityOUT * Cfloor * pow(dPfloor,n);
@@ -1918,20 +1812,15 @@ void f_floorFlow3(double& Cfloor, double& Cpfloor, double& dPwind, double& Pint,
 			mFloor = -airDensityIN * Cfloor * pow(-dPfloor,n);
 }
 
-void f_ceilingFlow(int& AHflag, double& R, double& X, double& Patticint, double& h, double& dPtemp,
+void f_ceilingFlow(int& AHflag, double& Patticint, double& h, double& dPtemp,
 	double& dPwind, double& Pint, double& C, double& n, double& mCeiling, double& atticC, double& airDensityATTIC,
-	double& airDensityIN, double& dPceil, double& tempAttic, double& tempHouse, double& tempOut, double& airDensityOUT,
-	double& mSupAHoff, double& mRetAHoff, double& supC, double& supn, double& retC, double& retn, double& ceilingC) {
+	double& airDensityIN, double& tempAttic, double& tempHouse, double& tempOut, double& airDensityOUT,
+	double& mSupAHoff, double& mRetAHoff, double& supC, double& supn, double& retC, double& retn, double CCeiling) {
 
-		//double ceilingC;
-
-		
-		// calculates flow through the ceiling
-		//ceilingC = C * (R + X) / 2;
-		dPceil = Pint - Patticint - airDensityOUT * g * ((tempHouse - tempOut) / tempHouse - (tempAttic - tempOut) / tempAttic) * h;
+		double dPceil = Pint - Patticint - airDensityOUT * g * ((tempHouse - tempOut) / tempHouse - (tempAttic - tempOut) / tempAttic) * h;
 
 		if(dPceil >= 0) {
-			mCeiling = airDensityATTIC * ceilingC * pow(dPceil,n);
+			mCeiling = airDensityATTIC * CCeiling * pow(dPceil,n);
 			if(AHflag == 0) {
 				mSupAHoff = airDensityATTIC * supC * pow(dPceil,supn);
 				mRetAHoff = airDensityATTIC * retC * pow(dPceil,retn);
@@ -1945,7 +1834,7 @@ void f_ceilingFlow(int& AHflag, double& R, double& X, double& Patticint, double&
 				mRetAHoff = 0;
 			}
 		} else {
-			mCeiling = -airDensityIN * ceilingC * pow(-dPceil,n);
+			mCeiling = -airDensityIN * CCeiling * pow(-dPceil,n);
 			if(AHflag == 0) {
 				mSupAHoff = -airDensityIN * supC * pow(-dPceil,supn);
 				mRetAHoff = -airDensityIN * retC * pow(-dPceil,retn);
@@ -1961,67 +1850,49 @@ void f_ceilingFlow(int& AHflag, double& R, double& X, double& Patticint, double&
 		}
 }
 
-void f_neutralLevel2(double& dPtemp, double& dPwind, double* Sw, double& Pint, double* wallCp, double* Bo, double& h) {
-	// calculates the neutral level for each wall
-	for(int i=0; i < 4; i++) {
-		if(dPtemp)
-			Bo[i] = (Pint + pow(Sw[i], 2) * dPwind * wallCp[i]) / dPtemp / h;
-		else
-			Bo[i] = 0;
-	}
-}
-
-void f_wallFlow3(double& tempHouse, double& tempOut, double& airDensityIN, double& airDensityOUT, double& Bo, double& wallCp,
-	double& n, double& Cwall, double& h, double& Pint, double& dPtemp, double& dPwind, double& Mwall,
-	double& Mwallin, double& Mwallout, double& dPwalltop, double& dPwallbottom, double& Hfloor) {
+// calculates the flow through a wall
+void f_wallFlow3(double& tempHouse, double& tempOut, double& airDensityIN, double& airDensityOUT, double& wallCp,
+	double& n, double& Cwall, double& h, double& Pint, double& dPtemp, double& dPwind,
+	double& mWallIn, double& mWallOut, double& Hfloor) {
 		
-		// calculates the flow through a wall
 		double Hwall = h - Hfloor;
-		Mwallin = 0;
-		Mwallout = 0;
-		
-		// dummys changed so Hfloor<>0
-		double dummy1 = Pint + dPwind * wallCp - dPtemp * h;
-		double dummy2 = Pint + dPwind * wallCp - dPtemp * Hfloor;
-
-		dPwalltop = dummy1;		
-		dPwallbottom = dummy2;
+		double dPwalltop = Pint + dPwind * wallCp - dPtemp * h;
+		double dPwallbottom = Pint + dPwind * wallCp - dPtemp * Hfloor;
+		double Bo = f_neutralLevel(dPtemp, dPwind, Pint, wallCp, h);
 
 		if(tempHouse == tempOut) {
-			if(dummy2 > 0) {
-				Mwallin = airDensityOUT * Cwall * pow(dummy2, n);
-				Mwallout = 0;
+			if(dPwallbottom > 0) {
+				mWallIn = airDensityOUT * Cwall * pow(dPwallbottom, n);
+				mWallOut = 0;
 			} else {
-				Mwallin = 0;
-				Mwallout = -airDensityIN * Cwall * pow(-dummy2, n);
+				mWallIn = 0;
+				mWallOut = -airDensityIN * Cwall * pow(-dPwallbottom, n);
 			}
 		} else {
 			if(tempHouse > tempOut) {
 				if(Bo <= 0) {
-					Mwallin = 0;
-					Mwallout = airDensityIN * Cwall / Hwall / dPtemp / (n + 1) * (dummy1 * pow(abs(dummy1), n) - dummy2 * pow(abs(dummy2), n));
+					mWallIn = 0;
+					mWallOut = airDensityIN * Cwall / Hwall / dPtemp / (n + 1) * (dPwalltop * pow(abs(dPwalltop), n) - dPwallbottom * pow(abs(dPwallbottom), n));
 				} else if(Bo >= 1) {
-					Mwallin = -airDensityOUT * Cwall / Hwall / dPtemp / (n + 1) * (dummy1 * pow(abs(dummy1), n) - dummy2 * pow(abs(dummy2), n));
-					Mwallout = 0;
+					mWallIn = -airDensityOUT * Cwall / Hwall / dPtemp / (n + 1) * (dPwalltop * pow(abs(dPwalltop), n) - dPwallbottom * pow(abs(dPwallbottom), n));
+					mWallOut = 0;
 				} else {
-					Mwallin = airDensityOUT * Cwall / Hwall / dPtemp / (n + 1) * dummy2 * pow(abs(dummy2), n);
-					Mwallout = airDensityIN * Cwall / Hwall / dPtemp / (n + 1) * dummy1 * pow(abs(dummy1), n);
+					mWallIn = airDensityOUT * Cwall / Hwall / dPtemp / (n + 1) * dPwallbottom * pow(abs(dPwallbottom), n);
+					mWallOut = airDensityIN * Cwall / Hwall / dPtemp / (n + 1) * dPwalltop * pow(abs(dPwalltop), n);
 				}
 			} else {
 				if(Bo <= 0) {
-					Mwallin = -airDensityOUT * Cwall / Hwall / dPtemp / (n + 1) * (dummy1 * pow(abs(dummy1), n) - dummy2 * pow(abs(dummy2), n));
-					Mwallout = 0;
+					mWallIn = -airDensityOUT * Cwall / Hwall / dPtemp / (n + 1) * (dPwalltop * pow(abs(dPwalltop), n) - dPwallbottom * pow(abs(dPwallbottom), n));
+					mWallOut = 0;
 				} else if(Bo >= 1) {
-					Mwallin = 0;
-					Mwallout = airDensityIN * Cwall / Hwall / dPtemp / (n + 1) * (dummy1 * pow(abs(dummy1), n) - dummy2 * pow(abs(dummy2), n));
+					mWallIn = 0;
+					mWallOut = airDensityIN * Cwall / Hwall / dPtemp / (n + 1) * (dPwalltop * pow(abs(dPwalltop), n) - dPwallbottom * pow(abs(dPwallbottom), n));
 				} else {
-					Mwallin = -airDensityOUT * Cwall / Hwall / dPtemp / (n + 1) * dummy1 * pow(abs(dummy1), n);
-					Mwallout = -airDensityIN * Cwall / Hwall / dPtemp / (n + 1) * dummy2 * pow(abs(dummy2), n);
+					mWallIn = -airDensityOUT * Cwall / Hwall / dPtemp / (n + 1) * dPwalltop * pow(abs(dPwalltop), n);
+					mWallOut = -airDensityIN * Cwall / Hwall / dPtemp / (n + 1) * dPwallbottom * pow(abs(dPwallbottom), n);
 				}
 			}
 		}
-
-		Mwall = Mwallin + Mwallout;
 }
 
 void f_fanFlow(fan_struct& fan, double& airDensityOUT, double& airDensityIN) {
@@ -2052,7 +1923,7 @@ void f_pipeFlow(double& airDensityOUT, double& airDensityIN, double& CP, double&
 			Pipe.m = -airDensityIN * Pipe.A * pow((airTempRef / tempHouse), (3 * Pipe.n - 2)) * pow(-Pipe.dP, Pipe.n);
 }
 
-void f_winDoorFlow(double& tempHouse, double& tempOut, double& airDensityIN, double& airDensityOUT, double& h, double& Bo,
+void f_winDoorFlow(double& tempHouse, double& tempOut, double& airDensityIN, double& airDensityOUT, double& h,
 	double& wallCp, double& n, double& Pint, double& dPtemp, double& dPwind, winDoor_struct& winDoor) {
 
 		// calculates flow through open doors or windows
@@ -2073,6 +1944,7 @@ void f_winDoorFlow(double& tempHouse, double& tempOut, double& airDensityIN, dou
 		dT = tempHouse - tempOut;
 		winDoor.dPbottom = 2 * (dPwind * wallCp + Pint - winDoor.Bottom * dPtemp) / airDensityOUT;
 		winDoor.dPtop = 2 * (dPwind * wallCp + Pint - winDoor.Top * dPtemp) / airDensityOUT;
+		double Bo = f_neutralLevel(dPtemp, dPwind, Pint, wallCp, h);
 
 		// winDoor.High and winDoor.Wide are not yet read in as inputs
 		if(dT == 0) {
@@ -2173,7 +2045,7 @@ void f_roofCpTheta(double* Cproof, int& windAngle, double* Cppitch, double& roof
 		if(roofPitch < 28)
 			F = C;
 		else
-			F = pow(abs(C),5) * C;	// maintain sign
+			F = pow(C,5);
 
 		Cppitch[i] = (Cproof[0] + Cproof[1]) * pow(C,2);
 		Cppitch[i] = Cppitch[i] + (Cproof[0] - Cproof[1]) * F;
@@ -2183,69 +2055,58 @@ void f_roofCpTheta(double* Cproof, int& windAngle, double* Cppitch, double& roof
 	}
 }
 
-void f_neutralLevel3(double& dPtemp, double& dPwind, double& Patticint, double& Cpr, double& Broofo, double& roofPeakHeight) {
-	// calculates the neutral level for the attic
+// calculates the neutral level for a surface
+double f_neutralLevel(double dPtemp, double dPwind, double Pint, double Cpr, double h) {
 	if(dPtemp != 0)
-		Broofo = (Patticint + dPwind * Cpr) / dPtemp / roofPeakHeight;
+		return((Pint + dPwind * Cpr) / dPtemp / h);
 	else
-		Broofo = 0;
+		return(0);
 }
 
 
-
-void f_roofFlow(double& tempAttic, double& tempOut, double& airDensityATTIC, double& airDensityOUT, double& Broofo, double& Cpr,
+// calculates the flow through the pitched section of the roof
+void f_roofFlow(double& tempAttic, double& tempOut, double& airDensityATTIC, double& airDensityOUT, double& Cpr,
 	double& atticPressureExp, double& Croof, double& roofPeakHeight, double& Patticint, double& dPtemp, double& dPwind,
-	double& Mroof, double& Mroofin, double& Mroofout, double& dProoftop, double& dProofbottom, double& H) {
+	double& mRoofIn, double& mRoofOut, double& H) {
 		
-		double Hroof;
-		double dummy1;
-		double dummy2;
-
-		// calculates the flow through the pitched section of the roof
-		Mroofin = 0;
-		Mroofout = 0;
-		Hroof = roofPeakHeight - H;
-		
-		dummy1 = Patticint + dPwind * Cpr - dPtemp * roofPeakHeight;
-		dProoftop = dummy1;
-		dummy2 = Patticint + dPwind * Cpr - dPtemp * H;
-		dProofbottom = dummy2;
+		double Hroof = roofPeakHeight - H;
+		double dProoftop = Patticint + dPwind * Cpr - dPtemp * roofPeakHeight;
+		double dProofbottom = Patticint + dPwind * Cpr - dPtemp * H;
+		double bRoof = f_neutralLevel(dPtemp, dPwind, Patticint, Cpr, roofPeakHeight);
 
 		if(tempAttic == tempOut) {
-			if(dummy2 > 0) {
-				Mroofin = airDensityOUT * Croof * pow(dummy2, atticPressureExp);
-				Mroofout = 0;
+			if(dProofbottom > 0) {
+				mRoofIn = airDensityOUT * Croof * pow(dProofbottom, atticPressureExp);
+				mRoofOut = 0;
 			} else {
-				Mroofin = 0;
-				Mroofout = -airDensityATTIC * Croof * pow(-dummy2, atticPressureExp);
+				mRoofIn = 0;
+				mRoofOut = -airDensityATTIC * Croof * pow(-dProofbottom, atticPressureExp);
 			}
 		} else {
 			if(tempAttic > tempOut) {
-				if(Broofo <= H / roofPeakHeight) {
-					Mroofin = 0;
-					Mroofout = airDensityATTIC * Croof / Hroof / dPtemp / (atticPressureExp + 1) * (dummy1 * pow(abs(dummy1), atticPressureExp) - dummy2 * pow(abs(dummy2), atticPressureExp));
-				} else if(Broofo >= 1) {
-					Mroofin = -airDensityOUT * Croof / Hroof / dPtemp / (atticPressureExp + 1) * (dummy1 * pow(abs(dummy1), atticPressureExp) - dummy2 * pow(abs(dummy2), atticPressureExp));
-					Mroofout = 0;
+				if(bRoof <= H / roofPeakHeight) {
+					mRoofIn = 0;
+					mRoofOut = airDensityATTIC * Croof / Hroof / dPtemp / (atticPressureExp + 1) * (dProoftop * pow(abs(dProoftop), atticPressureExp) - dProofbottom * pow(abs(dProofbottom), atticPressureExp));
+				} else if(bRoof >= 1) {
+					mRoofIn = -airDensityOUT * Croof / Hroof / dPtemp / (atticPressureExp + 1) * (dProoftop * pow(abs(dProoftop), atticPressureExp) - dProofbottom * pow(abs(dProofbottom), atticPressureExp));
+					mRoofOut = 0;
 				} else {
-					Mroofin = airDensityOUT * Croof / Hroof / dPtemp / (atticPressureExp + 1) * dummy2 * pow(abs(dummy2), atticPressureExp);
-					Mroofout = airDensityATTIC * Croof / Hroof / dPtemp / (atticPressureExp + 1) * dummy1 * pow(abs(dummy1), atticPressureExp);
+					mRoofIn = airDensityOUT * Croof / Hroof / dPtemp / (atticPressureExp + 1) * dProofbottom * pow(abs(dProofbottom), atticPressureExp);
+					mRoofOut = airDensityATTIC * Croof / Hroof / dPtemp / (atticPressureExp + 1) * dProoftop * pow(abs(dProoftop), atticPressureExp);
 				}
 			} else {
-				if(Broofo <= H / roofPeakHeight) {
-					Mroofin = -airDensityOUT * Croof / Hroof / dPtemp / (atticPressureExp + 1) * (dummy1 * pow(abs(dummy1), atticPressureExp) - dummy2 * pow(abs(dummy2), atticPressureExp));
-					Mroofout = 0;
-				} else if(Broofo >= 1) {
-					Mroofin = 0;
-					Mroofout = airDensityATTIC * Croof / Hroof / dPtemp / (atticPressureExp + 1) * (dummy1 * pow(abs(dummy1), atticPressureExp) - dummy2 * pow(abs(dummy2), atticPressureExp));
+				if(bRoof <= H / roofPeakHeight) {
+					mRoofIn = -airDensityOUT * Croof / Hroof / dPtemp / (atticPressureExp + 1) * (dProoftop * pow(abs(dProoftop), atticPressureExp) - dProofbottom * pow(abs(dProofbottom), atticPressureExp));
+					mRoofOut = 0;
+				} else if(bRoof >= 1) {
+					mRoofIn = 0;
+					mRoofOut = airDensityATTIC * Croof / Hroof / dPtemp / (atticPressureExp + 1) * (dProoftop * pow(abs(dProoftop), atticPressureExp) - dProofbottom * pow(abs(dProofbottom), atticPressureExp));
 				} else {
-					Mroofin = -airDensityOUT * Croof / Hroof / dPtemp / (atticPressureExp + 1) * dummy1 * pow(abs(dummy1), atticPressureExp);
-					Mroofout = -airDensityATTIC * Croof / Hroof / dPtemp / (atticPressureExp + 1) * dummy2 * pow(abs(dummy2), atticPressureExp);
+					mRoofIn = -airDensityOUT * Croof / Hroof / dPtemp / (atticPressureExp + 1) * dProoftop * pow(abs(dProoftop), atticPressureExp);
+					mRoofOut = -airDensityATTIC * Croof / Hroof / dPtemp / (atticPressureExp + 1) * dProofbottom * pow(abs(dProofbottom), atticPressureExp);
 				}
 			}
 		}
-
-		Mroof = Mroofin + Mroofout;
 }
 
 void f_atticVentFlow(double& airDensityOUT, double& airDensityATTIC, double& CP, double& dPwind, double& dPtemp, double& Patticint,
@@ -2281,219 +2142,6 @@ void f_atticFanFlow(fan_struct& atticFan, double& airDensityOUT, double& airDens
 		atticFan.m = airDensityOUT * atticFan.q;
 }
 
-// ----- MatSEqn definitions -----
-
-int MatSEqn(double A[][ArraySize], double* b) {
-	// Error codes returned:
-	//      0  no error                     -1  matrix not invertible
-	//     -2  matrix not square            -3  inner dimensions different
-	//     -4  matrix dimensions different  -5  result matrix dimensioned incorrectly
-	//     any other codes returned are standard BASIC errors
-	// 
-	// -------------------------------------------------------------------
-	
-	int errcode = 0;
-	//int bserrcode = 0;
-	//int ERR = 0;
-		
-	int continuevar = 0;
-	
-	double x[ArraySize] = {0};
-	int rpvt[ArraySize] = {0};
-	int cpvt[ArraySize] = {0};
-	
-	//for(int i=0; i < ArraySize; i++) {
-	//	x[i] = 0;
-	//	rpvt[i] = 0;
-	//	cpvt[i] = 0;
-	//}
-	
-	errcode = matlu(A, rpvt, cpvt, continuevar);			// Get LU matrix
-
-	if(continuevar != -1) {
-		errcode = (errcode + 5) % 200 - 5;
-		cout << "\nMatSeqn continue error: " << errcode << endl;
-		return errcode;	
-	}
-	
-	// check dimension of b
-	//if(asize != bsize) {
-	//	ERR = 197;
-	//	errcode = (ERR + 5) % 200 - 5;
-	//	cout << "\nMatSeqn size error: " << errcode << endl;
-	//	return errcode;
-	//}
-	
-	errcode = matbs(A, b, x, rpvt, cpvt);						// Backsolve system
-	
-	for(int i=0; i < ArraySize; i++) {
-	   b[i] = x[i];														// Put solution in b for return
-	}
-
-	if(errcode !=0) {
-		errcode = (errcode + 5) % 200 - 5;
-		cout << "\nMatSeqn error: " << errcode << endl;
-		return errcode;
-	}
-	
-	//errcode = (ERR + 5) % 200 - 5;
-	return errcode;	
-}
-
-int matlu(double A[][ArraySize], int* rpvt, int* cpvt, int& continuevar) {
-	int errcode = 0;
-	int tempswap;
-	//int count;
-	int r;
-	int c;
-	int bestrow;
-	int bestcol;
-	int rp;
-	int cp;
-
-	double rownorm[ArraySize];
-	double max;
-	double temp;
-	double oldmax;
-
-	// Checks if A is square, returns error code if not
-	//if(asize != asize2) {
-	//	errcode = 198;
-	//	continuevar = 0;
-	//	cout << "\nMatlu error: " << errcode << endl;
-	//	return errcode;
-	//}
-
-	//count = 0;														// initialize count, continue
-	continuevar = -1;
-	
-	for(int row = 0; row < ArraySize; row++) {							// initialize rpvt and cpvt
-		rpvt[row] = row;
-		cpvt[row] = row;
-		rownorm[row] = 0;                							// find the row norms of A()
-
-		for(int col = 0; col < ArraySize; col++) {
-			rownorm[row] = rownorm[row] + abs(A[row][col]);
-		}
-
-		// if any rownorm is zero, the matrix is singular, set error, exit and do not continue
-		if(rownorm[row] == 0) {
-			errcode = 199;
-			continuevar = 0;
-			cout << "\nMatlu error: " << errcode << endl;
-			return errcode;
-		}
-	}
-	
-	for(int pvt = 0; pvt < (ArraySize-1); pvt++) {
-		// Find best available pivot
-		// checks all values in rows and columns not already used for pivoting
-		// and finds the number largest in absolute value relative to its row norm
-		max = 0;
-		
-		for(int row = pvt; row < ArraySize; row++) {
-			r = rpvt[row];
-			for(int col = pvt; col < ArraySize; col++) {
-				c = cpvt[col];
-				temp = abs(A[r][c]) / rownorm[r];
-				if(temp > max) {
-					max = temp;
-					bestrow = row;		    						// save the position of new max
-					bestcol = col;
-				}
-			}
-		}
-		
-		// if no nonzero number is found, A is singular, send back error, do not continue
-		if(max == 0) {
-			errcode = 199;
-			continuevar = 0;
-			cout << "\nMatlu error: " << errcode << endl;
-			return errcode;
-		} else if(pvt > 1 && max < (deps * oldmax)) {				// check if drop in pivots is too much
-			errcode = 199;
-		}
-		
-		oldmax = max;
-		
-		// if a row or column pivot is necessary, count it and permute rpvt or cpvt.
-		// Note: the rows and columns are not actually switched, only the order in which they are used.		
-		if(rpvt[pvt] != rpvt[bestrow]) {
-			//count = count + 1;
-			
-			tempswap = rpvt[pvt];
-			rpvt[pvt] = rpvt[bestrow];
-			rpvt[bestrow] = tempswap;
-		}    
-		
-		if(cpvt[pvt] != cpvt[bestcol]) {
-			//count = count + 1;
-			
-			tempswap = cpvt[pvt];
-			cpvt[pvt] = cpvt[bestcol];
-			cpvt[bestcol] = tempswap;
-		}
-		
-		//Eliminate all values below the pivot
-		rp = rpvt[pvt];
-		cp = cpvt[pvt];
-
-		for(int row = (pvt+1); row < ArraySize; row++) {
-			r = rpvt[row];
-			A[r][cp] = -A[r][cp] / A[rp][cp];						// save multipliers
-			
-			for(int col = (pvt+1); col < ArraySize; col++) {
-				c = cpvt[col];										// complete row operations
-				A[r][c] = A[r][c] + A[r][cp] * A[rp][c];				
-			}
-		}
-		
-	}
-	
-	// if last pivot is zero or pivot drop is too large, A is singular, send back error
-	if(A[rpvt[ArraySize-1]][cpvt[ArraySize-1]] == 0) {
-		errcode = 199;
-		continuevar = 0;
-		cout << "\nMatlu error: " << errcode << endl;
-		return errcode;
-	} else if(((abs(A[rpvt[ArraySize-1]][cpvt[ArraySize-1]])) / rownorm[rpvt[ArraySize-1]]) < (deps * oldmax)) {
-		// if pivot is not identically zero then continue remains TRUE
-		errcode = 199;
-	}
-	
-	if(errcode != 0 && errcode < 199) {
-		continuevar = 0;
-	}
-	
-	return errcode;
-}
-
-int matbs(double A[][ArraySize], double* b, double* x, int* rpvt, int* cpvt) {
-
-	int c, r;
-
-	// do row operations on b using the multipliers in L to find Lb
-	for(int pvt = 0; pvt < (ArraySize-1); pvt++) {
-		c = cpvt[pvt];		
-		for(int row = pvt+1 ; row < ArraySize; row++) {
-			r = rpvt[row];
-			b[r] = b[r] + A[r][c] * b[rpvt[pvt]];
-		}
-	}
-
-	// backsolve Ux=Lb to find x
-	for(int row = ArraySize-1; row >= 0; row--) {
-		c = cpvt[row];
-		r = rpvt[row];
-		x[c] = b[r];
-		for(int col = (row+1); col < ArraySize; col++) {
-			x[c] = x[c] - A[r][cpvt[col]] * x[cpvt[col]];		
-		}
-		x[c] = x[c] / A[r][c];
-	}
-
-	return 0;
-}
 
 /*
 * heatTranCoef()

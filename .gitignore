@@ -7,3 +7,4 @@ test_equip
 out
 *.o
 test_func
+test_wood

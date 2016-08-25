@@ -4,6 +4,7 @@
 
 #include <iostream>
 #include <string>
+#include <vector>
 
 using namespace std;
 
@@ -76,7 +77,7 @@ void sub_heat (
 	double& atticVolume, 
 	double& houseVolume, 
 	double& sc, 
-	double* b, 
+	double* b,
 	int& ERRCODE, 
 	double& TSKY, 
 	double& floorArea, 
@@ -184,17 +185,18 @@ void sub_moisture (
 
 void sub_houseLeak ( 
 	int& AHflag,
-	double& flag, 
+	int& flag, 
 	double& U, 
 	int& windAngle, 
 	double& tempHouse, 
 	double& tempAttic, 
 	double& tempOut, 
-	double& C, 
+	double& envC, 
 	double& n, 
 	double& h, 
-	double& R, 
-	double& X, 
+	double leakFracCeil, 
+	double leakFracFloor,
+	double leakFracWall, 
 	int& numFlues, 
 	flue_struct* flue, 
 	double* wallFraction, 
@@ -215,11 +217,9 @@ void sub_houseLeak (
 	double* mFloor, 
 	double& atticC, 
 	double& dPflue, 
-	double& dPceil, 
-	double& dPfloor, 
 	int& Crawl, 
 	double& Hfloor, 
-	string& row, 
+	bool rowHouse, 
 	double* soffitFraction, 
 	double& Patticint, 
 	double* wallCp, 
@@ -242,14 +242,12 @@ void sub_houseLeak (
 	double& airDensityIN,
 	double& airDensityOUT,
 	double& airDensityATTIC,
-	double& ceilingC,
 	double& houseVolume,
-	double& windPressureExp,
-	double& Q622
+	double& windPressureExp
 );
 
 void sub_atticLeak ( 
-	double& flag, 
+	int& flag, 
 	double& U, 
 	int& windAngle, 
 	double& tempHouse, 
@@ -268,10 +266,10 @@ void sub_atticLeak (
 	double& mAtticOUT, 
 	double& Patticint, 
 	double& mCeiling, 
-	string& row, 
+	bool rowHouse, 
 	double* soffitFraction, 
 	double& roofPitch, 
-	string& roofPeakOrient, 
+	bool roofPeakPerpendicular, 
 	int& numAtticFans, 
 	fan_struct* atticFan, 
 	//double& airDensityRef, 
