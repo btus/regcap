@@ -8,7 +8,7 @@ using namespace std;
 class WoodMoisture {
 	private:
 		static const int rhoWood = 400;		// Wood density (@TODO function.cpp uses 500 - need to make consistant)
-		static const int timeStep = 3600;	// Timestep (1 hour)
+		static const int timeStep = 60;		// Timestep (1 minute)
 		static const int MOISTURE_NODES = 7; // Currently 7 nodes
 		
 		double deltaX[MOISTURE_NODES];						// Node thickness

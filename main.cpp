@@ -196,8 +196,8 @@ int main(int argc, char *argv[], char* envp[])
 		double retThickness;
 		double supRval;
 		double retRval;
-		double supLF0;					//Supply duct leakage fraction (e.g., 0.01 = 1% leakage).					
-		double retLF0;					//Return duct leakage fraction (e.g., 0.01 = 1% leakage)
+		double supLF;					//Supply duct leakage fraction (e.g., 0.01 = 1% leakage).					
+		double retLF;					//Return duct leakage fraction (e.g., 0.01 = 1% leakage)
 		double supLength;
 		double retLength;
 		double supDiameter;
@@ -430,8 +430,8 @@ int main(int argc, char *argv[], char* envp[])
 		buildingFile >> retThickness;
 		buildingFile >> supRval;
 		buildingFile >> retRval;
-		buildingFile >> supLF0;
-		buildingFile >> retLF0;
+		buildingFile >> supLF;
+		buildingFile >> retLF;
 		buildingFile >> supLength;
 		buildingFile >> retLength;
 		buildingFile >> supDiameter;
@@ -539,12 +539,6 @@ int main(int argc, char *argv[], char* envp[])
 		double leakFracFloor = (R - X) / 2;					// Fraction of leakage in the floor
 		double leakFracWall = 1 - leakFracFloor - leakFracCeil;	// Fraction of leakage in the walls
 
-		// In case the user enters leakage fraction in % rather than as a fraction
-		if(supLF0 > 1)
-			supLF0 = supLF0 / 100;
-		if(retLF0 > 1)
-			retLF0 = retLF0 / 100;
-		
 		rowHouse = (rowOrIsolated.compare("R") == 0);
 		roofPeakPerpendicular = (roofPeakOrient.compare("D") == 0);
 
@@ -569,8 +563,6 @@ int main(int argc, char *argv[], char* envp[])
 		double qAH_cool = qAH_cool0;
 		double fanPower_heating = fanPower_heating0;
 		double fanPower_cooling = fanPower_cooling0;
-		double retLF = retLF0;
-		double supLF = supLF0;
 
 		double massFilter_cumulative = 0;	// Cumulative mass that has flown through the filter
 		double massAH_cumulative = 0;			// Cumulative mass that has flown through the AH
