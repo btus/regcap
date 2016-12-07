@@ -110,7 +110,7 @@ void sub_relativeExposure(
 	double& Aeq, //Qtot calculated according to 62.2-2016 without infiltration factor, ACH. 
 	double& Q_total, //Total airflow combined infiltration and mechanical, L/s
 	double& relExp_old, //Relative exposure from the prior time-step.
-	double& rivecdt, //RIVCEC timestep, currently defaults to 60/3600, sec. 
+	double rivecdt, //RIVCEC timestep, currently defaults to 60/3600, sec. 
 	double& houseVolume //House volume, m3
 	
 	) 
