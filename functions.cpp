@@ -56,6 +56,9 @@ double heatTranCoef(double tempi, double tempa, double velocity);
 double radTranCoef(double emissivity, double tempi, double tempj, double shapeFactor, double areaRatio);
 
 
+
+//ASHRAE 62.2-2016 Infiltration and Relative Dose Functions
+
 void sub_infiltrationModel(
 
 	double& envC, //Envelope leakage coefficient, m3/s/Pa^n
@@ -65,7 +68,6 @@ void sub_infiltrationModel(
 	double& Cs, //Stack coefficient
 	double& Cw, //Wind coefficient
 	double& windSpeed, //Wind speed, corrected for site conditions in main.cpp, m/s
-	//double& tempHouse, //House temp, C
 	double& dryBulb, //Outside temp, K
 	double& ventSum, //Sum of the larger of the mechanical inflows and outflows, ACH
 	double& houseVolume, //House volume, m3
@@ -81,11 +83,7 @@ void sub_infiltrationModel(
 	
 	double TMYwindSpeed; //Un-corrected wind speed, so we can adjust wind speed based on 62.2-2016, m/s.
 	double U; //Wind speed adjusted according to 62.2-2016, m/s
-	//double Q_wind; //Wind driven airflow, L/s
-	//double Q_stack; //Stack pressure driven airflow, L/s
-	//double Q_infiltration; //Total infiltration airflow, combined wind and stack airflows, L/s
 	double phi; //Additivity coefficient
-	//double Q_total; //Total airflow combined infiltration and mechanical, L/s
 	double ventSum_flow; //Mechanical airflow, L/s
 	double envC_LitersPerSec; //Envelope leakage coefficient, L/s/Pa^n
 	
@@ -114,7 +112,6 @@ void sub_relativeExposure(
 	double& Aeq, //Qtot calculated according to 62.2-2016 without infiltration factor, ACH. 
 	double& Q_total, //Total airflow combined infiltration and mechanical, L/s
 	double& relExp_old, //Relative exposure from the prior time-step.
-	//double rivecdt, //RIVCEC timestep, currently defaults to 60/3600, sec. 
 	double dtau, //Simulation time step in seconds (60).
 	double& houseVolume, //House volume, m3
 	double& relExp
@@ -135,6 +132,8 @@ void sub_relativeExposure(
 		relExp = (Aeq_to_m3s / Q_total_to_m3s) + (relExp_old - (Aeq_to_m3s / Q_total_to_m3s)) * exp(-1 * Q_total_to_m3s * dtau / houseVolume);
 	}
 }
+
+
 
 //**********************************
 // Functions definitions...

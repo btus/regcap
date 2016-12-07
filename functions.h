@@ -62,6 +62,8 @@ struct flue_struct {
 	double flueTemp;
 };
 
+//ASHRAE 62.2-2016 Infiltration and Relative Dose Functions
+
 void sub_infiltrationModel (
 
 	double& envC, //Envelope leakage coefficient, m3/s/Pa^n
@@ -86,11 +88,10 @@ void sub_relativeExposure (
 
 	double& Aeq, //Qtot calculated according to 62.2-2016 without infiltration factor, ACH. 
 	double& Q_total, //Total airflow combined infiltration and mechanical, L/s
-	double& relExp_old, //Relative exposure from the prior time-step.
-	//double rivecdt, //RIVCEC timestep, currently defaults to 60/3600, sec. 
+	double& relExp_old, //Relative exposure from the prior time-step. 
 	double dtau, //Simulation timestep in seconds (60). 
 	double& houseVolume, //House volume, m3
-	double& relExp
+	double& relExp //relative exposure, per 62.2-2016
 	
 	); 	
 
