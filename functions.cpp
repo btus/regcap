@@ -64,9 +64,9 @@ void sub_infiltrationModel(
 	double& s, //Shelter Factor
 	double& Cs, //Stack coefficient
 	double& Cw, //Wind coefficient
-	double& weather.windSpeed, //Wind speed, corrected for site conditions in main.cpp, m/s
+	double& windSpeed, //Wind speed, corrected for site conditions in main.cpp, m/s
 	//double& tempHouse, //House temp, C
-	double& weather.dryBulb, //Outside temp, K
+	double& dryBulb, //Outside temp, K
 	double& ventSum, //Sum of the larger of the mechanical inflows and outflows, ACH
 	double& houseVolume, //House volume, m3
 	double& windSpeedCorrection //Correction factor used in main.cpp for windspeed
@@ -85,7 +85,7 @@ void sub_infiltrationModel(
 	double ventSum_flow; //Mechanical airflow, L/s
 	double envC_LitersPerSec; //Envelope leakage coefficient, L/s/Pa^n
 	
-	TMYwindSpeed = weather.windSpeed / windSpeedCorrection
+	TMYwindSpeed = windSpeed / windSpeedCorrection;
 	
 	U = G * TMYwindSpeed;
 	
@@ -95,9 +95,9 @@ void sub_infiltrationModel(
 
 	Q_wind = envC_LitersPerSec * pow(Cw * s * U, 2 * envPressureExp); //Calculate wind driven airflow, L/s
 	
-	Q_stack = envC_LitersPerSec * Cs * pow(abs((C_to_K + 20) - weather.dryBulb), envPressureExp); //Calculation stack airflow, assumes 68F (20C indoor temp), L/s.
+	Q_stack = envC_LitersPerSec * Cs * pow(abs((C_TO_K + 20) - dryBulb), envPressureExp); //Calculation stack airflow, assumes 68F (20C indoor temp), L/s.
 	
-	Q_infiltration = sqrt(power(Q_wind, 2) + power(Q_stack, 2)); //Calculate combined infiltration airflow using quadrature, L/s.
+	Q_infiltration = sqrt(pow(Q_wind, 2) + pow(Q_stack, 2)); //Calculate combined infiltration airflow using quadrature, L/s.
 	
 	phi = Q_infiltration / (Q_infiltration + ventSum_flow); // Calculate the additivity coefficient
 	
@@ -121,7 +121,7 @@ void sub_relativeExposure(
 
 	if(Q_total == 0) {
 		relExp = relExp_old + ((Aeq * rivecdt) / houseVolume);
-	else {
+	} else {
 		relExp = (Aeq / Q_total) + (relExp_old - (Aeq / Q_total)) * exp(-1 * Q_total * rivecdt / houseVolume);
 	}
 }

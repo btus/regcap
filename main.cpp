@@ -841,7 +841,9 @@ int main(int argc, char *argv[], char* envp[])
 		long int rivecMinutes = 0;					// Counts how many minutes of the year that RIVEC is on
 		double relDose = 1;							// Initial value for relative dose used in the RIVEC algorithm
 		double relExp = 1;							// Initial value for relative exposure used in the RIVEC algorithm
+		double relExp_old = 1;						//Initial value for prior minute's relative exposure.
 		double turnover = 1 / Aeq;					// Initial value for turnover time (hrs) used in the RIVEC algorithm. Turnover is calculated the same for occupied and unoccupied minutes.					
+		double Q_total = 0;							//Initial value of the combined infiltration and mechanical ventilation airflow, per 62.2-2016 equations.
 
 		//For calculating the "real" exposure and dose, based on the actual air change of the house predicted by the mass balance. Standard exposure and dose use the sum of annual average infiltration and current total fan airflow.
 		double relDoseReal = 1;						// Initial value for relative dose using ACH of house, i.e. the real rel dose not based on ventSum
@@ -878,6 +880,25 @@ int main(int argc, char *argv[], char* envp[])
 		double relDoseRealOld = 0;
 		
 		double relExpTarget = 1;		//This is a relative expsoure value target used for humidity control simulations. It varies between 0 and 2.5, depending on magnitude of indoor-outdoor humidity ratio difference.
+
+// 		double envC; //Envelope leakage coefficient, m3/s/Pa^n
+// 		double envPressureExp; //Envelope pressure exponent
+// 		double G; //Wind speed multiplier
+// 		double s; //Shelter Factor
+// 		double Cs; //Stack coefficient
+// 		double Cw; //Wind coefficient
+// 		double windSpeed; //Wind speed, corrected for site conditions in main.cpp, m/s
+// 		double dryBulb; //Outside temp, K
+// 		double ventSum; //Sum of the larger of the mechanical inflows and outflows, ACH
+// 		double houseVolume; //House volume, m3
+// 		double windSpeedCorrection; //Correction factor used in main.cpp for windspeed
+// 	
+// 		double Aeq; //Qtot calculated according to 62.2-2016 without infiltration factor, ACH. 
+// 		double Q_total; //Total airflow combined infiltration and mechanical, L/s
+// 		double relExp_old; //Relative exposure from the prior time-step.
+// 		double rivecdt; //RIVCEC timestep, currently defaults to 60/3600, sec. 
+// 		double houseVolume; //House volume, m3
+
 
 		// [START] Fan Schedule Inputs =========================================================================================
 		// Read in fan schedule (lists of 1s and 0s, 1 = fan ON, 0 = fan OFF, for every minute of the year)
@@ -3034,12 +3055,11 @@ int main(int argc, char *argv[], char* envp[])
 					if(ventSum <= 0)
 						ventSum = .000001;
 						
-					sub_infiltrationModel(envC, envPressureExp, G, s, Cs, Cw, weather.windSpeed, 
-						weather.dryBulb, ventSum, houseVolume, windSpeedCorrection);
+					sub_infiltrationModel(envC, envPressureExp, G, s, Cs, Cw, weather.windSpeed, weather.dryBulb, ventSum, houseVolume, windSpeedCorrection);
 					
 					relExp_old = relExp;
 					
-					sub_relativeExposure(Aeq, Q_total, relExp_old, rivcecdt, houseVolume);	
+					sub_relativeExposure(Aeq, Q_total, relExp_old, rivecdt, houseVolume);	
 
 
 					/* -------dkm: To add flue in relDose/relExp calc the following two IF sentences have been added------

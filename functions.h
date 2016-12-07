@@ -62,32 +62,31 @@ struct flue_struct {
 	double flueTemp;
 };
 
-struct sub_infiltrationModel {
+void sub_infiltrationModel (
 
-	double envC; //Envelope leakage coefficient, m3/s/Pa^n
-	double envPressureExp; //Envelope pressure exponent
-	double G; //Wind speed multiplier
-	double s; //Shelter Factor
-	double Cs; //Stack coefficient
-	double Cw; //Wind coefficient
-	double weather.windSpeed; //Wind speed, corrected for site conditions in main.cpp, m/s
-	//double& tempHouse, //House temp, C
-	double weather.dryBulb; //Outside temp, K
-	double ventSum; //Sum of the larger of the mechanical inflows and outflows, ACH
-	double houseVolume; //House volume, m3
-	double windSpeedCorrection; //Correction factor used in main.cpp for windspeed
+	double& envC, //Envelope leakage coefficient, m3/s/Pa^n
+	double& envPressureExp, //Envelope pressure exponent
+	double& G, //Wind speed multiplier
+	double& s, //Shelter Factor
+	double& Cs, //Stack coefficient
+	double& Cw, //Wind coefficient
+	double& windSpeed, //Wind speed, corrected for site conditions in main.cpp, m/s
+	double& dryBulb, //Outside temp, K
+	double& ventSum, //Sum of the larger of the mechanical inflows and outflows, ACH
+	double& houseVolume, //House volume, m3
+	double& windSpeedCorrection //Correction factor used in main.cpp for windspeed
 	
-	};
+	);
 	
-struct sub_relativeExposure {
+void sub_relativeExposure (
 
-	double Aeq; //Qtot calculated according to 62.2-2016 without infiltration factor, ACH. 
-	double Q_total; //Total airflow combined infiltration and mechanical, L/s
-	double relExp_old; //Relative exposure from the prior time-step.
-	double rivecdt; //RIVCEC timestep, currently defaults to 60/3600, sec. 
-	double houseVolume; //House volume, m3
+	double& Aeq, //Qtot calculated according to 62.2-2016 without infiltration factor, ACH. 
+	double& Q_total, //Total airflow combined infiltration and mechanical, L/s
+	double& relExp_old, //Relative exposure from the prior time-step.
+	double rivecdt, //RIVCEC timestep, currently defaults to 60/3600, sec. 
+	double& houseVolume //House volume, m3
 	
-	}; 	
+	); 	
 
 // Additional functions
 
