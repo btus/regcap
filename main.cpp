@@ -3058,11 +3058,13 @@ int main(int argc, char *argv[], char* envp[])
 					if(ventSum <= 0)
 						ventSum = .000001;
 						
-					sub_infiltrationModel(envC, envPressureExp, G, s, Cs, Cw, weather.windSpeed, weather.dryBulb, ventSum, houseVolume, windSpeedCorrection);
+					sub_infiltrationModel(envC, envPressureExp, G, s, Cs, Cw, weather.windSpeed, 	
+						weather.dryBulb, ventSum, houseVolume, windSpeedCorrection, Q_wind, 
+						Q_stack, Q_infiltration, Q_total);
 					
 					relExp_old = relExp;
 					
-					sub_relativeExposure(Aeq, Q_total, relExp_old, rivecdt, houseVolume);	
+					sub_relativeExposure(Aeq, Q_total, relExp_old, dtau, houseVolume, relExp);	
 
 
 					/* -------dkm: To add flue in relDose/relExp calc the following two IF sentences have been added------
