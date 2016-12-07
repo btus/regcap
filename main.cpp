@@ -152,6 +152,10 @@ int main(int argc, char *argv[], char* envp[])
 		string shelterFileName;
 		double envC;					// Envelope leakage coefficient
 		double envPressureExp;		// Envelope Pressure Exponent
+		double G; 					//Wind speed multiplier
+		double s; 					//Shelter Factor
+		double Cs; 					//Stack coefficient
+		double Cw; 					//Wind coefficient
 		double eaveHeight;			// Eave Height [m]
 		double R;						// Ceiling Floor Leakage Sum
 		double X;						// Ceiling Floor Leakage Difference
@@ -318,6 +322,10 @@ int main(int argc, char *argv[], char* envp[])
 
 		buildingFile >> envC;
 		buildingFile >> envPressureExp;
+		buildingFile >> G;
+		buildingFile >> s;
+		buildingFile >> Cs;
+		buildingFile >> Cw;
 		buildingFile >> eaveHeight;
 		buildingFile >> R;
 		buildingFile >> X;
@@ -3025,6 +3033,14 @@ int main(int argc, char *argv[], char* envp[])
 
 					if(ventSum <= 0)
 						ventSum = .000001;
+						
+					sub_infiltrationModel(envC, envPressureExp, G, s, Cs, Cw, weather.windSpeed, 
+						weather.dryBulb, ventSum, houseVolume, windSpeedCorrection);
+					
+					relExp_old = relExp;
+					
+					sub_relativeExposure(Aeq, Q_total, relExp_old, rivcecdt, houseVolume);	
+
 
 					/* -------dkm: To add flue in relDose/relExp calc the following two IF sentences have been added------
 					if(flueACH <= 0)

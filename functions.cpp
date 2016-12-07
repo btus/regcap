@@ -55,6 +55,77 @@ double heatTranCoef(double tempi, double tempa, double velocity);
 
 double radTranCoef(double emissivity, double tempi, double tempj, double shapeFactor, double areaRatio);
 
+
+void sub_infiltrationModel(
+
+	double& envC, //Envelope leakage coefficient, m3/s/Pa^n
+	double& envPressureExp, //Envelope pressure exponent
+	double& G, //Wind speed multiplier
+	double& s, //Shelter Factor
+	double& Cs, //Stack coefficient
+	double& Cw, //Wind coefficient
+	double& weather.windSpeed, //Wind speed, corrected for site conditions in main.cpp, m/s
+	//double& tempHouse, //House temp, C
+	double& weather.dryBulb, //Outside temp, K
+	double& ventSum, //Sum of the larger of the mechanical inflows and outflows, ACH
+	double& houseVolume, //House volume, m3
+	double& windSpeedCorrection //Correction factor used in main.cpp for windspeed
+	
+	) 
+	
+	{
+	
+	double TMYwindSpeed; //Un-corrected wind speed, so we can adjust wind speed based on 62.2-2016, m/s.
+	double U; //Wind speed adjusted according to 62.2-2016, m/s
+	double Q_wind; //Wind driven airflow, L/s
+	double Q_stack; //Stack pressure driven airflow, L/s
+	double Q_infiltration; //Total infiltration airflow, combined wind and stack airflows, L/s
+	double phi; //Additivity coefficient
+	double Q_total; //Total airflow combined infiltration and mechanical, L/s
+	double ventSum_flow; //Mechanical airflow, L/s
+	double envC_LitersPerSec; //Envelope leakage coefficient, L/s/Pa^n
+	
+	TMYwindSpeed = weather.windSpeed / windSpeedCorrection
+	
+	U = G * TMYwindSpeed;
+	
+	envC_LitersPerSec = envC * 1000; // [L/s/Pa^n] 
+	
+	ventSum_flow = 1000 * ventSum * houseVolume / 3600; // Calculate ventSum in airflow (not ACH), L/s
+
+	Q_wind = envC_LitersPerSec * pow(Cw * s * U, 2 * envPressureExp); //Calculate wind driven airflow, L/s
+	
+	Q_stack = envC_LitersPerSec * Cs * pow(abs((C_to_K + 20) - weather.dryBulb), envPressureExp); //Calculation stack airflow, assumes 68F (20C indoor temp), L/s.
+	
+	Q_infiltration = sqrt(power(Q_wind, 2) + power(Q_stack, 2)); //Calculate combined infiltration airflow using quadrature, L/s.
+	
+	phi = Q_infiltration / (Q_infiltration + ventSum_flow); // Calculate the additivity coefficient
+	
+	Q_total = ventSum_flow + phi * Q_infiltration; //Calculate total airflow combined mechanical and natural, L/s.
+	
+	}
+	
+void sub_relativeExposure(
+
+	double& Aeq, //Qtot calculated according to 62.2-2016 without infiltration factor, ACH. 
+	double& Q_total, //Total airflow combined infiltration and mechanical, L/s
+	double& relExp_old, //Relative exposure from the prior time-step.
+	double& rivecdt, //RIVCEC timestep, currently defaults to 60/3600, sec. 
+	double& houseVolume //House volume, m3
+	
+	) 
+	
+	{
+
+	double relExp;
+
+	if(Q_total == 0) {
+		relExp = relExp_old + ((Aeq * rivecdt) / houseVolume);
+	else {
+		relExp = (Aeq / Q_total) + (relExp_old - (Aeq / Q_total)) * exp(-1 * Q_total * rivecdt / houseVolume);
+	}
+}
+
 //**********************************
 // Functions definitions...
 
