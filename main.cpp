@@ -152,10 +152,10 @@ int main(int argc, char *argv[], char* envp[])
 		string shelterFileName;
 		double envC;					// Envelope leakage coefficient
 		double envPressureExp;		// Envelope Pressure Exponent
-		double G; 					//Wind speed multiplier
-		double s; 					//Shelter Factor
-		double Cs; 					//Stack coefficient
-		double Cw; 					//Wind coefficient
+		double G; 					//Wind speed multiplier, for 62.2-2016 infiltration calcs
+		double s; 					//Shelter Factor, for 62.2-2016 infiltration calcs
+		double Cs; 					//Stack coefficient, for 62.2-2016 infiltration calcs
+		double Cw; 					//Wind coefficient, for 62.2-2016 infiltration calcs
 		double eaveHeight;			// Eave Height [m]
 		double R;						// Ceiling Floor Leakage Sum
 		double X;						// Ceiling Floor Leakage Difference
@@ -843,10 +843,10 @@ int main(int argc, char *argv[], char* envp[])
 		double relExp = 1;							// Initial value for relative exposure used in the RIVEC algorithm
 		double relExp_old = 1;						//Initial value for prior minute's relative exposure.
 		double turnover = 1 / Aeq;					// Initial value for turnover time (hrs) used in the RIVEC algorithm. Turnover is calculated the same for occupied and unoccupied minutes.					
-		double Q_total = 0;							//Initial value of the combined infiltration and mechanical ventilation airflow, per 62.2-2016 equations.
-		double Q_wind = 0;
-		double Q_stack = 0;
-		double Q_infiltration = 0;
+		double Q_total = 0;							//Total airflow (infiltration + mechanical) (L/s), 62.2-2016
+		double Q_wind = 0; 							//Wind airflow (L/s), 62.2-2016 
+		double Q_stack = 0; 						//Stack airflow (L/s), 62.2-2016 
+		double Q_infiltration = 0; 					//Infiltration airflow (L/s), 62.2-2016 
 
 		//For calculating the "real" exposure and dose, based on the actual air change of the house predicted by the mass balance. Standard exposure and dose use the sum of annual average infiltration and current total fan airflow.
 		double relDoseReal = 1;						// Initial value for relative dose using ACH of house, i.e. the real rel dose not based on ventSum
