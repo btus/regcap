@@ -230,7 +230,8 @@ int main(int argc, char *argv[], char* envp[])
 		double HRV_ASE;			// Apparent Sensible Effectiveness of HRV unit
 		double ERV_SRE;			// Sensible Recovery Efficiency of ERV unit. SRE and TRE based upon averages from ERV units in HVI directory, as of 5/2015.
 		double ERV_TRE;			// Total Recovery Efficiency of ERV unit, includes humidity transfer for moisture subroutine		
-		int AeqCalcs;				// 1=62.2-2013, 2 and 3 are for 62.2-2010, 4=62.2-2013 with no infiltration credit
+		double Aeq;				// 62.2-2016 Total Ventilation Rate, hr-1. 
+		int InfCalc; 		//Index value, 0 = Annual infiltration rate for exposure calcs, 1 = Real-time infiltration estimates for exposure calcs.
 		// Inputs to set filter type and loading rate
 		int filterLoadingFlag;	// Filter loading flag = 0 (OFF) or 1 (ON)
 		int MERV;					// MERV rating of filter (may currently be set to 5, 8, 11 or 16)
@@ -466,7 +467,8 @@ int main(int argc, char *argv[], char* envp[])
 		buildingFile >> numStories;
 		buildingFile >> weatherFactor;
 		buildingFile >> terrain;
-		buildingFile >> AeqCalcs;
+		buildingFile >> Aeq;
+		buildingFile >> InfCalc;
 		buildingFile >> Crawl;
 		buildingFile >> HRV_ASE;
 		buildingFile >> ERV_SRE;
@@ -805,37 +807,37 @@ int main(int argc, char *argv[], char* envp[])
 		int recoveryEnd = 0;
 
 		double ELA = envC * sqrt(airDensityRef / 2) * pow(4, (envPressureExp - .5));			// Effective Leakage Area
-		double NL = 1000 * (ELA / floorArea) * pow(numStories, .3);				// Normalized Leakage Calculation. Iain! Brennan! this does not match 62.2-2013 0.4 exponent assumption.
+		double NL = 1000 * (ELA / floorArea) * pow((eaveHeight-Hfloor)/2.5, 0.4);				// Normalized Leakage Calculation. 
 		double wInfil = weatherFactor * NL;										// Infiltration credit from updated ASHRAE 136 weather factors [ACH]
-		double defaultInfil = .001 * ((floorArea / 100) * 10) * 3600 / houseVolume;	// Default infiltration credit [ACH] (ASHRAE 62.2, 4.1.3 p.4). This NO LONGER exists in 62.2-2013
-		double rivecX = (.05 * floorArea + 3.5 * (numBedrooms + 1)) / qRivec;
-		double rivecY = 0;
-		double Aeq = 0;		// Equivalent air change rate of house to meet 62.2 minimum for RIVEC calculations. Choose one of the following:
+// 		double defaultInfil = .001 * ((floorArea / 100) * 10) * 3600 / houseVolume;	// Default infiltration credit [ACH] (ASHRAE 62.2, 4.1.3 p.4). This NO LONGER exists in 62.2-2013
+// 		double rivecX = (.05 * floorArea + 3.5 * (numBedrooms + 1)) / qRivec;
+// 		double rivecY = 0;
+//		double Aeq = 0;		// Equivalent air change rate of house to meet 62.2 minimum for RIVEC calculations. Choose one of the following:
 
-		switch (AeqCalcs) {
-			// 1. 62.2-2013 ventilation rate with no infiltration credit [ACH]. Brennan
-		case 1:
-			Aeq = .001 * (.15 * floorArea + 3.5 * (numBedrooms + 1)) * (3600 / houseVolume); //Brennan, equals Qtot from 62.2-2013 in air changes per hour
-			rivecY = 0;
-			break;
-			// 2. 62.2 ventilation rate + infiltration credit from weather factors (w x NL)  [ACH]
-		case 2:
-			Aeq = .001 * (.05 * floorArea + 3.5 * (numBedrooms + 1)) * (3600 / houseVolume) + wInfil;
-			rivecY = (wInfil * houseVolume / 3.6)/qRivec;
-			break;
-			// 3. 62.2 ventilation rate + 62.2 default infiltration credit (62.2, 4.1.3 p.4)  [ACH]
-		case 3:
-			Aeq = .001 * (.05 * floorArea + 3.5 * (numBedrooms + 1) + (floorArea / 100) * 10) * (3600 / houseVolume);
-			rivecY = ((floorArea / 100) * 10)/qRivec;
-			break;
-			// 4. 62.2-2013 ventilation rate with no infiltration credit [ACH], with Existing home deficit of 65 l/s. Brennan
-		case 4:
-			Aeq = .001 * (.15 * floorArea + 3.5 * (numBedrooms + 1)+(65/4)) * (3600 / houseVolume); //Brennan, in VentTempControl simulations, this equals an AER 0.319 hr-1 and equals Qtot PLUS an existing home flow deficit of 65 L/s ((65/4).
-			rivecY = 0;
-			break;
-		}
+// 		switch (AeqCalcs) {
+// 			// 1. 62.2-2013 ventilation rate with no infiltration credit [ACH]. Brennan
+// 		case 1:
+// 			Aeq = .001 * (.15 * floorArea + 3.5 * (numBedrooms + 1)) * (3600 / houseVolume); //Brennan, equals Qtot from 62.2-2013 in air changes per hour
+// 			rivecY = 0;
+// 			break;
+// 			// 2. 62.2 ventilation rate + infiltration credit from weather factors (w x NL)  [ACH]
+// 		case 2:
+// 			Aeq = .001 * (.05 * floorArea + 3.5 * (numBedrooms + 1)) * (3600 / houseVolume) + wInfil;
+// 			rivecY = (wInfil * houseVolume / 3.6)/qRivec;
+// 			break;
+// 			// 3. 62.2 ventilation rate + 62.2 default infiltration credit (62.2, 4.1.3 p.4)  [ACH]
+// 		case 3:
+// 			Aeq = .001 * (.05 * floorArea + 3.5 * (numBedrooms + 1) + (floorArea / 100) * 10) * (3600 / houseVolume);
+// 			rivecY = ((floorArea / 100) * 10)/qRivec;
+// 			break;
+// 			// 4. 62.2-2013 ventilation rate with no infiltration credit [ACH], with Existing home deficit of 65 l/s. Brennan
+// 		case 4:
+// 			Aeq = .001 * (.15 * floorArea + 3.5 * (numBedrooms + 1)+(65/4)) * (3600 / houseVolume); //Brennan, in VentTempControl simulations, this equals an AER 0.319 hr-1 and equals Qtot PLUS an existing home flow deficit of 65 L/s ((65/4).
+// 			rivecY = 0;
+// 			break;
+// 		}
 
-		double expLimit = 1 + 4 * (1 - rivecX) / (1 + rivecY);	// Exposure limit for RIVEC algorithm. This is the Max Sherman way of calculating the maximum limit. 
+		double expLimit = 5; //Maximum relative exposure limit, 62.2-2016. Old Max way: 1 + 4 * (1 - rivecX) / (1 + rivecY);	// Exposure limit for RIVEC algorithm. This is the Max Sherman way of calculating the maximum limit. 
 		//We have moved away from using this, and instead just use a value of 2.5, based on ratios of chronic to acute pollutant exposure limits.
 
 		long int rivecMinutes = 0;					// Counts how many minutes of the year that RIVEC is on
@@ -3061,7 +3063,7 @@ int main(int argc, char *argv[], char* envp[])
 						
 					sub_infiltrationModel(envC, envPressureExp, G, s, Cs, Cw, weather.windSpeed, 	
 						weather.dryBulb, ventSum, houseVolume, windSpeedCorrection, Q_wind, 
-						Q_stack, Q_infiltration, Q_total);
+						Q_stack, Q_infiltration, Q_total, wInfil, InfCalc);
 					
 					relExp_old = relExp;
 					
@@ -3084,26 +3086,26 @@ int main(int argc, char *argv[], char* envp[])
 
 					//Calculation of turnover
 					// Automatically chosen based on previous selection of Aeq calculations (above) using AeqCalcs variable. Brennan. Need to change. 
-					switch (AeqCalcs) {
-					case 1:
-						// 1. 62.2 ventilation rate with no infiltration credit
-						turnover = (1 - exp(-(ventSum + wInfil) * rivecdt)) / (ventSum + wInfil) + turnoverOld * exp(-(ventSum + wInfil) * rivecdt); //This is used to compare Qtot (i.e., AEQ) to ventSum+wInfil
-						//turnover = (1 - exp(-ventSum * rivecdt)) / ventSum + turnoverOld * exp(-ventSum * rivecdt); //This was the orignal formulation here. Assumes that ONLY fan flow is known for IAQ calculations. I had to change this based on use of AeqCalcs earlier in the code.
-						break;
-					case 2:
-						// 2. 62.2 ventilation rate + infiltration credit from weather factors (w x NL)
-						turnover = (1 - exp(-(ventSum + wInfil) * rivecdt)) / (ventSum + wInfil) + turnoverOld * exp(-(ventSum + wInfil) * rivecdt);
-						break;
-					case 3:
-						// 3. 62.2 ventilation rate + 62.2 default infiltration credit (62.2, 4.1.3 p.4)
-						turnover = (1 - exp(-(ventSum + defaultInfil) * rivecdt)) / (ventSum + defaultInfil) + turnoverOld * exp(-(ventSum + defaultInfil) * rivecdt);
-						//turnover = (1 - exp(-(houseACH) * rivecdt)) / (houseACH) + turnoverOld * exp(-(houseACH) * rivecdt);
-						break;
-					case 4:
-						// 1. 62.2 ventilation rate with no infiltration credit + existing home deficit. This is the same as the original formulation for AeqCalcs =1 (commented out above). Again, this is just deal with the use of AeqCalcs variable earlier in the codes.
-						turnover = (1 - exp(-ventSum * rivecdt)) / ventSum + turnoverOld * exp(-ventSum * rivecdt);
-						break;
-					}
+// 					switch (AeqCalcs) {
+// 					case 1:
+// 						// 1. 62.2 ventilation rate with no infiltration credit
+// 						turnover = (1 - exp(-(ventSum + wInfil) * rivecdt)) / (ventSum + wInfil) + turnoverOld * exp(-(ventSum + wInfil) * rivecdt); //This is used to compare Qtot (i.e., AEQ) to ventSum+wInfil
+// 						//turnover = (1 - exp(-ventSum * rivecdt)) / ventSum + turnoverOld * exp(-ventSum * rivecdt); //This was the orignal formulation here. Assumes that ONLY fan flow is known for IAQ calculations. I had to change this based on use of AeqCalcs earlier in the code.
+// 						break;
+// 					case 2:
+// 						// 2. 62.2 ventilation rate + infiltration credit from weather factors (w x NL)
+// 						turnover = (1 - exp(-(ventSum + wInfil) * rivecdt)) / (ventSum + wInfil) + turnoverOld * exp(-(ventSum + wInfil) * rivecdt);
+// 						break;
+// 					case 3:
+// 						// 3. 62.2 ventilation rate + 62.2 default infiltration credit (62.2, 4.1.3 p.4)
+// 						turnover = (1 - exp(-(ventSum + defaultInfil) * rivecdt)) / (ventSum + defaultInfil) + turnoverOld * exp(-(ventSum + defaultInfil) * rivecdt);
+// 						//turnover = (1 - exp(-(houseACH) * rivecdt)) / (houseACH) + turnoverOld * exp(-(houseACH) * rivecdt);
+// 						break;
+// 					case 4:
+// 						// 1. 62.2 ventilation rate with no infiltration credit + existing home deficit. This is the same as the original formulation for AeqCalcs =1 (commented out above). Again, this is just deal with the use of AeqCalcs variable earlier in the codes.
+// 						turnover = (1 - exp(-ventSum * rivecdt)) / ventSum + turnoverOld * exp(-ventSum * rivecdt);
+// 						break;
+// 					}
 
 					// The 'real' turnover of the house using ACH of the house (that includes infiltration rather than just mechanical ventilation and flues)
 					turnoverReal = (1 - exp(-(houseACH) * rivecdt)) / (houseACH) + turnoverRealOld * exp(-(houseACH) * rivecdt);

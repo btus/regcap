@@ -75,7 +75,9 @@ void sub_infiltrationModel(
 	double& Q_wind, //Wind driven airflow, L/s
 	double& Q_stack, //Stack pressure driven airflow, L/s
 	double& Q_infiltration, //Total infiltration airflow, combined wind and stack airflows, L/s
-	double& Q_total //Total airflow combined infiltration and mechanical, L/s
+	double& Q_total, //Total airflow combined infiltration and mechanical, L/s
+	double wInfil,
+	int InfCalc
 	
 	) 
 	
@@ -99,7 +101,11 @@ void sub_infiltrationModel(
 	
 	Q_stack = envC_LitersPerSec * Cs * pow(abs((C_TO_K + 20) - dryBulb), envPressureExp); //Calculation stack airflow, assumes 68F (20C indoor temp), L/s.
 	
-	Q_infiltration = sqrt(pow(Q_wind, 2) + pow(Q_stack, 2)); //Calculate combined infiltration airflow using quadrature, L/s.
+	if(InfCalc == 0){
+		Q_infiltration = wInfil;
+	} else {
+		Q_infiltration = sqrt(pow(Q_wind, 2) + pow(Q_stack, 2)); //Calculate combined infiltration airflow using quadrature, L/s.
+	}
 	
 	phi = Q_infiltration / (Q_infiltration + ventSum_flow); // Calculate the additivity coefficient
 	

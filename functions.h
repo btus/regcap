@@ -80,7 +80,9 @@ void sub_infiltrationModel (
 	double& Q_wind, //Wind driven airflow, L/s
 	double& Q_stack, //Stack pressure driven airflow, L/s
 	double& Q_infiltration, //Total infiltration airflow, combined wind and stack airflows, L/s
-	double& Q_total //Total airflow combined infiltration and mechanical, L/s
+	double& Q_total, //Total airflow combined infiltration and mechanical, L/s
+	double wInfil,
+	int InfCalc
 	
 	);
 	
