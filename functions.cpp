@@ -139,6 +139,120 @@ void sub_relativeExposure(
 	}
 }
 
+void sub_moldIndex(
+
+	//Mold Index calculation according to ASNI/ASHRAE Standard 160-2009 Addendum X (January 2016), 1st public review period.
+
+	// Mold Index should be calculated for the following locations:
+	
+	// Node Identification (NOTE: The C++ array indices are one less than the node number e.g. node 1 = 0, node 2 = 1 etc.)
+	// Node 2 is the Inner North Sheathing, b[1] (surface temps in b[] array).
+	// Node 4 is the Inner South Sheathing, b[3]
+	// Node 6 is all of the Wood (joists, trusses, etc.) lumped together, b[5]
+	// Node 9 is the Inner Gable Wall (both lumped together), b[8]
+	// Source for the surface RH values? (1) use the vapor pressure values translated to RH, or (2) calculate local surface RH based on attic air RH and surface temps. 
+
+	//Variables passed back and forth with main.cpp
+	int SensitivityClass, //Material sensitivity class, determined in Table 6.1.1. 0 = VerySensitive, 1 = Sensitive.
+	double& MoldIndex_old, //MoldIndex from the prior hour.
+	double& MoldIndex_curr, //MoldIndex for the current hour.
+	double SurfTemp, //Material surface temperature, C
+	double SurfRH, //Material surface relative humidity, % (0-100)
+	int& Time_decl //MoldIndex decline time, hr
+
+	)
+	
+	{
+	//Variables used only internally in the function
+	double A;
+	double B;
+	double C;
+	double W;
+	double k1; //Mold growth intensity factor.
+	double k2; //Mold index attenuation factor.
+	double k3; //Mold index decline coefficient, default to 0.25 (proposed Standard had 0.1)
+	double MoldIndex_delta;
+	double RH_critical;
+	double MoldIndex_Max;
+
+	//Calculated once each hour.
+	
+	//Selecting model coefficients
+	
+	k3 = 0.25; //
+	//Coefficient Values from Table 6.1.2.
+	if(SensitivityClass == 0) { //Very sensitive material
+		A = 1.;
+		B = 7.;
+		C = 2.;
+		W = 0.;
+		if(MoldIndex_old < 1){
+			k1 = 1.;
+		} else {
+			k1 = 2.;
+		}	
+	} else if (SensitivityClass == 1) { //Sensitive material.
+		A = 0.3;
+		B = 6.;
+		C = 1.;
+		W = 1.;
+		if(MoldIndex_old < 1){
+			k1 = 0.578;
+		} else {
+			k1 = 0.386;
+		}
+	}
+	
+	//Calculation of critical surface RH. Equation 6-2a.
+	
+	if(SurfTemp <= 20) {
+		//RH_critical calculated for 'Sensitive' and 'Very Sensitive' material classes, which includes untreated wood, planed wood, paper products and wood-based boards.
+		RH_critical = -0.00267 * pow(SurfTemp, 3) + 0.160 * pow(SurfTemp, 2) - 3.13 * SurfTemp + 100;
+	} else {
+		RH_critical = 80;
+	}
+	
+	//Calculation of max mold index (for given surface temp / RH) and coefficient k2.
+	
+	MoldIndex_Max = A + B * ((RH_critical - SurfRH) / (RH_critical - 100)) - C * pow(((RH_critical - SurfRH) / (RH_critical - 100)), 2); //Equation 6-6
+	
+	k2 = (1 - exp(2.3 * (MoldIndex_old - MoldIndex_Max))); //Equation 6-5. 
+	if(k2 <= 0) {
+		k2 = 0;
+	}
+		
+	//Calculation of MoldIndex_delta.	
+	
+	if(SurfTemp <= 0 || SurfRH <= RH_critical) { //Period of declining MoldIndex.
+	
+		Time_decl += 1; //Increment the Time_decl counter. Change of conditions from favorable to unfavorable.
+	
+		if(Time_decl <= 6) {
+			MoldIndex_delta = -0.00133 * k3;
+		} else if (Time_decl > 6 && Time_decl <= 24) {
+			MoldIndex_delta = 0;	
+		} else if(Time_decl > 24) {
+			MoldIndex_delta = -0.000667 * k3;
+		}	
+		
+	} else if(SurfTemp > 0 && SurfRH > RH_critical) { //Period of increasing MoldIndex.
+		Time_decl = 0;
+		MoldIndex_delta = (k1 * k2)/(168 * exp(-0.68 * log(SurfTemp) - 13.9 * log(SurfRH) + 0.14 * W + 66.02)); //Equation 6-4a
+	}
+	
+	MoldIndex_curr = MoldIndex_old + MoldIndex_delta;
+	
+	if(MoldIndex_curr < 0) { //Set minimum value to 0. 
+		MoldIndex_curr = 0;
+	}
+	
+	MoldIndex_old = MoldIndex_curr;
+	
+}	
+	
+	
+	
+
 
 
 //**********************************

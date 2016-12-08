@@ -96,6 +96,18 @@ void sub_relativeExposure (
 	double& relExp //relative exposure, per 62.2-2016
 	
 	); 	
+	
+void sub_moldIndex(
+
+	//Variables passed back and forth with main.cpp
+	char SensitivityClass, //Material sensitivity class, determined in Table 6.1.1.
+	double& MoldIndex_old, //MoldIndex from the prior hour.
+	double& MoldIndex_curr, //MoldIndex for the current hour.
+	double SurfTemp, //Material surface temperature, C
+	double SurfRH, //Material surface relative humidity, % (0-100)
+	int& Time_decl //MoldIndex decline time, hr
+
+	);	
 
 // Additional functions
 
