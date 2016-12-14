@@ -103,8 +103,8 @@ void sub_moldIndex(
 	char SensitivityClass, //Material sensitivity class, determined in Table 6.1.1.
 	double& MoldIndex_old, //MoldIndex from the prior hour.
 	double& MoldIndex_curr, //MoldIndex for the current hour.
-	double SurfTemp, //Material surface temperature, C
-	double SurfRH, //Material surface relative humidity, % (0-100)
+	double SurfTemp_K, //Material surface temperature, K
+	double SurfPw, //Material surface partial vapor pressure, Pa
 	int& Time_decl //MoldIndex decline time, hr
 
 	);	

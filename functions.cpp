@@ -152,12 +152,18 @@ void sub_moldIndex(
 	// Node 9 is the Inner Gable Wall (both lumped together), b[8]
 	// Source for the surface RH values? (1) use the vapor pressure values translated to RH, or (2) calculate local surface RH based on attic air RH and surface temps. 
 
+	// 	From the detailed attic wood moisture model, attic.temperature[n] (surface temperature node) and attic.PW[n] (surface vapor pressure node), where n is:
+	//  0 - surface of south sheathing (facing the attic) - corresponding thermal node is (4)
+	//  1 - surface of north sheathing (facing the attic) - corresponding thermal node is (2)
+	//  2 - surface of the bulk wood in the attic  - corresponding thermal node is (6)
+	//So there's no node in the wood attic model for the inner gable wall? (Node 9 thermal)
+
 	//Variables passed back and forth with main.cpp
 	int SensitivityClass, //Material sensitivity class, determined in Table 6.1.1. 0 = VerySensitive, 1 = Sensitive.
 	double& MoldIndex_old, //MoldIndex from the prior hour.
 	double& MoldIndex_curr, //MoldIndex for the current hour.
-	double SurfTemp, //Material surface temperature, C
-	double SurfRH, //Material surface relative humidity, % (0-100)
+	double SurfTemp_K, //Material surface temperature, K.
+	double SurfPw,	//Material surface partial vapor pressure, Pa
 	int& Time_decl //MoldIndex decline time, hr
 
 	)
@@ -172,8 +178,14 @@ void sub_moldIndex(
 	double k2; //Mold index attenuation factor.
 	double k3; //Mold index decline coefficient, default to 0.25 (proposed Standard had 0.1)
 	double MoldIndex_delta;
-	double RH_critical;
+	double RH_critical; //critical surface RH for mold growth, % (0-100)
 	double MoldIndex_Max;
+	double SurfRH; //Material surface relative humidity, % (0-100)
+	double SurfTemp; //Material surface temperature, C
+	
+	//Converting surface node values to RH and C.
+	SurfRH  = 100 * (SurfPw / saturationVaporPressure(SurfTemp_K)); //Calculating surface node relative humidity (%, 0-100).
+	SurfTemp = SurfTemp_K - C_TO_K; //Convert surface node temperature from K to C.
 
 	//Calculated once each hour.
 	
