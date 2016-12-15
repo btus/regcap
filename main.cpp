@@ -1028,6 +1028,14 @@ int main(int argc, char *argv[], char* envp[])
 		//double coolingLoad = 0;
 		//double latLoad = 0;
 		//double heatingLoad = 0;
+		
+		//Mold Index variables
+		double moldIndex_South = 0;
+		double moldIndex_North = 0;
+		double moldIndex_BulkFraming = 0;
+		int Time_decl_South = 0;
+		int Time_decl_North = 0;
+		int Time_decl_Bulk = 0;
 
 		vector<double> averageTemp (0);	// Array to track the 7 day running average
 
@@ -3008,6 +3016,18 @@ int main(int argc, char *argv[], char* envp[])
 					for(int i = 0; i < ATTIC_NODES; i++) {
 						tempOld[i]  = b[i];
 						}
+						
+					//Mold Index Calculations per ASHRAE 160, BDL 12/2016
+					//Sheathing surfaces are Sensitive (1) and bulk wood is Very Sensitive (0)
+					
+// 					if(minute == 0) { //calculate mold index once per hour
+// 						
+// 						moldIndex_South = sub_moldIndex(1, moldIndex_South, attic.temperature[0], attic.PW[0], Time_decl_South); //South Roof Sheathing Surface Node						
+// 						moldIndex_North = sub_moldIndex(1, moldIndex_North, attic.temperature[1], attic.PW[1], Time_decl_North); //North Roof Sheathing Surface Node
+// 						moldIndex_BulkFraming = sub_moldIndex(0, moldIndex_BulkFraming, attic.temperature[2], attic.PW[2], Time_decl_Bulk); //Bulk Attic Framing Surface Node
+// 					
+// 					}		
+						
 		
 
 					// ************** house ventilation rate  - what would be measured with a tracer gas i.e., not just envelope and vent fan flows

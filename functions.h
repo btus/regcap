@@ -97,14 +97,13 @@ void sub_relativeExposure (
 	
 	); 	
 	
-void sub_moldIndex(
+double sub_moldIndex(
 
 	//Variables passed back and forth with main.cpp
-	char SensitivityClass, //Material sensitivity class, determined in Table 6.1.1.
-	double& MoldIndex_old, //MoldIndex from the prior hour.
-	double& MoldIndex_curr, //MoldIndex for the current hour.
-	double SurfTemp_K, //Material surface temperature, K
-	double SurfPw, //Material surface partial vapor pressure, Pa
+	int SensitivityClass, //Material sensitivity class, determined in Table 6.1.1. 0 = VerySensitive, 1 = Sensitive.
+	double MoldIndex_old, //MoldIndex from the prior hour.
+	double SurfTemp_K, //Material surface temperature, K.
+	double SurfPw,	//Material surface partial vapor pressure, Pa
 	int& Time_decl //MoldIndex decline time, hr
 
 	);	

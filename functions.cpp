@@ -139,7 +139,7 @@ void sub_relativeExposure(
 	}
 }
 
-void sub_moldIndex(
+double sub_moldIndex(
 
 	//Mold Index calculation according to ASNI/ASHRAE Standard 160-2009 Addendum X (January 2016), 1st public review period.
 
@@ -160,8 +160,7 @@ void sub_moldIndex(
 
 	//Variables passed back and forth with main.cpp
 	int SensitivityClass, //Material sensitivity class, determined in Table 6.1.1. 0 = VerySensitive, 1 = Sensitive.
-	double& MoldIndex_old, //MoldIndex from the prior hour.
-	double& MoldIndex_curr, //MoldIndex for the current hour.
+	double MoldIndex_old, //MoldIndex from the prior hour.
 	double SurfTemp_K, //Material surface temperature, K.
 	double SurfPw,	//Material surface partial vapor pressure, Pa
 	int& Time_decl //MoldIndex decline time, hr
@@ -182,6 +181,7 @@ void sub_moldIndex(
 	double MoldIndex_Max;
 	double SurfRH; //Material surface relative humidity, % (0-100)
 	double SurfTemp; //Material surface temperature, C
+	double MoldIndex_curr; //MoldIndex for the current hour.
 	
 	//Converting surface node values to RH and C.
 	SurfRH  = 100 * (SurfPw / saturationVaporPressure(SurfTemp_K)); //Calculating surface node relative humidity (%, 0-100).
@@ -258,7 +258,7 @@ void sub_moldIndex(
 		MoldIndex_curr = 0;
 	}
 	
-	MoldIndex_old = MoldIndex_curr;
+	return MoldIndex_curr;
 	
 }	
 	
