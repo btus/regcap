@@ -2362,8 +2362,8 @@ int main(int argc, char *argv[], char* envp[])
 								fan[i].on = 0;
 
 						} else if(fan[i].oper == 27) {					// DYNAMIC SCHEDULE BATHROOM 3. Brennan, we can redirect this fan.oper=27 to look at the bathOneFan value to increaes usage for 6 occupants.
-							//if(bathThreeFan == 1) {
-							if(bathOneFan == 1) {
+							if(bathThreeFan == 1) {
+							//if(bathOneFan == 1) {
 								fan[i].on = 1;
 								mechVentPower = mechVentPower + fan[i].power;
 								//ventSumOUT = ventSumOUT + abs(fan[i].q) * 3600 / houseVolume;
