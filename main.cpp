@@ -238,8 +238,9 @@ int main(int argc, char *argv[], char* envp[])
 		int loadingRate;			// loading rate of filter, f (0,1,2) = (low,med,high)
 		int AHMotorType;				// BPM (1) or PSC (0) air handler motor
 		// Inputs to set humidity control
-		double rivecFlagInd;		// Indicator variable that instructs a fan code 13 or 17 to be run by RIVEC controls. 1= yes, 0=no. Brennan.
-		double HumContType;		// Type of humidity control to be used in the RIVEC calculations. 1,2,...n Brennan.
+		int rivecFlagInd;		// Indicator variable that instructs a fan code 13 or 17 to be run by RIVEC controls. 1= yes, 0=no. Brennan.
+		int HumContType;		// Type of humidity control to be used in the RIVEC calculations. 1,2,...n Brennan.
+		int AuxFanIndex; 	// //Index value that determines if auxiliary fans (dryer, kitchen and bath fans) are counted towards RIVEC relative exposure calculations
 		double wCutoff;			// Humidity Ratio cut-off calculated as some percentile value for the climate zone. Brennan.
 		double wDiffMaxNeg;		// Maximum average indoor-outdoor humidity differene, when wIn < wOut. Climate zone average.
 		double wDiffMaxPos;		// Maximum average indoor-outdoor humidity differene, when wIn > wOut. Climate zone average.
@@ -481,6 +482,7 @@ int main(int argc, char *argv[], char* envp[])
 		buildingFile >> rivecFlagInd;
 		//The variable from here down were added by Brennan as part of the Smart Ventilation Humidity Control project
 		buildingFile >> HumContType; //Now the OccContType for SVC_Occupancy.
+		buildingFile >> AuxFanIndex; //Index value that determines if auxiliary fans (dryer, kitchen and bath fans) are counted towards RIVEC relative exposure calculations
 // 		if(HumContType > 0) {
 // 			buildingFile >> wCutoff;
 // 			buildingFile >> wDiffMaxNeg;
@@ -3079,10 +3081,25 @@ int main(int argc, char *argv[], char* envp[])
 
 					// [START] IAQ Calculations =======================================================================================================================================
 					
-					if(ventSumIN > ventSumOUT)						//ventSum based on largest of inflow or outflow (includes flue flows as default)
-						ventSum = ventSumIN + abs(flueACH);
-					else
-						ventSum = ventSumOUT + abs(flueACH);
+					//Calculate ventSum based on the sum of airflows and the AuxFanIndex value.
+					if(AuxFanIndex == 0){ //do NOT count aux fans in relative exposure calculations
+					
+						if(ventSumIN > ventSumOUT)						//ventSum based on largest of inflow or outflow (includes flue flows as default)
+							ventSum = ventSumIN + abs(flueACH);
+						else
+							ventSum = ventSumOUT + abs(flueACH);
+							
+					} else if(AuxFanIndex == 1){ //DO count aux fans in relative exposure calculations.
+					
+						ventSumIN = ventSumIN + nonRivecVentSumIN;
+						ventSumOUT = ventSumOUT + nonRivecVentSumOUT;
+						
+						if(ventSumIN > ventSumOUT)						//ventSum based on largest of inflow or outflow (includes flue flows as default)
+							ventSum = ventSumIN + abs(flueACH);
+						else
+							ventSum = ventSumOUT + abs(flueACH);
+							
+					}		
 
 					if(ventSum <= 0)
 						ventSum = .000001;
