@@ -239,7 +239,7 @@ int main(int argc, char *argv[], char* envp[])
 		int AHMotorType;				// BPM (1) or PSC (0) air handler motor
 		// Inputs to set humidity control
 		int rivecFlagInd;		// Indicator variable that instructs a fan code 13 or 17 to be run by RIVEC controls. 1= yes, 0=no. Brennan.
-		int HumContType;		// Type of humidity control to be used in the RIVEC calculations. 1,2,...n Brennan.
+		int OccContType;		// Type of occupancy control to be used in the RIVEC calculations. 1,2,...n Brennan.
 		int AuxFanIndex; 	// //Index value that determines if auxiliary fans (dryer, kitchen and bath fans) are counted towards RIVEC relative exposure calculations
 		double wCutoff;			// Humidity Ratio cut-off calculated as some percentile value for the climate zone. Brennan.
 		double wDiffMaxNeg;		// Maximum average indoor-outdoor humidity differene, when wIn < wOut. Climate zone average.
@@ -481,7 +481,7 @@ int main(int argc, char *argv[], char* envp[])
 		buildingFile >> AHMotorType;
 		buildingFile >> rivecFlagInd;
 		//The variable from here down were added by Brennan as part of the Smart Ventilation Humidity Control project
-		buildingFile >> HumContType; //Now the OccContType for SVC_Occupancy.
+		buildingFile >> OccContType; //Now the OccContType for SVC_Occupancy.
 		buildingFile >> AuxFanIndex; //Index value that determines if auxiliary fans (dryer, kitchen and bath fans) are counted towards RIVEC relative exposure calculations
 // 		if(HumContType > 0) {
 // 			buildingFile >> wCutoff;
@@ -1417,8 +1417,32 @@ int main(int argc, char *argv[], char* envp[])
 								//	fan[i].on = 0;
 								//}
 							}
+						//}
+							else if(OccContType == 2){ //Aux fan control only.
+								if(relExp >= 0.95 || relDose > 1.0){
+									rivecOn = 1;
+								} else {
+									rivecOn = 0;
+								}
+							}
+						
+							else if(OccContType == 3 || OccContType == 4){ //Occupancy control only (3) or Aux Fans + Occupancy control (4). Aux fans are accounted for with the AuxFanIndex variable. 
+								if(occupied[weekend][hour] == 1){ //occupied
+									if(relExp >= 0.95 || relDose > 1.0){
+										rivecOn = 1;
+									} else {
+										rivecOn = 0;
+										}
+									}
+								} else{ //unoccupied
+									if(relExp > expLimit){ //expLimit defaults to 5, based on ASHRAE 62.2-2016 Addendum C. 
+										rivecOn = 1;
+									} else{
+										rivecOn = 0;
+									}
+								}
+							}				
 						}
-					}	
 						// [END] ========================== END RIVEC Decision ====================================
 
 	// 					========================== Start Humidity Control Logic ================================
@@ -2255,17 +2279,33 @@ int main(int argc, char *argv[], char* envp[])
 
 					for(int i = 0; i < numFans; i++) {
 
-						if(fan[i].oper == 1) {							// FAN ALWAYS ON
+						if(fan[i].oper == 1 && OccContType > 1) {		// RIVEC controlled exhaust fan.
+							if(rivecOn == 1){
+								fan[i].on = 1;
+								fan[i].q = FanQ;
+								//fan[i].on = 0;	// Use this to disable the whole-house exhaust fan
+								mechVentPower = mechVentPower + fan[i].power;				// vent fan power
+								if(fan[i].q > 0) {							// supply fan - its heat needs to be added to the internal gains of the house
+									fanHeat = fan[i].power * .84;			// 16% efficiency for the particular fan used in this study.
+									ventSumIN = ventSumIN + abs(fan[i].q) * 3600 / houseVolume;
+								}
+								else											// exhasut fan
+									ventSumOUT = ventSumOUT + abs(fan[i].q) * 3600 / houseVolume;	
+							} else{
+								fan[i].on = 0;
+								fan[i].q = 0;
+							}	
+						
+						} else if(fan[i].oper == 1 && OccContType <= 1){ //Continuous exhaust fan simulations.
 							fan[i].on = 1;
 							fan[i].q = FanQ;
-							//fan[i].on = 0;	// Use this to disable the whole-house exhaust fan
-							mechVentPower = mechVentPower + fan[i].power;				// vent fan power
+							mechVentPower = mechVentPower + fan[i].power;
 							if(fan[i].q > 0) {							// supply fan - its heat needs to be added to the internal gains of the house
 								fanHeat = fan[i].power * .84;			// 16% efficiency for the particular fan used in this study.
 								ventSumIN = ventSumIN + abs(fan[i].q) * 3600 / houseVolume;
 							}
 							else											// exhasut fan
-								ventSumOUT = ventSumOUT + abs(fan[i].q) * 3600 / houseVolume;				
+								ventSumOUT = ventSumOUT + abs(fan[i].q) * 3600 / houseVolume;		
 						
 						} else if(fan[i].oper == 2) {					// FIXED SCHEDULE BATHROOM
 							if(hour == 7 && minute >= 30) {
