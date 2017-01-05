@@ -101,9 +101,9 @@ void sub_infiltrationModel(
 	
 	Q_stack = envC_LitersPerSec * Cs * pow(abs((C_TO_K + 20) - dryBulb), envPressureExp); //Calculation stack airflow, assumes 68F (20C indoor temp), L/s.
 	
-	if(InfCalc == 0){
+	if(InfCalc == 0){ //Use annual infiltration estimate from 62.2-2016.
 		Q_infiltration = wInfil;
-	} else {
+	} else { //Use real-time infiltration calculation.
 		Q_infiltration = sqrt(pow(Q_wind, 2) + pow(Q_stack, 2)); //Calculate combined infiltration airflow using quadrature, L/s.
 	}
 	

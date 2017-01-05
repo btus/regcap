@@ -727,7 +727,7 @@ int main(int argc, char *argv[], char* envp[])
 				cout << "Cannot open output file: " << outputFileName << endl;
 				return 1; 
 			}
-			outputFile << "Time\tMin\twindSpeed\ttempOut\ttempHouse\tsetpoint\ttempAttic\ttempSupply\ttempReturn\tAHflag\tAHpower\tcompressPower\tmechVentPower\tHR\tSHR\tMcoil\thousePress\tQhouse\tACH\tACHflue\tventSum\tnonRivecVentSum\tfan1\tfan2\tfan3\tfan4\tfan5\tfan6\tfan7\trivecOn\trelExp\trelDose\toccupied\toccupiedExp\toccupiedDose\tHROUT\tHRattic\tHRreturn\tHRsupply\tHRhouse\tHRmaterials\tRHhouse\tRHind60\tRHind70\tHumidityIndex\tDHcondensate" << endl; 
+			outputFile << "Time\tMin\twindSpeed\ttempOut\ttempHouse\tsetpoint\ttempAttic\ttempSupply\ttempReturn\tAHflag\tAHpower\tcompressPower\tmechVentPower\tHR\tSHR\tMcoil\thousePress\tQhouse\tACH\tACHflue\tventSum\tnonRivecVentSum\tfan1\tfan2\tfan3\tfan4\tfan5\tfan6\tfan7\trivecOn\trelExp\trelDose\toccupied\tHROUT\tHRattic\tHRreturn\tHRsupply\tHRhouse\tHRmaterials\tRHhouse\tRHind60\tRHind70\tHumidityIndex\tDHcondensate" << endl; 
 		}
 		
 		// 5 HR nodes
@@ -810,8 +810,8 @@ int main(int argc, char *argv[], char* envp[])
 		int recoveryEnd = 0;
 
 		double ELA = envC * sqrt(airDensityRef / 2) * pow(4, (envPressureExp - .5));			// Effective Leakage Area
-		double NL = 1000 * (ELA / floorArea) * pow((eaveHeight-Hfloor)/2.5, 0.4);				// Normalized Leakage Calculation. 
-		double wInfil = weatherFactor * NL;										// Infiltration credit from updated ASHRAE 136 weather factors [ACH]
+		double NL = 1000 * (ELA / floorArea) * pow((eaveHeight-Hfloor)/2.5, 0.4);				// Normalized Leakage Calculation 62.2-2016 Equation 4.4. 
+		double wInfil = (weatherFactor * NL * floorArea) / 1.44;								// Effective annual average infiltration rate, 62.2-2016 Equation 4.5b, L/s.
 // 		double defaultInfil = .001 * ((floorArea / 100) * 10) * 3600 / houseVolume;	// Default infiltration credit [ACH] (ASHRAE 62.2, 4.1.3 p.4). This NO LONGER exists in 62.2-2013
 // 		double rivecX = (.05 * floorArea + 3.5 * (numBedrooms + 1)) / qRivec;
 // 		double rivecY = 0;
@@ -847,15 +847,19 @@ int main(int argc, char *argv[], char* envp[])
 		long int occupiedMinCount = 0;			// Counts the number of minutes in a year that the house is occupied
 		
 		double relDose = 1;							// Initial value for relative dose used in the RIVEC algorithm
-		double occupiedDose = 1;					// When occupied, this equals relDose, when unoccupied, this equals 0. 
-		double totalOccupiedDose = 0;				//Cumulative sum for occupiedDose
-		double meanOccupiedDose = 1;				// Mean occupied relative dose over the year
+		//double occupiedDose = 1;					// When occupied, this equals relDose, when unoccupied, this equals 0. 
+		double totalRelDose = 1;
+		//double totalOccupiedDose = 0;				//Cumulative sum for occupiedDose
+		//double meanOccupiedDose = 1;				// Mean occupied relative dose over the year
+		double meanRelDose = 1;
 		double relDoseOld = 1;							// Relative Dose from the previous time step
 		
 		double relExp = 1;							// Initial value for relative exposure used in the RIVEC algorithm
-		double occupiedExp = 1;						// When occupied, this equals relExp, when unoccupied, this equals 0. 
-		double totalOccupiedExp = 0;				//Cumulative sum for occupiedExp
-		double meanOccupiedExp = 1;					// Mean occupied relative exposure over the year
+		double totalRelExp = 1;
+		double meanRelExp = 1;
+// 		double occupiedExp = 1;						// When occupied, this equals relExp, when unoccupied, this equals 0. 
+// 		double totalOccupiedExp = 0;				//Cumulative sum for occupiedExp
+// 		double meanOccupiedExp = 1;					// Mean occupied relative exposure over the year
 		double relExpOld = 1;						//Initial value for prior minute's relative exposure.
 		
 		double turnover = 1 / Aeq;					// Initial value for turnover time (hrs) used in the RIVEC algorithm. Turnover is calculated the same for occupied and unoccupied minutes.					
@@ -1419,7 +1423,7 @@ int main(int argc, char *argv[], char* envp[])
 							}
 						//}
 							else if(OccContType == 2){ //Aux fan control only.
-								if(relExp >= 0.95 || relDose > 1.0){
+								if(relExp >= 1.0 || relDose > 1.0){
 									rivecOn = 1;
 								} else {
 									rivecOn = 0;
@@ -1428,7 +1432,7 @@ int main(int argc, char *argv[], char* envp[])
 						
 							else if(OccContType == 3 || OccContType == 4){ //Occupancy control only (3) or Aux Fans + Occupancy control (4). Aux fans are accounted for with the AuxFanIndex variable. 
 								if(occupied[weekend][hour] == 1){ //occupied
-									if(relExp >= 0.95 || relDose > 1.0){
+									if(relExp >= 1.0 || relDose > 1.0){
 										rivecOn = 1;
 									} else {
 										rivecOn = 0;
@@ -3151,8 +3155,36 @@ int main(int argc, char *argv[], char* envp[])
 					relExpOld = relExp;
 					relDoseOld = relDose;
 					
-					sub_relativeExposure(Aeq, Q_total, relExpOld, dtau, houseVolume, relExp);	
+					//relExp and relDose are calculated and summed for every minute of the year.
+					
+					sub_relativeExposure(Aeq, Q_total, relExpOld, dtau, houseVolume, relExp);
+					relDose = relExp * (1 - exp(-rivecdt / 24)) + relDoseOld * exp(-rivecdt / 24);
+					totalRelExp = totalRelExp + relExp;
+					totalRelDose = totalRelDose + relDose;
 
+					if(OccContType > 2 && occupied[weekend][hour] == 0){ //unoccupied period AND occupancy SVC
+						totalRelExp = totalRelExp - relExp; //undo the addition.	
+						relDose = relDoseOld; //revert to prior time step value of relDose. relExp keeps being calculated in real-time.
+						totalRelDose = totalRelDose - relDose; //undo the addition
+					}
+					
+					if(occupied[weekend][hour] == 1) { //house is occupied, then increment counter. 
+						occupiedMinCount += 1; // counts number of minutes while house is occupied
+					}
+					
+					
+					
+					//occupiedExp and occupiedDose are calculated and running summed only for occupied minutes of the year. Their values are otherwise remain fixed at the prior time step value. 
+					//Occupancy-based controls use relExp and occupiedDose.
+					
+// 					if(occupied[weekend][hour] == 1) { //house is occupied, then calculate new occupiedDose and increment counter. 
+// 					//Otherwise leave occupiedDose fixed at value from prior time step.
+// 						occupiedMinCount += 1; // counts number of minutes while house is occupied
+// 						occupiedDose = relDose;				// For annual average calculation, occupiedDose is unchanged when unoccupied.
+// 						occupiedExp = relExp;
+// 						totalOccupiedDose = totalOccupiedDose + occupiedDose; // Sums all dose values during occupied mins.
+// 						totalOccupiedExp = totalOccupiedExp + occupiedExp;
+// 					}
 
 					/* -------dkm: To add flue in relDose/relExp calc the following two IF sentences have been added------
 					if(flueACH <= 0)
@@ -3205,22 +3237,18 @@ int main(int argc, char *argv[], char* envp[])
 // 						relDoseReal = relExpReal * (1 - exp(-rivecdt / 24)) + relDoseRealOld * exp(-rivecdt / 24);
 // 					}
 
-					if(occupied[weekend][hour] == 1) { //house is occupied, then calculate new relDose and increment counter. 
-					//Otherwise leave relDose fixed at value from prior time step.
-						occupiedMinCount += 1; // counts number of minutes while house is occupied
-						relDose = relExp * (1 - exp(-rivecdt / 24)) + relDoseOld * exp(-rivecdt / 24);
-					}
+
 					
 					
 			
-					occupiedDose = relDose * occupied[weekend][hour];				// For annual average calculation, occupiedDose = 0 when unoccupied. 
-					occupiedExp = relExp * occupied[weekend][hour];					// For annual average calculation, occupiedExp = 0 when unoccupied. 
+					//occupiedDose = relDose * occupied[weekend][hour];				// For annual average calculation, occupiedDose = 0 when unoccupied. 
+					//occupiedExp = relExp * occupied[weekend][hour];					// For annual average calculation, occupiedExp = 0 when unoccupied. 
 			
 // 					occupiedDoseReal = relDoseReal * occupied[weekend][hour];		// dose and exposure for when the building is occupied
 // 					occupiedExpReal = relExpReal * occupied[weekend][hour];			//If house is always occupied, then relExpReal = occupiedExpReal
 
-					totalOccupiedDose = totalOccupiedDose + occupiedDose;   // Sums all dose and exposure values during the simulation (unoccupied periods are 0). 
-					totalOccupiedExp = totalOccupiedExp + occupiedExp;
+// 					totalOccupiedDose = totalOccupiedDose + occupiedDose;   // Sums all dose and exposure values during the simulation (unoccupied periods are 0). 
+// 					totalOccupiedExp = totalOccupiedExp + occupiedExp;
 
 // 					totalOccupiedDoseReal = totalOccupiedDoseReal + occupiedDoseReal;   // Brennan. Added these for "real" calculations. total dose and exp over the occupied time period
 // 					totalOccupiedExpReal = totalOccupiedExpReal + occupiedExpReal;
@@ -3285,7 +3313,7 @@ int main(int argc, char *argv[], char* envp[])
 						outputFile << Pint << "\t"<< qHouse << "\t" << houseACH << "\t" << flueACH << "\t" << ventSum << "\t" << nonRivecVentSum << "\t";
 						outputFile << fan[0].on << "\t" << fan[1].on << "\t" << fan[2].on << "\t" << fan[3].on << "\t" << fan[4].on << "\t" << fan[5].on << "\t" << fan[6].on << "\t";
 						outputFile << rivecOn << "\t" << relExp << "\t" << relDose << "\t";
-						outputFile << occupied[weekend][hour] << "\t" << occupiedExp << "\t" << occupiedDose << "\t"; 
+						outputFile << occupied[weekend][hour] << "\t"; 
 						outputFile << weather.humidityRatio << "\t" << HR[0] << "\t" << HR[1] << "\t" << HR[2] << "\t" << HR[3] << "\t" << HR[4] << "\t" << RHhouse << "\t" << RHind60 << "\t" << RHind70 << "\t" << HumidityIndex << "\t" << dh.condensate << endl;
 						//outputFile << mHouse << "\t" << mHouseIN << "\t" << mHouseOUT << "\t" << mIN << "\t" << mOUT << "\t" << mCeiling << "\t" << mSupReg << "\t" << mSupAHoff << "\t" << mRetAHoff << "\t" << mRetReg << "\t" << mFanCycler << "\t" << mFlue << "\t" << mFloor << "\t" << mAH << endl;
 						//outputFile << mHouse << "\t" << mHouseIN << "\t" << mHouseOUT << mCeiling << "\t" << mHouseIN << "\t" << mHouseOUT << "\t" << mSupReg << "\t" << mRetReg << "\t" << mSupAHoff << "\t" ;
@@ -3365,8 +3393,14 @@ int main(int argc, char *argv[], char* envp[])
 // 		meanRelDoseReal = meanRelDoseReal / minuteYear;				//Brennan. Added these and need to define in the definitions area. 
 // 		meanRelExpReal = meanRelExpReal / minuteYear;
 
-		meanOccupiedDose = totalOccupiedDose / occupiedMinCount; //Annual average relDose
-		meanOccupiedExp = totalOccupiedExp / occupiedMinCount; //Annual average relExp; occupiedMinCount = 525,600 for continuous occupancy.
+		meanRelExp = totalRelExp / minuteYear;
+		meanRelDose = totalRelDose / minuteYear;
+		if(OccContType > 2){
+			meanRelExp = totalRelExp / occupiedMinCount;
+			meanRelDose = totalRelDose / occupiedMinCount;
+		}
+		//meanOccupiedDose = totalOccupiedDose / occupiedMinCount; //Annual average relDose
+		//meanOccupiedExp = totalOccupiedExp / occupiedMinCount; //Annual average relExp; occupiedMinCount = 525,600 for continuous occupancy.
 
 // 		meanOccupiedDoseReal = totalOccupiedDoseReal / occupiedMinCount;
 // 		meanOccupiedExpReal = totalOccupiedExpReal / occupiedMinCount;
@@ -3392,7 +3426,7 @@ int main(int argc, char *argv[], char* envp[])
 		//Values
 		ou2File << meanOutsideTemp << "\t" << meanAtticTemp << "\t" << meanHouseTemp << "\t";
 		ou2File << AH_kWh << "\t" << furnace_kWh << "\t" << compressor_kWh << "\t" << mechVent_kWh << "\t" << total_kWh << "\t" << meanHouseACH << "\t" << meanFlueACH << "\t";
-		ou2File << meanOccupiedExp << "\t" << meanOccupiedDose << "\t"; //Brennan. changed all the exp/dose outputs to be "real"
+		ou2File << meanRelExp << "\t" << meanRelDose << "\t";
 		ou2File << occupiedMinCount << "\t" << rivecMinutes << "\t" << NL << "\t" << envC << "\t" << Aeq << "\t" << filterChanges << "\t" << MERV << "\t" << loadingRate << "\t" << TotalDAventLoad << "\t" << TotalMAventLoad;
 		ou2File << "\t" << RHexcAnnual60 << "\t" << RHexcAnnual70 << "\t" << HumidityIndex_Avg << "\t" << dehumidifier_kWh << endl;
 
