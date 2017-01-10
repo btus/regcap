@@ -1399,54 +1399,54 @@ int main(int argc, char *argv[], char* envp[])
 
 
 					if(minute == 0 || minute == 10 || minute == 20 || minute == 30 || minute == 40 || minute == 50) {
-						for(int i=0; i < numFans; i++) {
-							// [START] ---------------------FAN 50---------- RIVEC OPERATION BASED ON CONTROL ALGORITHM v6
-							// v6 of the algorithm only uses the peakStart and peakEnd variables, no more base or recovery periods.(
-							if(fan[i].oper == 50 || fan[i].oper == 13 || fan[i].oper == 17) { //traditional (50), cfis (13) or erv+ahu (17) fans for rivec control
-								// rivecOn = 1 or 0: 1 = whole-house fan ON, 0 = whole-house fan OFF
+// 						for(int i=0; i < numFans; i++) {
+// 							// [START] ---------------------FAN 50---------- RIVEC OPERATION BASED ON CONTROL ALGORITHM v6
+// 							// v6 of the algorithm only uses the peakStart and peakEnd variables, no more base or recovery periods.(
+// 							if(fan[i].oper == 50 || fan[i].oper == 13 || fan[i].oper == 17) { //traditional (50), cfis (13) or erv+ahu (17) fans for rivec control
+// 								// rivecOn = 1 or 0: 1 = whole-house fan ON, 0 = whole-house fan OFF
+// 								rivecOn = 0;
+// 								//// RIVEC fan operation after algorithm decision
+// 								//if(rivecOn) {	  												// RIVEC has turned ON this fan
+// 								//	fan[i].on = 1;
+// 								//	mechVentPower = mechVentPower + fan[i].power;				// vent fan power
+// 								//	if(fan[i].q > 0) { 											// supply fan - its heat needs to be added to the internal gains of the house
+// 								//		fanHeat = fan[i].power * .84;							// 16% efficiency for this fan
+// 								//		ventSumIN = ventSumIN + abs(fan[i].q) * 3600 / houseVolume;
+// 								//	} else { 													// exhaust fan
+// 								//		ventSumOUT = ventSumOUT + abs(fan[i].q) * 3600 / houseVolume;
+// 								//	}
+// 								//	rivecMinutes++;
+// 								//}
+// 								//else {
+// 								//	fan[i].on = 0;
+// 								//}
+// 							}
+// 						//}
+						if(OccContType == 2){ //Aux fan control only.
+							if(relExp >= 1.0 || relDose > 1.0){
+								rivecOn = 1;
+							} else {
 								rivecOn = 0;
-								//// RIVEC fan operation after algorithm decision
-								//if(rivecOn) {	  												// RIVEC has turned ON this fan
-								//	fan[i].on = 1;
-								//	mechVentPower = mechVentPower + fan[i].power;				// vent fan power
-								//	if(fan[i].q > 0) { 											// supply fan - its heat needs to be added to the internal gains of the house
-								//		fanHeat = fan[i].power * .84;							// 16% efficiency for this fan
-								//		ventSumIN = ventSumIN + abs(fan[i].q) * 3600 / houseVolume;
-								//	} else { 													// exhaust fan
-								//		ventSumOUT = ventSumOUT + abs(fan[i].q) * 3600 / houseVolume;
-								//	}
-								//	rivecMinutes++;
-								//}
-								//else {
-								//	fan[i].on = 0;
-								//}
 							}
-						//}
-							else if(OccContType == 2){ //Aux fan control only.
+						}
+					
+						else if(OccContType == 3 || OccContType == 4){ //Occupancy control only (3) or Aux Fans + Occupancy control (4). Aux fans are accounted for with the AuxFanIndex variable. 
+							if(occupied[weekend][hour] == 1){ //occupied
 								if(relExp >= 1.0 || relDose > 1.0){
 									rivecOn = 1;
 								} else {
 									rivecOn = 0;
 								}
-							}
-						
-							else if(OccContType == 3 || OccContType == 4){ //Occupancy control only (3) or Aux Fans + Occupancy control (4). Aux fans are accounted for with the AuxFanIndex variable. 
-								if(occupied[weekend][hour] == 1){ //occupied
-									if(relExp >= 1.0 || relDose > 1.0){
-										rivecOn = 1;
-									} else {
-										rivecOn = 0;
-										}
-									}
-								} else{ //unoccupied
-									if(relExp > expLimit){ //expLimit defaults to 5, based on ASHRAE 62.2-2016 Addendum C. 
-										rivecOn = 1;
-									} else{
-										rivecOn = 0;
-									}
+								
+							} else{ //unoccupied
+								if(relExp > expLimit){ //expLimit defaults to 5, based on ASHRAE 62.2-2016 Addendum C. 
+									rivecOn = 1;
+								} else{
+									rivecOn = 0;
 								}
-							}				
-						}
+							}
+						}				
+					}
 						// [END] ========================== END RIVEC Decision ====================================
 
 	// 					========================== Start Humidity Control Logic ================================

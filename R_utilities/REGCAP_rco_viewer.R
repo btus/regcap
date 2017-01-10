@@ -39,6 +39,9 @@ AHUflagIndex=function(x){
 	AH_cool<-x[which(x==2)]
 	AH_cool[AH_cool==2]<-1
 	AH_vent<-x[which(x==100)]
+	if(length(AH_vent)==0){
+	  AH_vent<-rep(0, 525600)
+	}
 	AH_vent[AH_vent==100]<-1
 	all<-merge.xts(x, AH_none, AH_heat, AH_cool, AH_vent, fill=0)
 	colnames(all)<-c("AHflag", "None", "Heat", "Cool", "Vent")
