@@ -152,10 +152,10 @@ int main(int argc, char *argv[], char* envp[])
 		string shelterFileName;
 		double envC;					// Envelope leakage coefficient
 		double envPressureExp;		// Envelope Pressure Exponent
-		double G; 					//Wind speed multiplier, for 62.2-2016 infiltration calcs
-		double s; 					//Shelter Factor, for 62.2-2016 infiltration calcs
-		double Cs; 					//Stack coefficient, for 62.2-2016 infiltration calcs
-		double Cw; 					//Wind coefficient, for 62.2-2016 infiltration calcs
+		double windSpeedMultiplier; //Wind speed multiplier (G), for 62.2-2016 infiltration calcs
+		double shelterFactor; 			//Shelter Factor, for 62.2-2016 infiltration calcs
+		double stackCoef; 				//Stack coefficient, for 62.2-2016 infiltration calcs
+		double windCoef; 				//Wind coefficient, for 62.2-2016 infiltration calcs
 		double eaveHeight;			// Eave Height [m]
 		double R;						// Ceiling Floor Leakage Sum
 		double X;						// Ceiling Floor Leakage Difference
@@ -324,10 +324,10 @@ int main(int argc, char *argv[], char* envp[])
 
 		buildingFile >> envC;
 		buildingFile >> envPressureExp;
-		buildingFile >> G;
-		buildingFile >> s;
-		buildingFile >> Cs;
-		buildingFile >> Cw;
+		buildingFile >> windSpeedMultiplier;
+		buildingFile >> shelterFactor;
+		buildingFile >> stackCoef;
+		buildingFile >> windCoef;
 		buildingFile >> eaveHeight;
 		buildingFile >> R;
 		buildingFile >> X;
@@ -3002,7 +3002,7 @@ int main(int argc, char *argv[], char* envp[])
 								leakFracCeil, leakFracFloor, leakFracWall, numFlues, flue, wallFraction, floorFraction, Sw, flueShelterFactor, numWinDoor, winDoor, numFans, fan, numPipes,
 								Pipe, mIN, mOUT, Pint, mFlue, mCeiling, mFloor, atticC, dPflue, Crawl,
 								Hfloor, rowHouse, soffitFraction, Patticint, wallCp, mSupReg, mAH, mRetLeak, mSupLeak,
-								mRetReg, mHouseIN, mHouseOUT, supC, supn, retC, retn, mSupAHoff, mRetAHoff, Aeq, airDensityIN, airDensityOUT, airDensityATTIC, houseVolume, windPressureExp);
+								mRetReg, mHouseIN, mHouseOUT, supC, supn, retC, retn, mSupAHoff, mRetAHoff, airDensityIN, airDensityOUT, airDensityATTIC, houseVolume, windPressureExp);
 							//Yihuan : put the mCeilingIN on comment 
 							flag = flag + 1;
 
@@ -3148,7 +3148,7 @@ int main(int argc, char *argv[], char* envp[])
 					if(ventSum <= 0)
 						ventSum = .000001;
 						
-					sub_infiltrationModel(envC, envPressureExp, G, s, Cs, Cw, weather.windSpeed, 	
+					sub_infiltrationModel(envC, envPressureExp, windSpeedMultiplier, shelterFactor, stackCoef, windCoef, weather.windSpeed, 	
 						weather.dryBulb, ventSum, houseVolume, windSpeedCorrection, Q_wind, 
 						Q_stack, Q_infiltration, Q_total, wInfil, InfCalc);
 					

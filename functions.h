@@ -284,7 +284,7 @@ void sub_houseLeak (
 	double& retn, 
 	double& mSupAHoff, 
 	double& mRetAHoff, 
-	double& Aeq,
+	//double& Aeq,
 	double& airDensityIN,
 	double& airDensityOUT,
 	double& airDensityATTIC,

@@ -13,7 +13,7 @@ using namespace std;
 void f_CpTheta(double CP[4][4], int& windAngle, double* wallCp);
 
 void f_flueFlow(double& tempHouse, double& flueShelterFactor, double& dPwind, double& dPtemp, double& h, double& Pint, int& numFlues, flue_struct* flue, double& mFlue,
-	double& airDensityOUT, double& airDensityIN, double& dPflue, double& tempOut, double& Aeq, double& houseVolume, double& windPressureExp);
+	double& airDensityOUT, double& airDensityIN, double& dPflue, double& tempOut, double& houseVolume, double& windPressureExp);
 
 void f_floorFlow3(double& Cfloor, double& Cpfloor, double& dPwind, double& Pint,
 	double& n, double& mFloor, double& airDensityOUT, double& airDensityIN, double& Hfloor, double& dPtemp);
@@ -1217,7 +1217,7 @@ void sub_houseLeak (
 	double& retn, 
 	double& mSupAHoff, 
 	double& mRetAHoff, 
-	double& Aeq,
+	//double& Aeq,
 	double& airDensityIN,
 	double& airDensityOUT,
 	double& airDensityATTIC,
@@ -1310,7 +1310,7 @@ void sub_houseLeak (
 			mOUT = 0;
 			
 			if(numFlues) {					//FF: This IF behaves as if(numFlues != 0)
-				f_flueFlow(tempHouse, flueShelterFactor, dPwind, dPtemp, h, Pint, numFlues, flue, mFlue, airDensityOUT, airDensityIN, dPflue, tempOut, Aeq, houseVolume, windPressureExp);
+				f_flueFlow(tempHouse, flueShelterFactor, dPwind, dPtemp, h, Pint, numFlues, flue, mFlue, airDensityOUT, airDensityIN, dPflue, tempOut, houseVolume, windPressureExp);
 
 				if(mFlue >= 0) {
 					mIN = mIN + mFlue;		// Add mass flow through flue
@@ -1974,7 +1974,7 @@ void f_CpTheta(double CP[4][4], int& windAngle, double* wallCp) {
 }
 
 void f_flueFlow(double& tempHouse, double& flueShelterFactor, double& dPwind, double& dPtemp, double& h, double& Pint, int& numFlues, flue_struct* flue, double& mFlue,
-	double& airDensityOUT, double& airDensityIN, double& dPflue, double& tempOut, double& Aeq, double& houseVolume, double& windPressureExp) {
+	double& airDensityOUT, double& airDensityIN, double& dPflue, double& tempOut, double& houseVolume, double& windPressureExp) {
 
 		// calculates flow through the flue
 
