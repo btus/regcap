@@ -3157,7 +3157,7 @@ int main(int argc, char *argv[], char* envp[])
 					
 					//relExp and relDose are calculated and summed for every minute of the year.
 					
-					sub_relativeExposure(Aeq, Q_total, relExpOld, dtau, houseVolume, relExp);
+					relExp = sub_relativeExposure(Aeq, Q_total, relExpOld, dtau, houseVolume);
 					relDose = relExp * (1 - exp(-rivecdt / 24)) + relDoseOld * exp(-rivecdt / 24);
 					totalRelExp = totalRelExp + relExp;
 					totalRelDose = totalRelDose + relDose;

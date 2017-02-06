@@ -93,7 +93,7 @@ void sub_relativeExposure (
 	double& relExp_old, //Relative exposure from the prior time-step. 
 	double dtau, //Simulation timestep in seconds (60). 
 	double& houseVolume, //House volume, m3
-	double& relExp //relative exposure, per 62.2-2016
+	//double& relExp //relative exposure, per 62.2-2016
 	
 	); 	
 	

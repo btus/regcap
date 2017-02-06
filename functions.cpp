@@ -120,7 +120,7 @@ void sub_relativeExposure(
 	double& relExp_old, //Relative exposure from the prior time-step.
 	double dtau, //Simulation time step in seconds (60).
 	double& houseVolume, //House volume, m3
-	double& relExp
+	//double& relExp
 	
 	) 
 	
@@ -128,6 +128,7 @@ void sub_relativeExposure(
 
 	double Aeq_to_m3s; //Aeq (hr-1) converted to m3/s.
 	double Q_total_to_m3s; //Q_total (L/s) converted to m3/s.
+	double relExp; //relative exposure
 	
 	Q_total_to_m3s = (Q_total / 1000.);
 	Aeq_to_m3s = Aeq * houseVolume / 3600.;
@@ -137,6 +138,8 @@ void sub_relativeExposure(
 	} else {
 		relExp = (Aeq_to_m3s / Q_total_to_m3s) + (relExp_old - (Aeq_to_m3s / Q_total_to_m3s)) * exp(-1 * Q_total_to_m3s * dtau / houseVolume);
 	}
+	
+	return(relExp)
 }
 
 double sub_moldIndex(
