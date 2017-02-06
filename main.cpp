@@ -2297,7 +2297,7 @@ int main(int argc, char *argv[], char* envp[])
 									ventSumOUT = ventSumOUT + abs(fan[i].q) * 3600 / houseVolume;	
 							} else{
 								fan[i].on = 0;
-								fan[i].q = 0;
+								//fan[i].q = 0;
 							}	
 						
 						} else if(fan[i].oper == 1 && OccContType <= 1){ //Continuous exhaust fan simulations.
