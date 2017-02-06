@@ -63,7 +63,7 @@ void sub_infiltrationModel(
 
 	double& envC, //Envelope leakage coefficient, m3/s/Pa^n
 	double& envPressureExp, //Envelope pressure exponent
-	double& G, //Wind speed multiplier
+	double& G, //Wind speed multiplier. This assumes a terrain factor of 2 (urban/suburban) and does not modify for other terrains.  
 	double& s, //Shelter Factor
 	double& Cs, //Stack coefficient
 	double& Cw, //Wind coefficient
