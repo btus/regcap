@@ -862,7 +862,7 @@ int main(int argc, char *argv[], char* envp[])
 // 		double meanOccupiedExp = 1;					// Mean occupied relative exposure over the year
 		double relExpOld = 1;						//Initial value for prior minute's relative exposure.
 		
-		double turnover = 1 / Aeq;					// Initial value for turnover time (hrs) used in the RIVEC algorithm. Turnover is calculated the same for occupied and unoccupied minutes.					
+		//double turnover = 1 / Aeq;					// Initial value for turnover time (hrs) used in the RIVEC algorithm. Turnover is calculated the same for occupied and unoccupied minutes.					
 		double Q_total = 0;							//Total airflow (infiltration + mechanical) (L/s), 62.2-2016
 		double Q_wind = 0; 							//Wind airflow (L/s), 62.2-2016 
 		double Q_stack = 0; 						//Stack airflow (L/s), 62.2-2016 
