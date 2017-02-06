@@ -1058,7 +1058,7 @@ int main(int argc, char *argv[], char* envp[])
 		//double AEQaim2FlowDiff = 0; //Brennan added
 		//double FlowDiff = 0; //Brennan added
 		//double qFanFlowRatio = 0; //Brennan added
-		double FanQ = fan[0].q; //Brennan's attempt to fix the airflow outside of the if() structures in the fan.oper section. fan[0].q was always the whole house exhaust fan, to be operated continuously or controlled by temperature controls.
+		//double FanQ = fan[0].q; //Brennan's attempt to fix the airflow outside of the if() structures in the fan.oper section. fan[0].q was always the whole house exhaust fan, to be operated continuously or controlled by temperature controls.
 		//double FanP = fan[0].power; //Brennan's attempt to fix the fan power outside of the if() structures in the fan.oper section.
 		Dehumidifier dh(dhCapacity, dhEnergyFactor, dhSetPoint, dhDeadBand);	// Initialize Dehumidifier 
 
@@ -2286,7 +2286,7 @@ int main(int argc, char *argv[], char* envp[])
 						if(fan[i].oper == 1 && OccContType > 1) {		// RIVEC controlled exhaust fan.
 							if(rivecOn == 1){
 								fan[i].on = 1;
-								fan[i].q = FanQ;
+								//fan[i].q = FanQ;
 								//fan[i].on = 0;	// Use this to disable the whole-house exhaust fan
 								mechVentPower = mechVentPower + fan[i].power;				// vent fan power
 								if(fan[i].q > 0) {							// supply fan - its heat needs to be added to the internal gains of the house
@@ -2302,7 +2302,7 @@ int main(int argc, char *argv[], char* envp[])
 						
 						} else if(fan[i].oper == 1 && OccContType <= 1){ //Continuous exhaust fan simulations.
 							fan[i].on = 1;
-							fan[i].q = FanQ;
+							//fan[i].q = FanQ;
 							mechVentPower = mechVentPower + fan[i].power;
 							if(fan[i].q > 0) {							// supply fan - its heat needs to be added to the internal gains of the house
 								fanHeat = fan[i].power * .84;			// 16% efficiency for the particular fan used in this study.
