@@ -113,13 +113,13 @@ void sub_infiltrationModel(
 	
 	}
 	
-void sub_relativeExposure(
+double sub_relativeExposure(
 
 	double& Aeq, //Qtot calculated according to 62.2-2016 without infiltration factor, ACH. 
 	double& Q_total, //Total airflow combined infiltration and mechanical, L/s
 	double& relExp_old, //Relative exposure from the prior time-step.
 	double dtau, //Simulation time step in seconds (60).
-	double& houseVolume, //House volume, m3
+	double& houseVolume //House volume, m3
 	//double& relExp
 	
 	) 
@@ -139,7 +139,7 @@ void sub_relativeExposure(
 		relExp = (Aeq_to_m3s / Q_total_to_m3s) + (relExp_old - (Aeq_to_m3s / Q_total_to_m3s)) * exp(-1 * Q_total_to_m3s * dtau / houseVolume);
 	}
 	
-	return(relExp)
+	return(relExp);
 }
 
 double sub_moldIndex(

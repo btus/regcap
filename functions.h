@@ -86,13 +86,13 @@ void sub_infiltrationModel (
 	
 	);
 	
-void sub_relativeExposure (
+double sub_relativeExposure (
 
 	double& Aeq, //Qtot calculated according to 62.2-2016 without infiltration factor, ACH. 
 	double& Q_total, //Total airflow combined infiltration and mechanical, L/s
 	double& relExp_old, //Relative exposure from the prior time-step. 
 	double dtau, //Simulation timestep in seconds (60). 
-	double& houseVolume, //House volume, m3
+	double& houseVolume //House volume, m3
 	//double& relExp //relative exposure, per 62.2-2016
 	
 	); 	
