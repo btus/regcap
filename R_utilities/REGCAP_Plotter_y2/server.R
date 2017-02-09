@@ -85,6 +85,7 @@ shinyServer(
 			data_fig <- data_fig[dates_text]
  		})
  		
+ 		#First shading choice.
  		starts<-reactive({
  			dates_text <- paste(as.character(input$dateRange), collapse ="/")
  			data_adj <- as.numeric(data.xts()[,input$IndcolSelection[[1]]][dates_text])
@@ -105,6 +106,7 @@ shinyServer(
 			index(data.xts()[dates_text])[end_vals]
 		})
 		
+		#Second shading choice.
 		 starts_2<-reactive({
  			dates_text <- paste(as.character(input$dateRange), collapse ="/")
  			data_adj3 <- as.numeric(data.xts()[,input$IndcolSelection[[2]]][dates_text])
@@ -124,20 +126,6 @@ shinyServer(
   			end_vals<-which(diffs==-1)
 			index(data.xts()[dates_text])[end_vals]
 		})
-		
-		# starts_2<-reactive({
-			# #if(length(input$IndcolSelection)>1){
-  			# start_vals2<-which(diff(as.numeric(data.xts()[,input$IndcolSelection[[2]]]))==1)
-			# index(data.xts())[start_vals2]
-			# #}
-		# })
-		
-		# ends_2<-reactive({
-			# #if(length(input$IndcolSelection)>1){
-  			# end_vals2<-which(diff(as.numeric(data.xts()[,input$IndcolSelection[[2]]]))==-1)
-			# index(data.xts())[end_vals2]
-			# #}
-		# })
 		
 		output$map <- renderDygraph({
 		
@@ -159,6 +147,13 @@ shinyServer(
 					dyOptions(useDataTimezone=TRUE) %>%
 					add_shades(starts(), ends(), color = "#FFE6E6") %>%
 					add_shades(starts_2(), ends_2(), color = "#CCEBD6")
+			} else {
+				dygraph(data.fig()) %>% 
+					dySeries(input$SecYaxis, axis = 'y2') %>%
+					dySeries(strokeWidth=2) %>%
+					dyRangeSelector(retainDateWindow=TRUE) %>%
+					dyRoller(rollPeriod=1) %>%
+					dyOptions(useDataTimezone=TRUE)
 			}
 		})	
 	}
