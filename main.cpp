@@ -3157,7 +3157,7 @@ int main(int argc, char *argv[], char* envp[])
 					relExpOld = relExp;
 					relDoseOld = relDose;
 					
-					if(occupied[weekend][hour] == 0) { //house is unoccupied, use Aeq / 2 in relExp calcs.  
+					if(occupied[weekend][hour] == 0 && OccContType > 2) { //house is unoccupied and using occupancy-based control, use Aeq / 2 in relExp calcs.  
 						relExp = sub_relativeExposure(Aeq_unoccupied, Q_total, relExpOld, dtau, houseVolume);
 					} else { //house is occupied, use normal Aeq.
 						relExp = sub_relativeExposure(Aeq, Q_total, relExpOld, dtau, houseVolume);
