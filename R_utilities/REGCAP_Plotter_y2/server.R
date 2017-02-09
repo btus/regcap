@@ -5,7 +5,15 @@ library(xts); library(dygraphs); library(data.table); library(lubridate)
 #increase max file upload to 160 mb
 options(shiny.maxRequestSize=160*1024^2) 
 
-#colSelct takes a data object and a flexible number of column indexes, and returns a new data object including just those columns selected by the user. The dygraph plotting utility requires an entire data object, rather than selecting columns from existing object.
+#colSelct takes a data object and a flexible number of column indexes, 
+#and returns a new data object including just those columns selected by the user. 
+#The dygraph plotting utility requires an entire data object, 
+#rather than selecting columns from existing object.
+
+mycol <- rgb(184, 184, 184, max = 255, alpha = 85, names = "grey50")
+mycol2 <- rgb(0, 184, 184, max = 255, alpha = 85, names = "50")
+mycol3 <- rgb(0, 0, 184, max = 255, alpha = 85, names = "50b")
+shade_cols<-c(mycol, mycol2, mycol3)
 
 colSelect=function(dat_obj, col1, ...){
 	return(dat_obj[,c(col1, ...)])
@@ -97,6 +105,26 @@ shinyServer(
 			index(data.xts()[dates_text])[end_vals]
 		})
 		
+		 starts_2<-reactive({
+ 			dates_text <- paste(as.character(input$dateRange), collapse ="/")
+ 			data_adj3 <- as.numeric(data.xts()[,input$IndcolSelection[[2]]][dates_text])
+ 			data_adj3[1] <- 0
+ 			data_adj3[length(data_adj3)]<-0
+ 			diffs<-diff(data_adj3)
+  			start_vals<-which(diffs==1)
+			index(data.xts()[dates_text])[start_vals]
+		})
+		
+		ends_2<-reactive({
+			dates_text <- paste(as.character(input$dateRange), collapse ="/")
+			data_adj4 <- as.numeric(data.xts()[,input$IndcolSelection[[2]]][dates_text])
+ 			data_adj4[1] <- 0
+ 			data_adj4[length(data_adj4)]<-0
+			diffs<-diff(data_adj4)
+  			end_vals<-which(diffs==-1)
+			index(data.xts()[dates_text])[end_vals]
+		})
+		
 		# starts_2<-reactive({
 			# #if(length(input$IndcolSelection)>1){
   			# start_vals2<-which(diff(as.numeric(data.xts()[,input$IndcolSelection[[2]]]))==1)
@@ -110,16 +138,28 @@ shinyServer(
 			# index(data.xts())[end_vals2]
 			# #}
 		# })
-
- 		output$map <- renderDygraph({
-			dygraph(data.fig()) %>% 
-				dySeries(input$SecYaxis, axis = 'y2') %>%
-				dySeries(strokeWidth=2) %>%
-				dyRangeSelector(retainDateWindow=TRUE) %>%
-				dyRoller(rollPeriod=1) %>%
-				dyOptions(useDataTimezone=TRUE) %>%
-				add_shades(starts(), ends()) # %>%
-				#add_shades(starts_2(), ends_2(), color = "#FFE6E6")
-   })
-  }
+		
+		output$map <- renderDygraph({
+		
+			if(length(input$IndcolSelection) == 1){
+				dygraph(data.fig()) %>% 
+					dySeries(input$SecYaxis, axis = 'y2') %>%
+					dySeries(strokeWidth=2) %>%
+					dyRangeSelector(retainDateWindow=TRUE) %>%
+					dyRoller(rollPeriod=1) %>%
+					dyOptions(useDataTimezone=TRUE) %>%
+					add_shades(starts(), ends(), color = "#FFE6E6") 
+					
+			} else if(length(input$IndcolSelection) == 2){
+				dygraph(data.fig()) %>% 
+					dySeries(input$SecYaxis, axis = 'y2') %>%
+					dySeries(strokeWidth=2) %>%
+					dyRangeSelector(retainDateWindow=TRUE) %>%
+					dyRoller(rollPeriod=1) %>%
+					dyOptions(useDataTimezone=TRUE) %>%
+					add_shades(starts(), ends(), color = "#FFE6E6") %>%
+					add_shades(starts_2(), ends_2(), color = "#CCEBD6")
+			}
+		})	
+	}
 )
