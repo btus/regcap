@@ -42,7 +42,7 @@ shinyServer(
 			#filepath<-input$file1[input$file1[,'name']==input$path,'datapath']
 			#variables_list<-colnames(fread(filepath))
 			#variables_list<-colnames(data.xts())
-			Ind_cols<-c('fan1', 'fan2', 'fan3', 'fan4', 'fan5', 'fan6', 'rivecOn', 'occuipied', 'RHind60', 'RHind70', 'None', 'Heat', 'Cool', 'Vent')
+			Ind_cols<-c('fan1', 'fan2', 'fan3', 'fan4', 'fan5', 'fan6', 'rivecOn', 'occupied', 'RHind60', 'RHind70', 'None', 'Heat', 'Cool', 'Vent')
 			#Ind_cols<-grep('Index', variables_list)
 			#Ind_cols2<-grep('illage', variables_list)
 			#checkboxGroupInput("colSelection", "Columns to Plot", variables_list[-Ind_cols])
@@ -79,18 +79,20 @@ shinyServer(
  		
  		starts<-reactive({
  			dates_text <- paste(as.character(input$dateRange), collapse ="/")
- 			diffs<-diff(as.numeric(data.xts()[,input$IndcolSelection[[1]]][dates_text]))
- 			diffs[1]<-0
- 			#diffs[length(diffs)]<-0
+ 			data_adj <- as.numeric(data.xts()[,input$IndcolSelection[[1]]][dates_text])
+ 			data_adj[1] <- 0
+ 			data_adj[length(data_adj)]<-0
+ 			diffs<-diff(data_adj)
   			start_vals<-which(diffs==1)
 			index(data.xts()[dates_text])[start_vals]
 		})
 		
 		ends<-reactive({
 			dates_text <- paste(as.character(input$dateRange), collapse ="/")
-			diffs<-diff(as.numeric(data.xts()[,input$IndcolSelection[[1]]][dates_text]))
- 			#diffs[1]<-0
- 			diffs[length(diffs)]<-0
+			data_adj2 <- as.numeric(data.xts()[,input$IndcolSelection[[1]]][dates_text])
+ 			data_adj2[1] <- 0
+ 			data_adj2[length(data_adj2)]<-0
+			diffs<-diff(data_adj2)
   			end_vals<-which(diffs==-1)
 			index(data.xts()[dates_text])[end_vals]
 		})
@@ -116,7 +118,7 @@ shinyServer(
 				dyRangeSelector(retainDateWindow=TRUE) %>%
 				dyRoller(rollPeriod=1) %>%
 				dyOptions(useDataTimezone=TRUE) %>%
-				add_shades(starts(), ends()) #%>%
+				add_shades(starts(), ends()) # %>%
 				#add_shades(starts_2(), ends_2(), color = "#FFE6E6")
    })
   }
