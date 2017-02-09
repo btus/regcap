@@ -867,6 +867,8 @@ int main(int argc, char *argv[], char* envp[])
 		double Q_wind = 0; 							//Wind airflow (L/s), 62.2-2016 
 		double Q_stack = 0; 						//Stack airflow (L/s), 62.2-2016 
 		double Q_infiltration = 0; 					//Infiltration airflow (L/s), 62.2-2016 
+		
+		double Aeq_unoccupied = Aeq / 2.; //Aeq value divided by 2 to account for lower pollutant emissions during occupant absence.
 
 		//For calculating the "real" exposure and dose, based on the actual air change of the house predicted by the mass balance. Standard exposure and dose use the sum of annual average infiltration and current total fan airflow.
 // 		double relDoseReal = 1;						// Initial value for relative dose using ACH of house, i.e. the real rel dose not based on ventSum
@@ -3155,9 +3157,15 @@ int main(int argc, char *argv[], char* envp[])
 					relExpOld = relExp;
 					relDoseOld = relDose;
 					
+					if(occupied[weekend][hour] == 0) { //house is unoccupied, use Aeq / 2 in relExp calcs.  
+						relExp = sub_relativeExposure(Aeq_unoccupied, Q_total, relExpOld, dtau, houseVolume);
+					} else { //house is occupied, use normal Aeq.
+						relExp = sub_relativeExposure(Aeq, Q_total, relExpOld, dtau, houseVolume);
+						}
+					
 					//relExp and relDose are calculated and summed for every minute of the year.
 					
-					relExp = sub_relativeExposure(Aeq, Q_total, relExpOld, dtau, houseVolume);
+					//relExp = sub_relativeExposure(Aeq, Q_total, relExpOld, dtau, houseVolume);
 					relDose = relExp * (1 - exp(-rivecdt / 24)) + relDoseOld * exp(-rivecdt / 24);
 					totalRelExp = totalRelExp + relExp;
 					totalRelDose = totalRelDose + relDose;
