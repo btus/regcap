@@ -357,7 +357,10 @@ void sub_heat (
 	double& airDensityRET,
 	int& numStories,
 	double& storyHeight,
-	double dhSensibleGain
+	double dhSensibleGain,
+	double& H2,
+	double& H4,
+	double& H6
 ) {
 	
 	int rhoSheathing;
@@ -384,8 +387,8 @@ void sub_heat (
 	double muAir;
 	double Rshingles;
 	double Rval2, Rval3, Rval4, Rval5, Rval7, Rval8, Rval9, Rval10, Rval11, Rval14;
-	double u;
-	double H2, H3, H4, H5, H6, H7, H8, H9, H10, H11, H13, H14;
+	double characteristicVelocity;
+	double H3, H5, H7, H8, H9, H10, H11, H13, H14;
 	double HI11, HI14;
 	double F8t2, F8t4, F8t11, F8t14;
 	double F2t4, F2t8, F2t11, F2t14;
@@ -566,11 +569,11 @@ void sub_heat (
 	and it seemed to work for him*/
 
 	// Characteristic velocity
-	u = (matticenvin - matticenvout) / airDensityATTIC / AL4 / 4.0;
-	if(u == 0) {
-		u = abs(mCeiling) / 2 / airDensityATTIC / AL4 * 2 / 4.0;
-		if(u == 0)
-			u = .1;
+	characteristicVelocity = (matticenvin - matticenvout) / airDensityATTIC / AL4 / 4.0;
+	if(characteristicVelocity == 0) {
+		characteristicVelocity = abs(mCeiling) / 2 / airDensityATTIC / AL4 * 2 / 4.0;
+		if(characteristicVelocity == 0)
+			characteristicVelocity = .1;
 	}
 
 	// ITERATION OF TEMPERATURES WITHIN HEAT SUBROUTINE
@@ -597,19 +600,19 @@ void sub_heat (
 
 		// convection heat transfer coefficients
 		// inner north sheathing
-		H2 = heatTranCoef(tempOld[1], tempOld[0], u);
+		H2 = heatTranCoef(tempOld[1], tempOld[0], characteristicVelocity);
 
 		// outer north sheathing
 		H3 = heatTranCoef(tempOld[2], tempOut, windSpeed);
 
 		// inner south sheathing
-		H4 = heatTranCoef(tempOld[3], tempOld[0], u);
+		H4 = heatTranCoef(tempOld[3], tempOld[0], characteristicVelocity);
 
 		// outer north sheathing
 		H5 = heatTranCoef(tempOld[4], tempOut, windSpeed);
 
 		// Wood (joists,truss,etc.)
-		H6 = heatTranCoef(tempOld[5], tempOld[0], u);
+		H6 = heatTranCoef(tempOld[5], tempOld[0], characteristicVelocity);
 
 		// Underside of Ceiling
 		// modified to use fixed numbers from ASHRAE Fundamentals ch.3 on 05/18/2000
@@ -623,10 +626,10 @@ void sub_heat (
 		H13 = H7;
 
 		// Attic Floor
-		H8 = heatTranCoef(tempOld[7], tempOld[0], u);
+		H8 = heatTranCoef(tempOld[7], tempOld[0], characteristicVelocity);
 
 		// Inner side of gable endwalls (lumped together)
-		H9 = heatTranCoef(tempOld[8], tempOld[0], u);
+		H9 = heatTranCoef(tempOld[8], tempOld[0], characteristicVelocity);
 
 		// Outer side of gable ends
 		//tfilm10 = (tempOld[9] + tempOut) / 2;
@@ -643,8 +646,8 @@ void sub_heat (
 				H14 = H11;
 			}
 		} else {
-			H11 = heatTranCoef(tempOld[10], tempOld[0], u);			// Outer Surface of Return Ducts
-			H14 = heatTranCoef(tempOld[13], tempOld[0], u);			// Outer Surface of Supply Ducts
+			H11 = heatTranCoef(tempOld[10], tempOld[0], characteristicVelocity);			// Outer Surface of Return Ducts
+			H14 = heatTranCoef(tempOld[13], tempOld[0], characteristicVelocity);			// Outer Surface of Supply Ducts
 		}
 
 		// Inner Surface of Ducts
@@ -2365,7 +2368,7 @@ void f_atticFanFlow(fan_struct& atticFan, double& airDensityOUT, double& airDens
 * From Walker (1993) eqn 3-41, 3-55
 * @param tempi - surface temperature (deg K)
 * @param tempa - air temperature (deg K)
-* @param flow velocity - (m/s)
+* @param velocity - air velocity (m/s)
 * @return heat transfer coefficient (W/m2K)
 */
 

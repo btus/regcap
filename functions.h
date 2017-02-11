@@ -194,7 +194,10 @@ void sub_heat (
 	double& airDensityRET,
 	int& numStories,
 	double& storyHeight,
-	double dhSensibleGain
+	double dhSensibleGain,
+	double& H2,
+	double& H4,
+	double& H6
 );
 
 void sub_moisture ( 

@@ -11,6 +11,7 @@
 #include "weather.h"
 #include "psychro.h"
 #include "equip.h"
+#include "wood.h"
 #include "constants.h"
 #include "config/config.h"
 
@@ -1060,7 +1061,10 @@ int main(int argc, char *argv[], char* envp[])
 		//double qFanFlowRatio = 0; //Brennan added
 		//double FanQ = fan[0].q; //Brennan's attempt to fix the airflow outside of the if() structures in the fan.oper section. fan[0].q was always the whole house exhaust fan, to be operated continuously or controlled by temperature controls.
 		//double FanP = fan[0].power; //Brennan's attempt to fix the fan power outside of the if() structures in the fan.oper section.
+
+		// Call class constructors
 		Dehumidifier dh(dhCapacity, dhEnergyFactor, dhSetPoint, dhDeadBand);	// Initialize Dehumidifier 
+		WoodMoisture attic(atticVolume, planArea, roofPitch);   // initialize attic moisture model
 
 		cout << endl;
 		cout << "Simulation: " << simNum << endl;
@@ -1160,6 +1164,7 @@ int main(int argc, char *argv[], char* envp[])
 					double nsolrad = 0;
 					double solgain = 0;
 					double tsolair;
+					double H2, H4, H6;
 
 					target = minute - 39;			// Target is used for fan cycler operation currently set for 20 minutes operation, in the last 20 minutes of the hour.
 					if(target < 0)
@@ -3030,7 +3035,8 @@ int main(int argc, char *argv[], char* envp[])
 							retrho, weather.pressure, weather.humidityRatio, uaSolAir, uaTOut, matticenvin, matticenvout, mHouseIN, mHouseOUT, planArea, mSupAHoff,
 							mRetAHoff, solgain, tsolair, mFanCycler, roofPeakHeight, eaveHeight, retLength, supLength,
 							roofType, M1, M12, M15, M16, roofRval, rceil, AHflag, mERV_AH, ERV_SRE, mHRV, HRV_ASE, mHRV_AH,
-							capacityc, capacityh, evapcap, internalGains, airDensityIN, airDensityOUT, airDensityATTIC, airDensitySUP, airDensityRET, numStories, storyHeight, dh.sensible);
+							capacityc, capacityh, evapcap, internalGains, airDensityIN, airDensityOUT, airDensityATTIC, airDensitySUP, airDensityRET, numStories, storyHeight,
+							dh.sensible, H2, H4, H6);
 
 						if((abs(b[0] - tempAttic) < .2) || (mainIterations > 10)) {	// Testing for convergence
 							tempAttic        = b[0];					
@@ -3047,8 +3053,19 @@ int main(int argc, char *argv[], char* envp[])
 					// setting "old" temps for next timestep to be current temps:
 					// [START] Moisture Balance ===================================================================================================================================
 
+					// Call attic wood moisture balance
+					// set node temperatures (move this into mass_cond_bal function and pass b)
+					attic.temperature[0] = b[3];
+					attic.temperature[1] = b[1];
+					attic.temperature[2] = b[5];
+					attic.temperature[3] = b[0];
+					attic.temperature[4] = (b[3] + b[4]) / 2;
+					attic.temperature[5] = (b[1] + b[2]) / 2;
+					attic.temperature[6] = b[5];
+					attic.mass_cond_bal(weather.dryBulb, weather.relativeHumidity, tempHouse, RHhouse, airDensityOUT,
+						airDensityATTIC, airDensityIN, weather.pressure, H4, H2, H6, mAtticIN, mCeiling);
+
 					// Call moisture subroutine
-					
 					sub_moisture(HR, M1, M12, M15, M16, Mw5, matticenvout, mCeiling, mSupAHoff, mRetAHoff,
 						matticenvin, weather.humidityRatio, mSupLeak, mAH, mRetReg, mRetLeak, mSupReg, latcap, mHouseIN, mHouseOUT,
 						latentLoad, mFanCycler, mHRV_AH, mERV_AH, ERV_TRE, MWha, airDensityIN, airDensityOUT, dh.condensate);

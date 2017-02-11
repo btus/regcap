@@ -12,13 +12,9 @@ using namespace std;
 
 /*
  * WoodMoisture - Wood moisture class constructor
- * @param woodThick - roof deck wood thickness (m)
  * @param atticVolume - attic volume (m3)
  * @param atticArea - attic area (m2)
  * @param roofPitch - roof pitch (degrees)
- * @param tempInit - node initialization temperature (deg K)
- * @param mcInit - initial wood moisture content (fraction)
- * @param RHAtticInit - initial attic RH (fraction)
  *
  * The nodes are:
  * 0. surface of south sheathing (facing the attic) - corresponding thermal node is (4)
@@ -29,8 +25,12 @@ using namespace std;
  * 5. inside north sheathing  - corresponding thermal node is ((2+3)/2)
  * 6. inside bulk wood  - corresponding thermal node is (6)
  */
-WoodMoisture::WoodMoisture(double woodThick, double atticVolume, double atticArea, double roofPitch, double tempInit, double mcInit, double RHAtticInit) {
-   int pressure = 101325;	// 1 atmosphere
+WoodMoisture::WoodMoisture(double atticVolume, double atticArea, double roofPitch) {
+   int pressure = 101325;		// 1 atmosphere
+   double woodThick = 0.015;  // should match what is set in sub_heat for now
+	double mcInit = 0.15;		// initial wood moisture content (fraction)
+	double tempInit = airTempRef; // node initialization temperature (deg K)
+	double RHAtticInit = 50;	// initial attic RH (%)
 
    A.resize(MOISTURE_NODES, vector<double>(MOISTURE_NODES+1, 0));		// set size of equation vectors to number of nodes (A contains both)
    PW.resize(MOISTURE_NODES, 0);
@@ -61,7 +61,7 @@ WoodMoisture::WoodMoisture(double woodThick, double atticVolume, double atticAre
 		mTotal[i] = 0;
 		if(i == 3) {	// Attic air node
 			moistureContent[i] = RHAtticInit;
-			PWOld[3] = saturation_vapor_pressure(tempInit) * RHAtticInit;
+			PWOld[3] = saturationVaporPressure(tempInit) * RHAtticInit / 100;
 			}
 		else {
 			moistureContent[i] = mcInit;
@@ -75,9 +75,9 @@ WoodMoisture::WoodMoisture(double woodThick, double atticVolume, double atticAre
  * mass_cond_bal - Uses the results of the ventilation and heat transfer models to predict
  *                 moisture transport. Includes effects of surfaces at saturation pressure.
  * @param tempOut - Outdoor temperature (deg K)
- * @param RHOut - Outdoor relative humidity (fraction)
+ * @param RHOut - Outdoor relative humidity (%)
  * @param tempHouse - Indoor temperature (deg K)
- * @param RHHouse - Indoor relative humidity (fraction)
+ * @param RHHouse - Indoor relative humidity (%)
  * @param airDensityOut - Outdoor air density (kg/m3)
  * @param airDensityAttic - Attic air density (kg/m3)
  * @param airDensityHouse - Indoor air density (kg/m3)
@@ -100,8 +100,8 @@ void WoodMoisture::mass_cond_bal(double tempOut, double RHOut, double tempHouse,
 	double PWHouse;					// House air vapor pressure (Pa)
 	double hw;							// Mass transfer coefficient for water vapor (m/s)
 
-	PWOut = saturation_vapor_pressure(tempOut) * RHOut;
-	PWHouse = saturation_vapor_pressure(tempHouse) * RHHouse;
+	PWOut = saturationVaporPressure(tempOut) * RHOut / 100;
+	PWHouse = saturationVaporPressure(tempHouse) * RHHouse / 100;
 
 	//NODE  0 ON INSIDE OF SOUTH SHEATHING
 	hw = hU0 / CpAir / pow(lewis, 2/3) / airDensityAttic;
@@ -187,11 +187,13 @@ void WoodMoisture::mass_cond_bal(double tempOut, double RHOut, double tempHouse,
 
 	// MATSEQND%() SIMULTANEOUSLY SOLVES THE MASS BALANCE EQUATIONS
 	// ERRCODE = MatSEqn(A, PW);
+/*
 cout << "Before gauss";
 for(int i=0; i<MOISTURE_NODES; i++) {
 	cout << ", " << PW[i];
 	}
 cout << endl;
+*/
     for (int i=0; i<MOISTURE_NODES; i++) {
         A[i][MOISTURE_NODES] = PWInit[i];
         }
@@ -199,11 +201,13 @@ cout << endl;
 	// once the attic moisture nodes have been calculated assuming no condensation (as above)
 	// then we call cond_bal to check for condensation and redo the calculations if necessasry
 	// cond_bal performs an iterative scheme that tests for condensation
+/*
 cout << "After gauss";
 for(int i=0; i<MOISTURE_NODES; i++) {
 	cout << ", " << PW[i];
 	}
 cout << endl;
+*/
 	cond_bal(pressure);
 
 	for(int i=0; i<MOISTURE_NODES; i++) {
@@ -231,10 +235,10 @@ void WoodMoisture::cond_bal(int pressure) {
 
 	// Calculate saturation vapor pressure for each node (moved from mass_cond_bal)
 	for(int i=0; i<MOISTURE_NODES; i++) {
-		PWSaturation[i] = saturation_vapor_pressure(temperature[i]);
+		PWSaturation[i] = saturationVaporPressure(temperature[i]);
 		//moistureContent[i] = max(moistureContent[i], 0.032);	// no need to do this here as it is checked when set
 		//PWInit[i] = PW[i];
-cout << "PW=" << PW[i] << " PWSat=" << PWSaturation[i] << " MC=" << moistureContent[i] << endl;
+//cout << "PW=" << PW[i] << " PWSat=" << PWSaturation[i] << " MC=" << moistureContent[i] << endl;
 		}
 			
 //MASSTOOUT = 0
@@ -246,7 +250,7 @@ cout << "PW=" << PW[i] << " PWSat=" << PWSaturation[i] << " MC=" << moistureCont
 
 		do {		// this loops until every PW is within  0.1 Pa of the previous iteration
 			inIter++;
-cout << "iterations: " << outIter << ":" << inIter << endl;
+//cout << "iterations: " << outIter << ":" << inIter << endl;
 			for(int i=0; i<MOISTURE_NODES; i++)
 				PWTest[i] = PW[i];
 
@@ -403,8 +407,8 @@ cout << "iterations: " << outIter << ":" << inIter << endl;
 		// Calculate MC's based on these new PW's
 		// this uses the inverse of cleary's relationship
 		for(int i=0; i < MOISTURE_NODES; i++) {
-			if(i == 3) {		// Attic air node RH
-				moistureContent[i] = PW[i] / PWSaturation[i];
+			if(i == 3) {		// Attic air node RH (%)
+				moistureContent[i] = PW[i] / PWSaturation[i] * 100;
 				}
 			else {
 				moistureContent[i] = max(mc_cubic(PW[i], pressure, temperature[i]), 0.032);
@@ -501,7 +505,7 @@ double WoodMoisture::mc_cubic(double pw, int pressure, double temp) {
 	double disc = pow(q, 3) + pow(r, 2);
 	double s = pow(r + pow(disc, 0.5), 1/3);
 	double t = -pow(abs(r - pow(disc,0.5)),1/3);
-cout << "mc_cubic in: pw=" << pw << " pressure=" << pressure << " temp=" << temp << " out: " << s + t - a1 / 3 << endl;
+//cout << "mc_cubic in: pw=" << pw << " pressure=" << pressure << " temp=" << temp << " out: " << s + t - a1 / 3 << endl;
 	return (s + t - a1 / 3);
 	}
 

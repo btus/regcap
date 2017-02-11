@@ -33,7 +33,7 @@ class WoodMoisture {
 		vector <double> PW;										// Node vapor pressure (Pa). vector so it can be passed to gauss()
 		double mTotal[MOISTURE_NODES];						// Node mass of condensed water (kg)
 
-		WoodMoisture(double woodThick, double atticVolume, double atticArea, double roofPitch, double tempInit, double mcInit, double RHAtticInit);
+		WoodMoisture(double atticVolume, double atticArea, double roofPitch);
       void mass_cond_bal(double tempOut, double RHOut, double tempHouse, double RHHouse,
                              double airDensityOut, double airDensityAttic, double airDensityHouse,
                              int pressure, double hU0, double hU1, double hU2,

@@ -16,21 +16,17 @@ using namespace std;
 // to compile: g++ test_wood.cpp wood.cpp psychro.cpp gauss.cpp -o test_wood
 
 int main() {
-	double woodThick = 0.015;   // should match what is set in sub_heat for now
 	double atticVolume = 300;
 	double atticArea = 300;
 	double roofPitch = 18;
-	double tempInit = 293;
-	double mcInit = 0.15;
-	double RHAttic = 0.50;
 
 	// initialize attic moisture nodes
-	WoodMoisture attic(woodThick, atticVolume, atticArea, roofPitch, tempInit, mcInit, RHAttic);
+	WoodMoisture attic(atticVolume, atticArea, roofPitch);
 	
 	double tempOut = 293;
-	double RHOut = 0.60;
+	double RHOut = 60;
 	double tempHouse = 293;
-	double RHHouse = 0.40;
+	double RHHouse = 40;
 	double airDensityOUT;
 	double airDensityATTIC;
 	double airDensityIN;
