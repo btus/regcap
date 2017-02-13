@@ -77,7 +77,6 @@ WoodMoisture::WoodMoisture(double atticVolume, double atticArea, double roofPitc
  * @param node_temps - array of node temperatures (deg K)
  * @param tempOut - Outdoor temperature (deg K)
  * @param RHOut - Outdoor relative humidity (%)
- * @param tempHouse - Indoor temperature (deg K)
  * @param RHHouse - Indoor relative humidity (%)
  * @param airDensityOut - Outdoor air density (kg/m3)
  * @param airDensityAttic - Attic air density (kg/m3)
@@ -89,7 +88,7 @@ WoodMoisture::WoodMoisture(double atticVolume, double atticArea, double roofPitc
  * @param mAttic - air mass flow into attic (kg/s)
  * @param mCeiling - ceiling air mass flow (kg/s)
  */
-void WoodMoisture::mass_cond_bal(double* node_temps, double tempOut, double RHOut, double tempHouse, double RHHouse,
+void WoodMoisture::mass_cond_bal(double* node_temps, double tempOut, double RHOut, double RHHouse,
                                    double airDensityOut, double airDensityAttic, double airDensityHouse,
                                    int pressure, double hU0, double hU1, double hU2,
                                    double mAttic, double mCeiling)
@@ -101,7 +100,7 @@ void WoodMoisture::mass_cond_bal(double* node_temps, double tempOut, double RHOu
 	double PWHouse;					// House air vapor pressure (Pa)
 	double hw;							// Mass transfer coefficient for water vapor (m/s)
 
-	// set node temperatures 
+	// set attic node temperatures 
 	temperature[0] = node_temps[3];	// inner south sheathing
 	temperature[1] = node_temps[1];	// inner north sheathing
 	temperature[2] = node_temps[5];	// bulk wood
@@ -109,6 +108,7 @@ void WoodMoisture::mass_cond_bal(double* node_temps, double tempOut, double RHOu
 	temperature[4] = (node_temps[3] + node_temps[4]) / 2;	// average of south sheathing
 	temperature[5] = (node_temps[1] + node_temps[2]) / 2;	// average of north sheathing
 	temperature[6] = node_temps[5];	// bulk wood
+	double tempHouse = node_temps[15];	// house air
 
 	PWOut = saturationVaporPressure(tempOut) * RHOut / 100;
 	PWHouse = saturationVaporPressure(tempHouse) * RHHouse / 100;

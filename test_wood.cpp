@@ -25,7 +25,6 @@ int main() {
 	
 	double tempOut = 293;
 	double RHOut = 60;
-	double tempHouse = 293;
 	double RHHouse = 40;
 	double airDensityOUT;
 	double airDensityATTIC;
@@ -43,6 +42,7 @@ int main() {
    b[3] = 293;	// inner south
    b[4] = 293;	// outer south
    b[5] = 293;	// bulk wood
+	b[15] = 293; // house air
    
    // mAttic = matticenvin - matticenvout;
       
@@ -56,9 +56,9 @@ int main() {
 		// set air densities
 		airDensityOUT = airDensityRef * airTempRef / tempOut;
 		airDensityATTIC = airDensityRef * airTempRef / b[0];
-		airDensityIN = airDensityRef * airTempRef / tempHouse;
+		airDensityIN = airDensityRef * airTempRef / b[15];
 	
-		attic.mass_cond_bal(b, tempOut, RHOut, tempHouse, RHHouse, airDensityOUT, airDensityATTIC, airDensityIN, pressure,
+		attic.mass_cond_bal(b, tempOut, RHOut, RHHouse, airDensityOUT, airDensityATTIC, airDensityIN, pressure,
 						  H4, H2, H6, mAttic,  mCeiling);
 	
 		for(int i = 0; i < 7; i++) {
