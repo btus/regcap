@@ -3054,15 +3054,7 @@ int main(int argc, char *argv[], char* envp[])
 					// [START] Moisture Balance ===================================================================================================================================
 
 					// Call attic wood moisture balance
-					// set node temperatures (move this into mass_cond_bal function and pass b)
-					attic.temperature[0] = b[3];
-					attic.temperature[1] = b[1];
-					attic.temperature[2] = b[5];
-					attic.temperature[3] = b[0];
-					attic.temperature[4] = (b[3] + b[4]) / 2;
-					attic.temperature[5] = (b[1] + b[2]) / 2;
-					attic.temperature[6] = b[5];
-					attic.mass_cond_bal(weather.dryBulb, weather.relativeHumidity, tempHouse, RHhouse, airDensityOUT,
+					attic.mass_cond_bal(b, weather.dryBulb, weather.relativeHumidity, tempHouse, RHhouse, airDensityOUT,
 						airDensityATTIC, airDensityIN, weather.pressure, H4, H2, H6, mAtticIN, mCeiling);
 
 					// Call moisture subroutine

@@ -74,6 +74,7 @@ WoodMoisture::WoodMoisture(double atticVolume, double atticArea, double roofPitc
 /*
  * mass_cond_bal - Uses the results of the ventilation and heat transfer models to predict
  *                 moisture transport. Includes effects of surfaces at saturation pressure.
+ * @param node_temps - array of node temperatures (deg K)
  * @param tempOut - Outdoor temperature (deg K)
  * @param RHOut - Outdoor relative humidity (%)
  * @param tempHouse - Indoor temperature (deg K)
@@ -85,10 +86,10 @@ WoodMoisture::WoodMoisture(double atticVolume, double atticArea, double roofPitc
  * @param hU0 - surface heat transfer coefficient for node 0 (inner south) (J/sm2K) - was H4
  * @param hU1 - surface heat transfer coefficient for node 1 (inner north) (J/sm2K) - was H6
  * @param hU2 - surface heat transfer coefficient for node 2 (bulk wood) (J/sm2K) - was H10
- * @param mAttic - attic air mass flow (kg/s)
+ * @param mAttic - air mass flow into attic (kg/s)
  * @param mCeiling - ceiling air mass flow (kg/s)
  */
-void WoodMoisture::mass_cond_bal(double tempOut, double RHOut, double tempHouse, double RHHouse,
+void WoodMoisture::mass_cond_bal(double* node_temps, double tempOut, double RHOut, double tempHouse, double RHHouse,
                                    double airDensityOut, double airDensityAttic, double airDensityHouse,
                                    int pressure, double hU0, double hU1, double hU2,
                                    double mAttic, double mCeiling)
@@ -99,6 +100,15 @@ void WoodMoisture::mass_cond_bal(double tempOut, double RHOut, double tempHouse,
 	double PWOut;						// Outdoor air vapor pressure (Pa)
 	double PWHouse;					// House air vapor pressure (Pa)
 	double hw;							// Mass transfer coefficient for water vapor (m/s)
+
+	// set node temperatures 
+	temperature[0] = node_temps[3];	// inner south sheathing
+	temperature[1] = node_temps[1];	// inner north sheathing
+	temperature[2] = node_temps[5];	// bulk wood
+	temperature[3] = node_temps[0];	// attic air
+	temperature[4] = (node_temps[3] + node_temps[4]) / 2;	// average of south sheathing
+	temperature[5] = (node_temps[1] + node_temps[2]) / 2;	// average of north sheathing
+	temperature[6] = node_temps[5];	// bulk wood
 
 	PWOut = saturationVaporPressure(tempOut) * RHOut / 100;
 	PWHouse = saturationVaporPressure(tempHouse) * RHHouse / 100;
@@ -132,7 +142,7 @@ void WoodMoisture::mass_cond_bal(double tempOut, double RHOut, double tempHouse,
 	PWInit[1] = kappa1[1] * PWOld[1] - kappa2[1] * (temperature[1] - tempOld[1]);
 
 	//NODE 2 IS OUTSIDE mass OF WOOD IN ATTIC JOISTS AND TRUSSES
-    hw = hU2 / CpAir / pow(lewis, 2/3) / airDensityAttic;
+   hw = hU2 / CpAir / pow(lewis, 2/3) / airDensityAttic;
 	kappa1[2] = calc_kappa_1(pressure, tempOld[2], moistureContent[2], volume[2]);
 	kappa2[2] = calc_kappa_2(moistureContent[2], volume[2]);
 	x9 = hw * area[2] / RWater / temperature[2];
@@ -156,7 +166,7 @@ void WoodMoisture::mass_cond_bal(double tempOut, double RHOut, double tempHouse,
 		// These were X18, X19, X20
 		x14 = (mAttic - mCeiling) / airDensityAttic / RWater / temperature[3];
 		x16 = -mCeiling * PWOld[3] / RWater / temperature[3] / airDensityAttic;
-        x17 = mAttic * PWOut / airDensityOut / RWater / tempOut;
+      x17 = mAttic * PWOut / airDensityOut / RWater / tempOut;
 		}
 	A[3][0] = -x1;
 	A[3][1] = -x5;
@@ -281,7 +291,7 @@ void WoodMoisture::cond_bal(int pressure) {
 				hasCondensedMass[1] = false;
 				}
 			else {
-                PW[1] = PWSaturation[1];
+            PW[1] = PWSaturation[1];
 				hasCondensedMass[1] = true;
 				}
 
@@ -294,7 +304,7 @@ void WoodMoisture::cond_bal(int pressure) {
 				hasCondensedMass[2] = false;
 				}
 			else {
-                PW[2] = PWSaturation[2];
+            PW[2] = PWSaturation[2];
 				hasCondensedMass[2] = true;
 				}
 
@@ -307,7 +317,7 @@ void WoodMoisture::cond_bal(int pressure) {
 				hasCondensedMass[3] = false;
 				}
 			else {
-                PW[3] = PWSaturation[3];
+            PW[3] = PWSaturation[3];
 				hasCondensedMass[3] = true;
 				}
 
@@ -320,7 +330,7 @@ void WoodMoisture::cond_bal(int pressure) {
 				hasCondensedMass[4] = false;
 				}
 			else {
-                PW[4] = PWSaturation[4];
+            PW[4] = PWSaturation[4];
 				hasCondensedMass[4] = true;
 				}
 
@@ -333,7 +343,7 @@ void WoodMoisture::cond_bal(int pressure) {
 				hasCondensedMass[5] = false;
 				}
 			else {
-                PW[5] = PWSaturation[5];
+            PW[5] = PWSaturation[5];
 				hasCondensedMass[5] = true;
 				}
 
@@ -346,7 +356,7 @@ void WoodMoisture::cond_bal(int pressure) {
 				hasCondensedMass[6] = false;
 				}
 			else {
-                PW[6] = PWSaturation[6];
+            PW[6] = PWSaturation[6];
 				hasCondensedMass[6] = true;
 				}
 

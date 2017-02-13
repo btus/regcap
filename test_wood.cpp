@@ -47,14 +47,6 @@ int main() {
    // mAttic = matticenvin - matticenvout;
       
    for(int m = 0; m < 2; m++) {
-		// set node temperatures 
-		attic.temperature[0] = b[3];
-		attic.temperature[1] = b[1];
-		attic.temperature[2] = b[5];
-		attic.temperature[3] = b[0];
-		attic.temperature[4] = (b[3] + b[4]) / 2;
-		attic.temperature[5] = (b[1] + b[2]) / 2;
-		attic.temperature[6] = b[5];
 	
 		// set heat transfer coefficients to natural value
 		H4 = 3.2 * pow(abs(b[3] - b[0]), 1.0/3.0);	// inner south
@@ -66,11 +58,11 @@ int main() {
 		airDensityATTIC = airDensityRef * airTempRef / b[0];
 		airDensityIN = airDensityRef * airTempRef / tempHouse;
 	
-		attic.mass_cond_bal(tempOut, RHOut, tempHouse, RHHouse, airDensityOUT, airDensityATTIC, airDensityIN, pressure,
+		attic.mass_cond_bal(b, tempOut, RHOut, tempHouse, RHHouse, airDensityOUT, airDensityATTIC, airDensityIN, pressure,
 						  H4, H2, H6, mAttic,  mCeiling);
 	
 		for(int i = 0; i < 7; i++) {
-			cout << m << ":" << i << "," << attic.temperature[i] << "," << attic.moistureContent[i] << "," << attic.PW[i] << "," << attic.mTotal[i] << endl;
+			cout << m << ":" << attic.moistureContent[i] << "," << attic.PW[i] << "," << attic.mTotal[i] << endl;
 			}
 		}
 }
