@@ -513,9 +513,9 @@ double WoodMoisture::mc_cubic(double pw, int pressure, double temp) {
 	double q = (3 * a2 - pow(a1, 2)) / 9;
 	double r = (9 * a1 * a2 - 27 * a3 - 2 * pow(a1, 3)) / 54;
 	double disc = pow(q, 3) + pow(r, 2);
-	double s = pow(r + pow(disc, 0.5), 1/3);
-	double t = -pow(abs(r - pow(disc,0.5)),1/3);
-//cout << "mc_cubic in: pw=" << pw << " pressure=" << pressure << " temp=" << temp << " out: " << s + t - a1 / 3 << endl;
+	double s = pow(r + pow(disc, 0.5), 1.0/3.0);
+	double t = -pow(abs(r - pow(disc,0.5)), 1.0/3.0);
+//cout << "mc_cubic in: pw=" << pw << " pressure=" << pressure << " temp=" << temp  << " out: " << s + t - a1 / 3 << endl;
 	return (s + t - a1 / 3);
 	}
 
