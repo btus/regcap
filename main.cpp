@@ -188,6 +188,7 @@ int main(int argc, char *argv[], char* envp[])
 		double atticVolume;
 		double atticC;
 		double atticPressureExp;
+		double atticMCInit;
 		int numAtticVents;
 		double roofPitch;
 		string roofPeakOrient;		// Roof peak orientation, D = perpendicular to front of house (Wall 1), P = parrallel to front of house
@@ -301,7 +302,8 @@ int main(int argc, char *argv[], char* envp[])
 				return 1; 
 			}
 
-			moistureFile << "HROUT\tHRattic\tHRreturn\tHRsupply\tHRhouse\tHRmaterials\tRH%house\tRHind60\tRHind70" << endl;
+			moistureFile << "HRattic\tMC\tPW\tMTotal" << endl;
+			//moistureFile << "HROUT\tHRattic\tHRreturn\tHRsupply\tHRhouse\tHRmaterials\tRH%house\tRHind60\tRHind70" << endl;
 			//moistureFile << "HR_Attic\tHR_Return\tHR_Supply\tHR_House\tHR_Materials" << endl; This is the old format.
 		}
 
@@ -405,6 +407,7 @@ int main(int argc, char *argv[], char* envp[])
 		buildingFile >> atticVolume;
 		buildingFile >> atticC;
 		buildingFile >> atticPressureExp;
+		buildingFile >> atticMCInit;
 		for(int i=0; i < 5; i++) {
 			buildingFile >> soffitFraction[i];
 		}
@@ -1064,7 +1067,7 @@ int main(int argc, char *argv[], char* envp[])
 
 		// Call class constructors
 		Dehumidifier dh(dhCapacity, dhEnergyFactor, dhSetPoint, dhDeadBand);	// Initialize Dehumidifier 
-		WoodMoisture attic(atticVolume, planArea, roofPitch);   // initialize attic moisture model
+		WoodMoisture attic(atticVolume, planArea, roofPitch, atticMCInit);   // initialize attic moisture model
 
 		cout << endl;
 		cout << "Simulation: " << simNum << endl;
@@ -3331,7 +3334,14 @@ int main(int argc, char *argv[], char* envp[])
 					//File column names, for reference.
 					//moistureFile << "HROUT\tHRattic\tHRreturn\tHRsupply\tHRhouse\tHRmaterials\tRH%house\tRHind60\tRHind70" << endl;
 					if(printMoistureFile) {
-						moistureFile << weather.humidityRatio << "\t" << HR[0] << "\t" << HR[1] << "\t" << HR[2] << "\t" << HR[3] << "\t" << HR[4] << "\t" << RHhouse << "\t" << RHind60 << "\t" << RHind70 << endl;
+						double atticSVP = saturationVaporPressure(tempAttic);
+						double RHAttic = 100 * ((weather.pressure*(HR[0]/0.621945))/(1+(HR[0]/0.621945)) / atticSVP);
+						//moistureFile << weather.humidityRatio << "\t" << HR[0] << "\t" << HR[1] << "\t" << HR[2] << "\t" << HR[3] << "\t" << HR[4] << "\t" << RHhouse << "\t" << RHind60 << "\t" << RHind70 << endl;
+						moistureFile << tempAttic << "\t" << RHAttic << "\t" << HR[0];
+						for(int i=0; i<7; i++) {
+							moistureFile << "\t" << attic.moistureContent[i] << "\t" << attic.mTotal[i];
+							}
+						moistureFile << endl;
 					}
 			
 					// ================================= WRITING Filter Loading DATA FILE =================================

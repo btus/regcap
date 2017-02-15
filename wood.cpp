@@ -15,6 +15,7 @@ using namespace std;
  * @param atticVolume - attic volume (m3)
  * @param atticArea - attic area (m2)
  * @param roofPitch - roof pitch (degrees)
+ * @param mcInit - initial wood moisture content (fraction)
  *
  * The nodes are:
  * 0. surface of south sheathing (facing the attic) - corresponding thermal node is (4)
@@ -25,10 +26,9 @@ using namespace std;
  * 5. inside north sheathing  - corresponding thermal node is ((2+3)/2)
  * 6. inside bulk wood  - corresponding thermal node is (6)
  */
-WoodMoisture::WoodMoisture(double atticVolume, double atticArea, double roofPitch) {
+WoodMoisture::WoodMoisture(double atticVolume, double atticArea, double roofPitch, double mcInit) {
    int pressure = 101325;		// 1 atmosphere
    double woodThick = 0.015;  // should match what is set in sub_heat for now
-	double mcInit = 0.15;		// initial wood moisture content (fraction)
 	double tempInit = airTempRef; // node initialization temperature (deg K)
 	double RHAtticInit = 50;	// initial attic RH (%)
 
