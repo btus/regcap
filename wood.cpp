@@ -93,9 +93,9 @@ void WoodMoisture::mass_cond_bal(double* node_temps, double tempOut, double RHOu
                                    int pressure, double hU0, double hU1, double hU2,
                                    double mAttic, double mCeiling)
                                    {
-	const double lewis = 0.919;	// Lewis number from ASHRAE
-	const double diffCoef = 3E-10; // diffusion coefficient for pine from Cunningham 1990 (m2/s)
-	const int RWater = 462;			// gas constant for water vapor (J/KgK)
+	const double LEWIS23 = pow(0.919, 2.0/3.0);	// Lewis number from ASHRAE to the 2/3rds power
+	const double DIFFCOEF = 3E-10; // diffusion coefficient for pine from Cunningham 1990 (m2/s)
+	const int RWATER = 462;			// gas constant for water vapor (J/KgK)
 	double PWOut;						// Outdoor air vapor pressure (Pa)
 	double PWHouse;					// House air vapor pressure (Pa)
 	double hw;							// Mass transfer coefficient for water vapor (m/s)
@@ -114,13 +114,13 @@ void WoodMoisture::mass_cond_bal(double* node_temps, double tempOut, double RHOu
 	PWHouse = saturationVaporPressure(tempHouse) * RHHouse / 100;
 
 	//NODE  0 ON INSIDE OF SOUTH SHEATHING
-	hw = hU0 / CpAir / pow(lewis, 2/3) / airDensityAttic;
+	hw = hU0 / CpAir / LEWIS23 / airDensityAttic;
 	kappa1[0] = calc_kappa_1(pressure, tempOld[0], moistureContent[0], volume[0]);
 	kappa2[0] = calc_kappa_2(moistureContent[0], volume[0]);
-	x1 = hw * area[0] / RWater / temperature[0];
-	x2 = diffCoef * area[0] / RWater / temperature[0] / deltaX[0];
-	x3 = -hw * area[0] / RWater / temperature[3];
-	x4 = -diffCoef * area[0] / RWater / temperature[4] / deltaX[0];
+	x1 = hw * area[0] / RWATER / temperature[0];
+	x2 = DIFFCOEF * area[0] / RWATER / temperature[0] / deltaX[0];
+	x3 = -hw * area[0] / RWATER / temperature[3];
+	x4 = -DIFFCOEF * area[0] / RWATER / temperature[4] / deltaX[0];
 
 	A[0][0] = kappa1[0] + x1 + x2;
 	A[0][3] = x3;
@@ -129,44 +129,44 @@ void WoodMoisture::mass_cond_bal(double* node_temps, double tempOut, double RHOu
 
 
 	//NODE 1 INSIDE OF NORTH SHEATHING
-	hw = hU1 / CpAir / pow(lewis, 2/3) / airDensityAttic;
+	hw = hU1 / CpAir / LEWIS23 / airDensityAttic;
 	kappa1[1] = calc_kappa_1(pressure, tempOld[1], moistureContent[1], volume[1]);
 	kappa2[1] = calc_kappa_2(moistureContent[1], volume[1]);
-	x5 = hw * area[1] / RWater / temperature[1];
-	x6 = diffCoef * area[1] / RWater / temperature[1] / deltaX[1];
-	x7 = -hw * area[1] / RWater / temperature[3];
-	x8 = -diffCoef * area[1] / RWater / temperature[5] / deltaX[1];
+	x5 = hw * area[1] / RWATER / temperature[1];
+	x6 = DIFFCOEF * area[1] / RWATER / temperature[1] / deltaX[1];
+	x7 = -hw * area[1] / RWATER / temperature[3];
+	x8 = -DIFFCOEF * area[1] / RWATER / temperature[5] / deltaX[1];
 	A[1][1] = kappa1[1] + x5 + x6;
 	A[1][3] = x7;
 	A[1][5] = x8;
 	PWInit[1] = kappa1[1] * PWOld[1] - kappa2[1] * (temperature[1] - tempOld[1]);
 
 	//NODE 2 IS OUTSIDE mass OF WOOD IN ATTIC JOISTS AND TRUSSES
-   hw = hU2 / CpAir / pow(lewis, 2/3) / airDensityAttic;
+   hw = hU2 / CpAir / LEWIS23 / airDensityAttic;
 	kappa1[2] = calc_kappa_1(pressure, tempOld[2], moistureContent[2], volume[2]);
 	kappa2[2] = calc_kappa_2(moistureContent[2], volume[2]);
-	x9 = hw * area[2] / RWater / temperature[2];
-	x10 = diffCoef * area[2] / RWater / temperature[2] / deltaX[2];
-	x11 = -hw * area[2] / RWater / temperature[3];
-	x12 = -diffCoef * area[2] / RWater / temperature[6] / deltaX[2];
+	x9 = hw * area[2] / RWATER / temperature[2];
+	x10 = DIFFCOEF * area[2] / RWATER / temperature[2] / deltaX[2];
+	x11 = -hw * area[2] / RWATER / temperature[3];
+	x12 = -DIFFCOEF * area[2] / RWATER / temperature[6] / deltaX[2];
 	A[2][2] = kappa1[2] + x9 + x10;
 	A[2][3] = x11;
 	A[2][6] = x12;
 	PWInit[2] = kappa1[2] * PWOld[2] - kappa2[2] * (temperature[2] - tempOld[2]);
 
 	//NODE 3 IS ATTIC AIR
-	x13 = volume[3] / RWater / temperature[3] / timeStep;
-	x15 = volume[3] * PWOld[3] / RWater / temperature[3] / timeStep;
+	x13 = volume[3] / RWATER / temperature[3] / timeStep;
+	x15 = volume[3] * PWOld[3] / RWATER / temperature[3] / timeStep;
 	if(mCeiling < 0) {
-		x14 = mAttic / airDensityAttic / RWater / temperature[3];
-		x16 = -mCeiling * PWHouse / RWater / tempHouse / airDensityHouse;
-		x17 = (mAttic + mCeiling) * PWOut / airDensityOut / RWater / tempOut;
+		x14 = mAttic / airDensityAttic / RWATER / temperature[3];
+		x16 = -mCeiling * PWHouse / RWATER / tempHouse / airDensityHouse;
+		x17 = (mAttic + mCeiling) * PWOut / airDensityOut / RWATER / tempOut;
 		}
 	else {
 		// These were X18, X19, X20
-		x14 = (mAttic - mCeiling) / airDensityAttic / RWater / temperature[3];
-		x16 = -mCeiling * PWOld[3] / RWater / temperature[3] / airDensityAttic;
-      x17 = mAttic * PWOut / airDensityOut / RWater / tempOut;
+		x14 = (mAttic - mCeiling) / airDensityAttic / RWATER / temperature[3];
+		x16 = -mCeiling * PWOld[3] / RWATER / temperature[3] / airDensityAttic;
+      x17 = mAttic * PWOut / airDensityOut / RWATER / tempOut;
 		}
 	A[3][0] = -x1;
 	A[3][1] = -x5;
@@ -260,7 +260,8 @@ void WoodMoisture::cond_bal(int pressure) {
 
 		do {		// this loops until every PW is within  0.1 Pa of the previous iteration
 			inIter++;
-//cout << "iterations: " << outIter << ":" << inIter << endl;
+			if(outIter > 1 || inIter > 1)
+				cout << "iterations: " << outIter << ":" << inIter << endl;
 			for(int i=0; i<MOISTURE_NODES; i++)
 				PWTest[i] = PW[i];
 

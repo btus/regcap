@@ -188,7 +188,7 @@ int main(int argc, char *argv[], char* envp[])
 		double atticVolume;
 		double atticC;
 		double atticPressureExp;
-		double atticMCInit;
+		double atticMCInit;			// initial moisture content of attic wood (fraction)
 		int numAtticVents;
 		double roofPitch;
 		string roofPeakOrient;		// Roof peak orientation, D = perpendicular to front of house (Wall 1), P = parrallel to front of house
