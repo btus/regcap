@@ -15,7 +15,7 @@ using namespace std;
  * @param atticVolume - attic volume (m3)
  * @param atticArea - attic area (m2)
  * @param roofPitch - roof pitch (degrees)
- * @param mcInit - initial wood moisture content (fraction)
+ * @param mcInit - initial wood moisture content (fraction - optional)
  *
  * The nodes are:
  * 0. surface of south sheathing (facing the attic) - corresponding thermal node is (4)

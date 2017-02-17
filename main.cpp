@@ -100,6 +100,10 @@ int main(int argc, char *argv[], char* envp[])
 	bool printMoistureFile = config.pBool("printMoistureFile");
 	bool printFilterFile = config.pBool("printFilterFile");
 	bool printOutputFile = config.pBool("printOutputFile");
+	
+	// configuration vars
+	double atticMCInit = config.pDouble("atticMCInit");			// initial moisture content of attic wood (fraction)
+	double dhDeadBand = config.pDouble("dhDeadBand");				// Dehumidifier dead band (+/- %RH)
 
 	// Simulation Batch Timing
 	time_t startTime, endTime;
@@ -188,7 +192,6 @@ int main(int argc, char *argv[], char* envp[])
 		double atticVolume;
 		double atticC;
 		double atticPressureExp;
-		double atticMCInit;			// initial moisture content of attic wood (fraction)
 		int numAtticVents;
 		double roofPitch;
 		string roofPeakOrient;		// Roof peak orientation, D = perpendicular to front of house (Wall 1), P = parrallel to front of house
@@ -259,7 +262,6 @@ int main(int argc, char *argv[], char* envp[])
 		double dhCapacity;		// Dehumidifier capacity (pints/day)
 		double dhEnergyFactor;	// Dehumidifier energy factor (L/kWh)
 		double dhSetPoint;		// Dehumidifier set point (%RH)
-		double dhDeadBand;		// Dehumidifier dead band (+/- %RH)
 		string endOfFile;
 		
 		// Zeroing the variables to create the sums for the .ou2 file
@@ -411,7 +413,6 @@ int main(int argc, char *argv[], char* envp[])
 		buildingFile >> atticVolume;
 		buildingFile >> atticC;
 		buildingFile >> atticPressureExp;
-		buildingFile >> atticMCInit;
 		for(int i=0; i < 5; i++) {
 			buildingFile >> soffitFraction[i];
 		}
@@ -513,7 +514,6 @@ int main(int argc, char *argv[], char* envp[])
 		buildingFile >> dhCapacity;	
 		buildingFile >> dhEnergyFactor;
 		buildingFile >> dhSetPoint;	
-		buildingFile >> dhDeadBand;
 		
 		buildingFile >> endOfFile;
 		if(endOfFile != "E_O_F") {
