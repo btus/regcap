@@ -82,13 +82,14 @@ WoodMoisture::WoodMoisture(double atticVolume, double atticArea, double roofPitc
  * @param hU0 - surface heat transfer coefficient for node 0 (inner south) (J/sm2K) - was H4
  * @param hU1 - surface heat transfer coefficient for node 1 (inner north) (J/sm2K) - was H6
  * @param hU2 - surface heat transfer coefficient for node 2 (bulk wood) (J/sm2K) - was H10
- * @param mAttic - air mass flow into attic (kg/s)
+ * @param mAtticIn - air mass flow into attic (kg/s)
+ * @param mAtticOut - air mass flow out of attic (kg/s)
  * @param mCeiling - ceiling air mass flow (kg/s)
  */
 void WoodMoisture::mass_cond_bal(double* node_temps, double tempOut, double RHOut, double RHHouse,
                                    double airDensityOut, double airDensityAttic, double airDensityHouse,
                                    int pressure, double hU0, double hU1, double hU2,
-                                   double mAttic, double mCeiling)
+                                   double mAtticIn, double mAtticOut, double mCeiling)
                                    {
 	const double LEWIS23 = pow(0.919, 2.0/3.0);	// Lewis number from ASHRAE to the 2/3rds power
 	const double DIFFCOEF = 3E-10; // diffusion coefficient for pine from Cunningham 1990 (m2/s)
@@ -176,15 +177,15 @@ void WoodMoisture::mass_cond_bal(double* node_temps, double tempOut, double RHOu
 	x13 = volume[6] / RWATER / temperature[6] / timeStep;
 	x15 = volume[6] * PWOld[6] / RWATER / temperature[6] / timeStep;
 	if(mCeiling < 0) {
-		x14 = mAttic / airDensityAttic / RWATER / temperature[6];
+		x14 = -mAtticOut / airDensityAttic / RWATER / temperature[6];
 		x16 = -mCeiling * PWHouse / RWATER / tempHouse / airDensityHouse;
-		x17 = (mAttic + mCeiling) * PWOut / airDensityOut / RWATER / tempOut;
+		x17 = mAtticIn * PWOut / airDensityOut / RWATER / tempOut;
 		}
 	else {
 		// These were X18, X19, X20
-		x14 = (mAttic - mCeiling) / airDensityAttic / RWATER / temperature[6];
+		x14 = -mAtticOut / airDensityAttic / RWATER / temperature[6];
 		x16 = -mCeiling * PWOld[6] / RWATER / temperature[6] / airDensityAttic;
-      x17 = mAttic * PWOut / airDensityOut / RWATER / tempOut;
+      x17 = mAtticIn * PWOut / airDensityOut / RWATER / tempOut;
 		}
 	A[6][0] = -x1;
 	A[6][1] = -x5;

@@ -37,7 +37,7 @@ class WoodMoisture {
       void mass_cond_bal(double* node_temps, double tempOut, double RHOut, double RHHouse,
                              double airDensityOut, double airDensityAttic, double airDensityHouse,
                              int pressure, double hU0, double hU1, double hU2,
-                             double mAttic, double mCeiling);
+                             double mAtticIn, double mAtticOut, double mCeiling);
 };
 
 

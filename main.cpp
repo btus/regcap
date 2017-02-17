@@ -302,7 +302,11 @@ int main(int argc, char *argv[], char* envp[])
 				return 1; 
 			}
 
-			moistureFile << "HRattic\tMC\tPW\tMTotal" << endl;
+			moistureFile << "atticTemp\tatticRH\tatticHR\t";
+			for(int i=0; i<7; i++) {
+				moistureFile << "MC" << i << "\tmTotal" << i << "\t";
+				}
+			moistureFile << endl;
 			//moistureFile << "HROUT\tHRattic\tHRreturn\tHRsupply\tHRhouse\tHRmaterials\tRH%house\tRHind60\tRHind70" << endl;
 			//moistureFile << "HR_Attic\tHR_Return\tHR_Supply\tHR_House\tHR_Materials" << endl; This is the old format.
 		}
@@ -3066,7 +3070,7 @@ int main(int argc, char *argv[], char* envp[])
 
 					// Call attic wood moisture balance
 					attic.mass_cond_bal(b, weather.dryBulb, weather.relativeHumidity, RHhouse, airDensityOUT,
-						airDensityATTIC, airDensityIN, weather.pressure, H4, H2, H6, mAtticIN, mCeiling);
+						airDensityATTIC, airDensityIN, weather.pressure, H4, H2, H6, matticenvin, matticenvout, mCeiling);
 
 					// Call moisture subroutine
 					sub_moisture(HR, M1, M12, M15, M16, Mw5, matticenvout, mCeiling, mSupAHoff, mRetAHoff,
