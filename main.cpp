@@ -11,7 +11,7 @@
 #include "weather.h"
 #include "psychro.h"
 #include "equip.h"
-#include "wood.h"
+#include "moisture.h"
 #include "constants.h"
 #include "config/config.h"
 
@@ -1071,7 +1071,7 @@ int main(int argc, char *argv[], char* envp[])
 
 		// Call class constructors
 		Dehumidifier dh(dhCapacity, dhEnergyFactor, dhSetPoint, dhDeadBand);	// Initialize Dehumidifier 
-		WoodMoisture attic(atticVolume, planArea, roofPitch, atticMCInit);   // initialize attic moisture model
+		Moisture attic(atticVolume, planArea, roofPitch, atticMCInit);   // initialize attic moisture model
 
 		cout << endl;
 		cout << "Simulation: " << simNum << endl;

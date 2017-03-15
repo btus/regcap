@@ -1,11 +1,11 @@
 #pragma once
-#ifndef wood_h
-#define wood_h
+#ifndef moisture_h
+#define moisture_h
 #include <vector>
 
 using namespace std;
 
-class WoodMoisture {
+class Moisture {
 	private:
 		static const int rhoWood = 400;		// Wood density (@TODO function.cpp uses 500 - need to make consistant)
 		static const int timeStep = 60;		// Timestep (1 minute)
@@ -33,7 +33,7 @@ class WoodMoisture {
 		vector <double> PW;										// Node vapor pressure (Pa). vector so it can be passed to gauss()
 		double mTotal[MOISTURE_NODES];						// Node mass of condensed water (kg)
 
-		WoodMoisture(double atticVolume, double atticArea, double roofPitch, double mcInit=0.15);
+		Moisture(double atticVolume, double atticArea, double roofPitch, double mcInit=0.15);
       void mass_cond_bal(double* node_temps, double tempOut, double RHOut, double RHHouse,
                              double airDensityOut, double airDensityAttic, double airDensityHouse,
                              int pressure, double hU0, double hU1, double hU2,

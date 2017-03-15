@@ -7,7 +7,7 @@
 #ifdef __APPLE__
    #include <cmath>        // needed for mac g++
 #endif
-#include "wood.h"
+#include "moisture.h"
 //#include "gauss.h"
 #include "constants.h"
 
@@ -21,7 +21,7 @@ int main() {
 	double roofPitch = 18;
 
 	// initialize attic moisture nodes
-	WoodMoisture attic(atticVolume, atticArea, roofPitch);
+	Moisture attic(atticVolume, atticArea, roofPitch);
 	
 	double tempOut = 293;
 	double RHOut = 60;

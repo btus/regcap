@@ -1,4 +1,4 @@
-#include "wood.h"
+#include "moisture.h"
 #include "psychro.h"
 #include "constants.h"
 #include "gauss.h"
@@ -11,7 +11,7 @@
 using namespace std;
 
 /*
- * WoodMoisture - Wood moisture class constructor
+ * Moisture - Moisture class constructor
  * @param atticVolume - attic volume (m3)
  * @param atticArea - attic area (m2)
  * @param roofPitch - roof pitch (degrees)
@@ -26,7 +26,7 @@ using namespace std;
  * 5. inside bulk wood  - corresponding thermal node is (6)
  * 6. Attic air  - corresponding thermal node is (1)
  */
-WoodMoisture::WoodMoisture(double atticVolume, double atticArea, double roofPitch, double mcInit) {
+Moisture::Moisture(double atticVolume, double atticArea, double roofPitch, double mcInit) {
    int pressure = 101325;		// 1 atmosphere
    double woodThick = 0.015;  // should match what is set in sub_heat for now
 	double tempInit = airTempRef; // node initialization temperature (deg K)
@@ -86,7 +86,7 @@ WoodMoisture::WoodMoisture(double atticVolume, double atticArea, double roofPitc
  * @param mAtticOut - air mass flow out of attic (kg/s)
  * @param mCeiling - ceiling air mass flow (kg/s)
  */
-void WoodMoisture::mass_cond_bal(double* node_temps, double tempOut, double RHOut, double RHHouse,
+void Moisture::mass_cond_bal(double* node_temps, double tempOut, double RHOut, double RHHouse,
                                    double airDensityOut, double airDensityAttic, double airDensityHouse,
                                    int pressure, double hU0, double hU1, double hU2,
                                    double mAtticIn, double mAtticOut, double mCeiling)
@@ -229,7 +229,7 @@ cout << endl;
  *            to adapt for this condensation.
  * @param pressure - atomospheric pressure (Pa)
  */
-void WoodMoisture::cond_bal(int pressure) {
+void Moisture::cond_bal(int pressure) {
 	double PWSaturation[MOISTURE_NODES];			// saturation vapor pressure at each node (Pa)
 	double PWTest[MOISTURE_NODES];					// save original for test of convergence (Pa)
 	double massCondensed[MOISTURE_NODES];			// the mass condensed or removed (if negative) at each node (kg)
@@ -469,7 +469,7 @@ static const double B7 =  0.233;		// was MCE
  * @param volume   - wood volume (m3)
  * @return kappa1  -
  */
-double WoodMoisture::calc_kappa_1(int pressure, double temp, double mc, double volume) {
+double Moisture::calc_kappa_1(int pressure, double temp, double mc, double volume) {
 	double k1;
 	k1 = 1 / (pressure / 0.622 * exp((temp - C_TO_K) / B3) * (B5 + 2 * B6 * mc + 3 * B7 * pow(mc,2)));
 	k1 = volume * rhoWood * k1 / timeStep;
@@ -483,7 +483,7 @@ double WoodMoisture::calc_kappa_1(int pressure, double temp, double mc, double v
  * @param volume  - wood volume (m3)
  * @return kappa2 -
  */
-double WoodMoisture::calc_kappa_2(double mc, double volume) {
+double Moisture::calc_kappa_2(double mc, double volume) {
 	double k2;
 	k2 = (B4 + B5 * mc + B6 * pow(mc,2) + B7 * pow(mc,3)) / (-B3 * (B5 + 2 * B6 * mc + 3 * B7 * pow(mc,2)));
 	k2 = volume * rhoWood * k2 / timeStep;
@@ -497,7 +497,7 @@ double WoodMoisture::calc_kappa_2(double mc, double volume) {
  * @param temp     - temperature (deg K)
  * @return mc		 - wood moisture content
  */
-double WoodMoisture::mc_cubic(double pw, int pressure, double temp) {
+double Moisture::mc_cubic(double pw, int pressure, double temp) {
 	double W = 0.622 * pw / (pressure - pw);
 	const double a1 = B6 / B7;
 	const double a2 = B5 / B7;
@@ -518,7 +518,7 @@ double WoodMoisture::mc_cubic(double pw, int pressure, double temp) {
  * @param pressure - atmospheric pressure (Pa)
  * @return pw      - vapor pressure
  */
-double WoodMoisture::calc_vapor_pressure(double mc, double temp, int pressure) {
+double Moisture::calc_vapor_pressure(double mc, double temp, int pressure) {
 	double w = exp((temp - C_TO_K) / B3) * (B4 + B5 * mc + B6 * pow(mc, 2) + B7 * pow(mc, 3));
 	return (w * pressure / (0.622 * (1 + w / 0.622)));
 	}
