@@ -9,7 +9,7 @@ class Moisture {
 	private:
 		static const int rhoWood = 400;		// Wood density (@TODO function.cpp uses 500 - need to make consistant)
 		static const int timeStep = 60;		// Timestep (1 minute)
-		static const int MOISTURE_NODES = 7; // Currently 7 nodes
+		static const int MOISTURE_NODES = 7; // Currently 11 nodes
 		
 		double deltaX[MOISTURE_NODES];						// Node thickness
 		double area[MOISTURE_NODES];							// Node area
@@ -33,7 +33,7 @@ class Moisture {
 		vector <double> PW;										// Node vapor pressure (Pa). vector so it can be passed to gauss()
 		double mTotal[MOISTURE_NODES];						// Node mass of condensed water (kg)
 
-		Moisture(double atticVolume, double atticArea, double roofPitch, double mcInit=0.15);
+		Moisture(double atticVolume, double retVolume, double supVolume, double houseVolume, double atticArea, double roofPitch, double mcInit=0.15);
       void mass_cond_bal(double* node_temps, double tempOut, double RHOut, double RHHouse,
                              double airDensityOut, double airDensityAttic, double airDensityHouse,
                              int pressure, double hU0, double hU1, double hU2,
