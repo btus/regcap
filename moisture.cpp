@@ -43,7 +43,7 @@ Moisture::Moisture(double atticVolume, double retVolume, double supVolume, doubl
    PW.resize(MOISTURE_NODES, 0);
 	deltaX[0] = woodThick / 2;                // distance between the centers of the surface and bulk wood layers. it is half the characteristic thickness of the wood member
 	deltaX[1] = deltaX[0];                    // same as for the other sheathing surface
-	deltaX[2] = .015;									// assume 1.5 cm as approximate wood half thickness
+	deltaX[2] = .015;									// assume 1.5 cm as approximate wood half thickness - this is low, should be .038 for 2x4 construction
 	deltaX[3] = deltaX[0];
 	deltaX[4] = deltaX[1];
 	deltaX[5] = deltaX[2];
@@ -62,10 +62,10 @@ Moisture::Moisture(double atticVolume, double retVolume, double supVolume, doubl
 	volume[4] = 2 * volume[1];
 	volume[5] = 0.02 * area[2] - volume[2];	// this is close for 2x4 construction and may change a bit if 2x6 (I redid the calculations and for 2x4 this would be 0.017 but I dont think we can really justify that second significant digit!
 	volume[6] = atticVolume;
-/*	volume[7] = retVolume;
+	volume[7] = retVolume;
 	volume[8] = supVolume;
 	volume[9] = houseVolume;
-	volume[10] = 10; // @TODO@ need volume */
+/*	volume[10] = 10; // @TODO@ need volume */
 
 	// initialize wood nodes
 	for(int i=0; i<6; i++) {
@@ -93,6 +93,8 @@ Moisture::Moisture(double atticVolume, double retVolume, double supVolume, doubl
  * @param airDensityOut - Outdoor air density (kg/m3)
  * @param airDensityAttic - Attic air density (kg/m3)
  * @param airDensityHouse - Indoor air density (kg/m3)
+ * @param airDensitySup - Supply air density (kg/m3)
+ * @param airDensityRet - Return air density (kg/m3)
  * @param pressure - atmospheric pressure (Pa)
  * @param hU0 - surface heat transfer coefficient for node 0 (inner south) (J/sm2K) - was H4
  * @param hU1 - surface heat transfer coefficient for node 1 (inner north) (J/sm2K) - was H6
@@ -100,18 +102,28 @@ Moisture::Moisture(double atticVolume, double retVolume, double supVolume, doubl
  * @param mAtticIn - air mass flow into attic (kg/s)
  * @param mAtticOut - air mass flow out of attic (kg/s)
  * @param mCeiling - ceiling air mass flow (kg/s)
+ * @param mHouseIn - air mass flow into house (kg/s)
+ * @param mHouseOut - air mass flow out of house (kg/s)
+ * @param mRetOff - air mass flow through return with AH off (kg/s)
+ * @param mRetLeak - air mass flow through return leaks (kg/s)
+ * @param mRetReg - air mass flow through return register (kg/s)
+ * @param mRetOut - air mass flow into return from outside (kg/s)
+ * @param mSupOff - air mass flow through supply with AH off (kg/s)
+ * @param mSupLeak - air mass flow through supply leaks (kg/s)
+ * @param mSupReg - air mass flow through supply register (kg/s)
  */
 void Moisture::mass_cond_bal(double* node_temps, double tempOut, double RHOut, double RHHouse,
-                                   double airDensityOut, double airDensityAttic, double airDensityHouse,
-                                   int pressure, double hU0, double hU1, double hU2,
-                                   double mAtticIn, double mAtticOut, double mCeiling)
+                  double airDensityOut, double airDensityAttic, double airDensityHouse, double airDensitySup, double airDensityRet,
+                  int pressure, double hU0, double hU1, double hU2,
+                  double mAtticIn, double mAtticOut, double mCeiling, double mHouseIn, double mHouseOut,
+                  double mAH, double mRetAHoff, double mRetLeak, double mRetReg, double mRetOut,
+                  double mSupAHoff, double mSupLeak, double mSupReg, double latcap, double dhMoistRemv, double latload)
                                    {
-	const double LEWIS23 = pow(0.919, 2.0/3.0);	// Lewis number from ASHRAE to the 2/3rds power
+	const double LEWIS23 = pow(0.919, 2.0/3.0);	// Lewis number for air and water vapor from ASHRAE 1989 p5-9 to the 2/3rds power
 	const double DIFFCOEF = 3E-10; // diffusion coefficient for pine from Cunningham 1990 (m2/s)
 	const int RWATER = 462;			// gas constant for water vapor (J/KgK)
 	double PWOut;						// Outdoor air vapor pressure (Pa)
 	double hw;							// Mass transfer coefficient for water vapor (m/s)
-	double xx1, xx2, xx3, xx4, xx5;
 
 	// set node temperatures 
 	temperature[0] = node_temps[3];	// inner south sheathing
@@ -121,10 +133,10 @@ void Moisture::mass_cond_bal(double* node_temps, double tempOut, double RHOut, d
 	temperature[4] = (node_temps[1] + node_temps[2]) / 2;	// average of north sheathing
 	temperature[5] = node_temps[5];	// bulk wood
 	temperature[6] = node_temps[0];	// attic air
-/*
 	temperature[7] = node_temps[11];	// return air
 	temperature[8] = node_temps[14];	// supply air
 	temperature[9] = node_temps[15];	// house air
+/*
 	temperature[10] = node_temps[12];	// house mass
 */
 	PWOut = saturationVaporPressure(tempOut) * RHOut / 100;
@@ -198,41 +210,85 @@ void Moisture::mass_cond_bal(double* node_temps, double tempOut, double RHOut, d
 	x15 = volume[6] * PWOld[6] / RWATER / temperature[6] / timeStep;
    x17 = mAtticIn * PWOut / airDensityOut / RWATER / tempOut;
 	if(mCeiling < 0) {
-//		x16 = -mCeiling * PWOld[9] / RWATER / temperature[9] / airDensityHouse;
-		x16 = -mCeiling * PWHouse / RWATER / node_temps[15] / airDensityHouse;
+		xn67 = (mRetAHoff - mRetLeak) / RWATER / temperature[7] / airDensityRet;
+		xn68 = (mSupAHoff - mSupLeak) / RWATER / temperature[8] / airDensitySup;
+		xn69 = mCeiling / RWATER / temperature[9] / airDensityHouse;
+		x16 = 0;
 		}
 	else {
-		// These were X18, X19, X20
-		x16 = -mCeiling * PWOld[6] / RWATER / temperature[6] / airDensityAttic;
+		xn67 = -mRetLeak / RWATER / temperature[7] / airDensityRet;
+		xn68 = -mSupLeak / RWATER / temperature[8] / airDensitySup;
+		xn69 = 0;
+		x16 = (mCeiling + mSupAHoff + mRetAHoff) / RWATER / temperature[6] / airDensityAttic;
 		}
 	A[6][0] = -x1;
 	A[6][1] = -x5;
 	A[6][2] = -x9;
-	A[6][6] = x13 - x3 - x7 - x11 + x14;
-	PWInit[6] = x15 + x16 + x17;
+	A[6][6] = x13 - x3 - x7 - x11 + x14 + x16;
+	A[6][7] = xn67;
+	A[6][8] = xn68;
+	A[6][9] = xn69;
+	PWInit[6] = x15 + x17;
 
-/*	//NODE 7 IS RETURN DUCT AIR
-	xx1 = volume[7] / RWATER / temperature[7] / timeStep;
-	xx2 = volume[7] * PWOld[7] / RWATER / temperature[7] / timeStep;
+	//NODE 7 IS RETURN DUCT AIR
+	xn7t = volume[7] / RWATER / temperature[7] / timeStep;
+	xn7o = volume[7] * PWOld[7] / RWATER / temperature[7] / timeStep - mRetOut / RWATER / tempOut / airDensityOut;
 	if(mCeiling < 0) {
-		xx3 = -mAtticOut / airDensityAttic / RWATER / temperature[6];
-		xx4 = -mCeiling * PWOld[9] / RWATER / temperature[9] / airDensityHouse;
-		xx5 = mAtticIn * PWOut / airDensityOut / RWATER / tempOut;
+		xn7c = (mAH - mRetAHoff) / RWATER / temperature[7] / airDensityRet;
+		xn76 = mRetLeak / RWATER / temperature[6] / airDensityAttic;
+		xn79 = (mRetReg + mRetAHoff) / RWATER / temperature[9] / airDensityHouse;
 		}
 	else {
-		xx3 = -mAtticOut / airDensityAttic / RWATER / temperature[6];
-		xx4 = -mCeiling * PWOld[6] / RWATER / temperature[6] / airDensityAttic;
-      xx5 = mAtticIn * PWOut / airDensityOut / RWATER / tempOut;
+		xn7c = (mAH + mRetAHoff) / RWATER / temperature[7] / airDensityRet;
+		xn76 = (mRetLeak - mRetAHoff) / RWATER / temperature[6] / airDensityAttic;
+		xn79 = mRetReg / RWATER / temperature[9] / airDensityHouse;
 		}
-	A[7][0] = -x1;
-	A[7][1] = -x5;
-	A[7][2] = -x9;
-	A[7][6] = x13 - x3 - x7 - x11 + x14;
-	PWInit[7] = x15 + x16 + x17;
-*/
+	A[7][6] = xn76;
+	A[7][7] = xn7t + xn7c;
+	A[7][9] = xn79;
+	PWInit[7] = xn7o;
+
 	//NODE 8 IS SUPPLY DUCT AIR
+	xn8t = volume[8] / RWATER / temperature[8] / timeStep;
+	xn8o = volume[8] * PWOld[8] / RWATER / temperature[8] / timeStep + latcap / 2501000;
+	xn87 = -mAH / RWATER / temperature[7] / airDensityRet;
+	if(mCeiling < 0) {
+		xn8c = (mSupReg - mSupAHoff) / RWATER / temperature[8] / airDensitySup;
+		xn86 = 0;
+		xn89 = mSupAHoff / RWATER / temperature[9] / airDensityHouse;
+		}
+	else {
+		xn8c = (mSupReg + mSupAHoff) / RWATER / temperature[8] / airDensitySup;
+		xn86 = - mSupAHoff / RWATER / temperature[6] / airDensityAttic;
+		xn89 = 0;
+		}
+	A[8][6] = xn86;
+	A[8][7] = xn87;
+	A[8][8] = xn8t + xn8c;
+	A[8][9] = xn89;
+	PWInit[8] = xn8o;
 
 	//NODE 9 IS HOUSE AIR
+	xn9t = volume[9] / RWATER / temperature[9] / timeStep;
+	xn9o = volume[9] * PWOld[9] / RWATER / temperature[9] / timeStep - mHouseIn / RWATER / tempOut / airDensityOut + dhMoistRemv - latload;
+	xn98 = -mSupReg / RWATER / temperature[8] / airDensitySup;
+	if(mCeiling < 0) {
+		xn9c = (-mRetReg - mHouseOut - mCeiling) / RWATER / temperature[9] / airDensityHouse;
+		xn96 = 0;
+		xn97 = 0;
+		xn98 = 0;
+		}
+	else {
+		xn9c = (-mRetReg - mHouseOut) / RWATER / temperature[9] / airDensityHouse;
+		xn96 = - mCeiling / RWATER / temperature[6] / airDensityAttic;
+		xn97 = - mRetAHoff / RWATER / temperature[7] / airDensityRet;
+		xn98 = - mSupAHoff / RWATER / temperature[8] / airDensitySup;
+		}
+	A[9][6] = xn96;
+	A[9][7] = xn97;
+	A[9][8] = xn98;
+	A[9][9] = xn9t + xn9c;
+	PWInit[9] = xn9o;
 
 	//NODE 10 IS HOUSE MASS
 
@@ -261,7 +317,7 @@ cout << endl;
 
 	for(int i=0; i<MOISTURE_NODES; i++) {
 		tempOld[i] = temperature[i];
-		PWOld[i] = abs(PW[i]);			// in case negative PW's are generated
+		PWOld[i] = abs(PW[i]);			// in case negative PW's are generated (should get set to 0??)
 		}
 }
 
@@ -513,12 +569,13 @@ static const double B7 =  0.233;		// was MCE
 
 
 /*
- * calc_kappa_1 - calculates kappa1 (dWmc/dP)
+ * calc_kappa_1 - calculates kappa1: the partial of wood moisture content with respect to
+ *						pressure (equation 4-15) times wood mass divided by tau
  * @param pressure - atomospheric pressure (Pa)
  * @param temp     - temperature (deg K)
  * @param mc       - moisture content
  * @param volume   - wood volume (m3)
- * @return kappa1  -
+ * @return kappa1  - (dWmc/dP)(Mw/t)
  */
 double Moisture::calc_kappa_1(int pressure, double temp, double mc, double volume) {
 	double k1;
@@ -529,10 +586,11 @@ double Moisture::calc_kappa_1(int pressure, double temp, double mc, double volum
 }
 
 /*
- * calc_kappa_2 - calculates kappa2 (dWmc/dT)
+ * calc_kappa_2 - calculates kappa2: the partial of wood moisture content with respect to
+ *						temperature (equation 4-16) times wood mass divided by tau
  * @param mc		- moisture content
  * @param volume  - wood volume (m3)
- * @return kappa2 -
+ * @return kappa2 - (dWmc/dT)(Mw/t)
  */
 double Moisture::calc_kappa_2(double mc, double volume) {
 	double k2;

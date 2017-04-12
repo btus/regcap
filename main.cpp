@@ -305,7 +305,7 @@ int main(int argc, char *argv[], char* envp[])
 			}
 
 			moistureFile << "atticTemp\tatticRH\tatticHR\t";
-			for(int i=0; i<7; i++) {
+			for(int i=0; i<10; i++) {
 				moistureFile << "MC" << i << "\tmTotal" << i << "\t";
 				}
 			moistureFile << endl;
@@ -1158,15 +1158,6 @@ int main(int argc, char *argv[], char* envp[])
 				mFanCycler = 0;					// Fan cycler?
 				if (hour == peakEnd)
 					peakFlag = 1;			// Prevents two peak periods in the same day when there is heating and cooling
-
-				// Mold Index Calculations per ASHRAE 160, BDL 12/2016
-				// Sheathing surfaces are Sensitive (1) and bulk wood is Very Sensitive (0)
-				// Should these be using minute or avg hourly data?
-				/*
-				moldIndex_South = sub_moldIndex(1, moldIndex_South, b[3], attic.PW[0], Time_decl_South); //South Roof Sheathing Surface Node						
-				moldIndex_North = sub_moldIndex(1, moldIndex_North, b[1], attic.PW[1], Time_decl_North); //North Roof Sheathing Surface Node
-				moldIndex_BulkFraming = sub_moldIndex(0, moldIndex_BulkFraming, b[5], attic.PW[2], Time_decl_Bulk); //Bulk Attic Framing Surface Node
-				*/
 
 				// ============================== MINUTE LOOP ================================	
 				for(int minute = 0; minute < 60; minute++) {
@@ -3068,9 +3059,13 @@ int main(int argc, char *argv[], char* envp[])
 					// setting "old" temps for next timestep to be current temps:
 					// [START] Moisture Balance ===================================================================================================================================
 
-					// Call attic wood moisture balance
-					attic.mass_cond_bal(b, weather.dryBulb, weather.relativeHumidity, RHhouse, airDensityOUT,
-						airDensityATTIC, airDensityIN, weather.pressure, H4, H2, H6, matticenvin, matticenvout, mCeiling);
+					// Call attic moisture balance
+					double mRetOut = mFanCycler + mHRV_AH + mERV_AH;
+					attic.mass_cond_bal(b, weather.dryBulb, weather.relativeHumidity, RHhouse,
+						airDensityOUT, airDensityATTIC, airDensityIN, airDensitySUP, airDensityRET,
+						weather.pressure, H4, H2, H6, matticenvin, matticenvout, mCeiling, mHouseIN, mHouseOUT,
+						mAH, mRetAHoff, mRetLeak, mRetReg, mRetOut, mSupAHoff, mSupLeak, mSupReg,
+						latcap, dh.condensate, latentLoad);
 
 					// Call moisture subroutine
 					sub_moisture(HR, M1, M12, M15, M16, Mw5, matticenvout, mCeiling, mSupAHoff, mRetAHoff,
@@ -3342,7 +3337,7 @@ int main(int argc, char *argv[], char* envp[])
 						double RHAttic = 100 * ((weather.pressure*(HR[0]/0.621945))/(1+(HR[0]/0.621945)) / atticSVP);
 						//moistureFile << weather.humidityRatio << "\t" << HR[0] << "\t" << HR[1] << "\t" << HR[2] << "\t" << HR[3] << "\t" << HR[4] << "\t" << RHhouse << "\t" << RHind60 << "\t" << RHind70 << endl;
 						moistureFile << tempAttic << "\t" << RHAttic << "\t" << HR[0];
-						for(int i=0; i<7; i++) {
+						for(int i=0; i<10; i++) {
 							moistureFile << "\t" << attic.moistureContent[i] << "\t" << attic.mTotal[i];
 							}
 						moistureFile << endl;
@@ -3385,6 +3380,15 @@ int main(int argc, char *argv[], char* envp[])
 				}     // end of minute loop
 				begin = end;
 				end = readTMY3(weatherFile);
+
+				// Mold Index Calculations per ASHRAE 160, BDL 12/2016
+				// Sheathing surfaces are Sensitive (1) and bulk wood is Very Sensitive (0)
+				// Should these be using minute or avg hourly data?
+				/*
+				moldIndex_South = sub_moldIndex(1, moldIndex_South, b[3], attic.PW[0], Time_decl_South); //South Roof Sheathing Surface Node						
+				moldIndex_North = sub_moldIndex(1, moldIndex_North, b[1], attic.PW[1], Time_decl_North); //North Roof Sheathing Surface Node
+				moldIndex_BulkFraming = sub_moldIndex(0, moldIndex_BulkFraming, b[5], attic.PW[2], Time_decl_Bulk); //Bulk Attic Framing Surface Node
+				*/
 			}        // end of hour loop
 		}           // end of day loop
 		//} while (weatherFile);			// Run until end of weather file

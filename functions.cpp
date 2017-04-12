@@ -898,7 +898,7 @@ void sub_heat (
 		A[12][6] = -hr7 * A7;
 		b[12] = M13 * cp13 * tempOld[12] / dtau + .95 * solgain;
 
-		// NODE 14
+		// NODE 14 Exterior Supply Duct Surface
 		b[13] = M14 * cp14 * tempOld[13] / dtau;
 		A[13][14] = -A15 / (Rval14 + 1 / HI14);
 		if(ductLocation == 1) {			// ducts in house

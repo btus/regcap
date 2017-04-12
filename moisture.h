@@ -9,13 +9,15 @@ class Moisture {
 	private:
 		static const int rhoWood = 400;		// Wood density (@TODO function.cpp uses 500 - need to make consistant)
 		static const int timeStep = 60;		// Timestep (1 minute)
-		static const int MOISTURE_NODES = 7; // Currently 11 nodes
+		static const int MOISTURE_NODES = 10; // Currently 11 nodes
 		
 		double deltaX[MOISTURE_NODES];						// Node thickness
 		double area[MOISTURE_NODES];							// Node area
 		double volume[MOISTURE_NODES];						// Node volume
 		double kappa1[MOISTURE_NODES], kappa2[MOISTURE_NODES];
 		double x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17;
+		double xn67, xn68, xn69, xn7t, xn7o, xn7c, xn76, xn79, xn8t, xn8o, xn8c, xn86, xn87, xn89;
+		double xn9t, xn9o, xn9c, xn96, xn97, xn98;
 		vector< vector<double> > A;
 		double PWOld[MOISTURE_NODES];							// previous time step vapor pressure (Pa)
       double PWInit[MOISTURE_NODES];						// initial vapor pressure (was B() in BASIC code) (Pa)
@@ -34,10 +36,12 @@ class Moisture {
 		double mTotal[MOISTURE_NODES];						// Node mass of condensed water (kg)
 
 		Moisture(double atticVolume, double retVolume, double supVolume, double houseVolume, double atticArea, double roofPitch, double mcInit=0.15);
-      void mass_cond_bal(double* node_temps, double tempOut, double RHOut, double RHHouse,
-                             double airDensityOut, double airDensityAttic, double airDensityHouse,
-                             int pressure, double hU0, double hU1, double hU2,
-                             double mAtticIn, double mAtticOut, double mCeiling);
+		void mass_cond_bal(double* node_temps, double tempOut, double RHOut, double RHHouse,
+               double airDensityOut, double airDensityAttic, double airDensityHouse, double airDensitySup, double airDensityRet,
+               int pressure, double hU0, double hU1, double hU2,
+               double mAtticIn, double mAtticOut, double mCeiling, double mHouseIn, double mHouseOut,
+               double mAH, double mRetAHoff, double mRetLeak, double mRetReg, double mRetOut,
+               double mSupAHoff, double mSupLeak, double mSupReg, double latcap, double dhMoistRemv, double latload);
 };
 
 
