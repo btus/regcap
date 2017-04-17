@@ -451,8 +451,8 @@ void Moisture::cond_bal(int pressure) {
 			//         i.e., there is no mTotal
 			if(PW[6] < PWSaturation[6]) {
 				massCondensed[6] = 0;
-				double a33 = x13 - x3 - x7 - x11 + x14;
-				PW[6] = -1 / a33 * (-x1 * PW[0] - x5 * PW[1] - x9 * PW[2]) + PWInit[6] / a33;
+				double a33 = x13 - x3 - x7 - x11 + x14 + x16;
+				PW[6] = -1 / a33 * (-x1 * PW[0] - x5 * PW[1] - x9 * PW[2] + xn67 * PW[7] + xn68 * PW[8] + xn69 * PW[9]) + PWInit[6] / a33;
 				hasCondensedMass[6] = false;
 				}
 			else {
@@ -470,7 +470,7 @@ void Moisture::cond_bal(int pressure) {
             }
 
 			PWOutOfRange = false;
-			for(int i=0; i<7; i++) {
+			for(int i=0; i<MOISTURE_NODES; i++) {
 				if(abs(PWTest[i] - PW[i]) > 0.1) {
 					// it is possible that this 0.1Pa criterion is too “tight” and we may relax this 
 					// depending on the solution time requirements and program stability.
