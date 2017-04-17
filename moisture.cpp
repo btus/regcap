@@ -90,6 +90,7 @@ Moisture::Moisture(double atticVolume, double retVolume, double supVolume, doubl
  * @param node_temps - array of node temperatures (deg K)
  * @param tempOut - Outdoor temperature (deg K)
  * @param RHOut - Outdoor relative humidity (%)
+ * @param RHHouse - Indoor relative humidity (%)
  * @param airDensityOut - Outdoor air density (kg/m3)
  * @param airDensityAttic - Attic air density (kg/m3)
  * @param airDensityHouse - Indoor air density (kg/m3)
@@ -104,6 +105,7 @@ Moisture::Moisture(double atticVolume, double retVolume, double supVolume, doubl
  * @param mCeiling - ceiling air mass flow (kg/s)
  * @param mHouseIn - air mass flow into house (kg/s)
  * @param mHouseOut - air mass flow out of house (kg/s)
+ * @param mAH - air mass flow through the air handler (kg/s)
  * @param mRetOff - air mass flow through return with AH off (kg/s)
  * @param mRetLeak - air mass flow through return leaks (kg/s)
  * @param mRetReg - air mass flow through return register (kg/s)
@@ -111,6 +113,9 @@ Moisture::Moisture(double atticVolume, double retVolume, double supVolume, doubl
  * @param mSupOff - air mass flow through supply with AH off (kg/s)
  * @param mSupLeak - air mass flow through supply leaks (kg/s)
  * @param mSupReg - air mass flow through supply register (kg/s)
+ * @param latcap - moisture removed by the AC coil (kg/s)
+ * @param dhMoistRemv - moisture removed by the dehumidifier (kg/s)
+ * @param latload - indoor latent load (kg/s)
  */
 void Moisture::mass_cond_bal(double* node_temps, double tempOut, double RHOut, double RHHouse,
                   double airDensityOut, double airDensityAttic, double airDensityHouse, double airDensitySup, double airDensityRet,
@@ -457,8 +462,10 @@ void Moisture::cond_bal(int pressure) {
 			
 			// Other air nodes - do we need to recalc PW? just fix PW at saturation for now as there is no place to put the moisture
 			for(int i=7; i<MOISTURE_NODES; i++) {
+				hasCondensedMass[i] = false;
 				if(PW[i] > PWSaturation[i]) {
             	PW[i] = PWSaturation[i];
+				   cout << "Air node " << i << " > saturation: " << PW[i] << "> " << PWSaturation[i] << endl;
             	}
             }
 
