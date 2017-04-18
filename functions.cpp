@@ -77,7 +77,8 @@ void sub_infiltrationModel(
 	double& Q_infiltration, //Total infiltration airflow, combined wind and stack airflows, L/s
 	double& Q_total, //Total airflow combined infiltration and mechanical, L/s
 	double wInfil,
-	int InfCalc
+	int InfCalc,
+	int BalancedFan
 	
 	) 
 	
@@ -107,7 +108,11 @@ void sub_infiltrationModel(
 		Q_infiltration = sqrt(pow(Q_wind, 2) + pow(Q_stack, 2)); //Calculate combined infiltration airflow using quadrature, L/s.
 	}
 	
-	phi = Q_infiltration / (Q_infiltration + ventSum_flow); // Calculate the additivity coefficient
+	if(BalancedFan == 1){
+		phi = 1;
+	else {
+		phi = Q_infiltration / (Q_infiltration + ventSum_flow); // Calculate the additivity coefficient
+		}
 	
 	Q_total = ventSum_flow + phi * Q_infiltration; //Calculate total airflow combined mechanical and natural, L/s.
 	
