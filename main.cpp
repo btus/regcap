@@ -232,6 +232,7 @@ int main(int argc, char *argv[], char* envp[])
 		double ERV_TRE;			// Total Recovery Efficiency of ERV unit, includes humidity transfer for moisture subroutine		
 		double Aeq;				// 62.2-2016 Total Ventilation Rate, hr-1. 
 		int InfCalc; 		//Index value, 0 = Annual infiltration rate for exposure calcs, 1 = Real-time infiltration estimates for exposure calcs.
+		int BalancedFan;	//Index value indicating if the main 62.2 fan is balanced (1) or unbalanced (0). This only affects the Q_house value calculated in sub_infiltrationModel().
 		// Inputs to set filter type and loading rate
 		int filterLoadingFlag;	// Filter loading flag = 0 (OFF) or 1 (ON)
 		int MERV;					// MERV rating of filter (may currently be set to 5, 8, 11 or 16)
@@ -470,6 +471,7 @@ int main(int argc, char *argv[], char* envp[])
 		buildingFile >> terrain;
 		buildingFile >> Aeq;
 		buildingFile >> InfCalc;
+		buildingFile >> BalancedFan; //Is the main 62.2 ventilation fan balanced? 1=yes, 0=no. 
 		buildingFile >> Crawl;
 		buildingFile >> HRV_ASE;
 		buildingFile >> ERV_SRE;
@@ -3151,7 +3153,7 @@ int main(int argc, char *argv[], char* envp[])
 						
 					sub_infiltrationModel(envC, envPressureExp, windSpeedMultiplier, shelterFactor, stackCoef, windCoef, weather.windSpeed, 	
 						weather.dryBulb, ventSum, houseVolume, windSpeedCorrection, Q_wind, 
-						Q_stack, Q_infiltration, Q_total, wInfil, InfCalc);
+						Q_stack, Q_infiltration, Q_total, wInfil, InfCalc, BalancedFan);
 					
 					relExpOld = relExp;
 					relDoseOld = relDose;
