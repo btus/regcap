@@ -2310,6 +2310,7 @@ int main(int argc, char *argv[], char* envp[])
 							}
 							else											// exhasut fan
 								ventSumOUT = ventSumOUT + abs(fan[i].q) * 3600 / houseVolume;		
+							
 						
 						} else if(fan[i].oper == 2) {					// FIXED SCHEDULE BATHROOM
 							if(hour == 7 && minute >= 30) {
