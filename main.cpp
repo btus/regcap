@@ -163,8 +163,8 @@ int main(int argc, char *argv[], char* envp[])
 		double flueShelterFactor;	// Shelter factor at the top of the flue (1 if the flue is higher than surrounding obstacles
 		int numPipes;					// Number of passive vents but appears to do much the same as flues
 		double Hfloor;
-		string rowOrIsolated;		// House in a row (R) or isolated (any string other than R)
-		bool rowHouse;					// Flag that house is in a row
+		string rowOrIsolated;		// House in a row (R) or isolated (any string other than R). NOTE: this is NOT a rowhouse, rather just a detached house in a row of other detached houses. 
+		bool rowHouse;					// Flag that house is in a row. Again, not a rowhouse, rather detached house in row of detached homes.
 		double houseVolume;			// Conditioned volume of house (m3)
 		double floorArea;				// Conditioned floor area (m2)
 		double planArea;				// Footprint of house (m2)
