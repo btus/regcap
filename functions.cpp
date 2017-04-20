@@ -110,9 +110,9 @@ void sub_infiltrationModel(
 	
 	if(BalancedFan == 1){
 		phi = 1;
-	else {
+	} else {
 		phi = Q_infiltration / (Q_infiltration + ventSum_flow); // Calculate the additivity coefficient
-		}
+	}
 	
 	Q_total = ventSum_flow + phi * Q_infiltration; //Calculate total airflow combined mechanical and natural, L/s.
 	
