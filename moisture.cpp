@@ -16,6 +16,7 @@ using namespace std;
  * @param supVolume - supply register volume (m3)
  * @param retVolume - return register volume (m3)
  * @param houseVolume - house volume (m3)
+ * @param floorArea - conditioned floor area (m2)
  * @param atticArea - attic area (m2)
  * @param roofPitch - roof pitch (degrees)
  * @param mcInit - initial wood moisture content (fraction - optional)
@@ -33,7 +34,8 @@ using namespace std;
  * 9. house air - corresponding thermal node is (16)
  * 10. house materials - corresponding thermal node is (13)
  */
-Moisture::Moisture(double atticVolume, double retVolume, double supVolume, double houseVolume, double atticArea, double roofPitch, double mcInit) {
+Moisture::Moisture(double atticVolume, double retVolume, double supVolume, double houseVolume, 
+						double floorArea, double atticArea, double roofPitch, double mcInit) {
    int pressure = 101325;		// 1 atmosphere
    double woodThick = 0.015;  // should match what is set in sub_heat for now
 	double tempInit = airTempRef; // node initialization temperature (deg K)
@@ -65,6 +67,10 @@ Moisture::Moisture(double atticVolume, double retVolume, double supVolume, doubl
 	volume[7] = retVolume;
 	volume[8] = supVolume;
 	volume[9] = houseVolume;
+
+	haHouse = .5 * floorArea / 186;				// moisture transport coefficient scales with floor area (to scale with surface area of moisture)
+	massWHouse = 60 * floorArea;					// Active mass of moisture in the house (empirical)
+
 /*	volume[10] = 10; // @TODO@ need volume */
 
 	// initialize wood nodes
@@ -277,6 +283,7 @@ void Moisture::mass_cond_bal(double* node_temps, double tempOut, double RHOut, d
 	xn9t = volume[9] / RWATER / temperature[9] / timeStep;
 	xn9o = volume[9] * PWOld[9] / RWATER / temperature[9] / timeStep - mHouseIn / RWATER / tempOut / airDensityOut + dhMoistRemv - latload;
 	xn98 = -mSupReg / RWATER / temperature[8] / airDensitySup;
+	//xn910 = 
 	if(mCeiling < 0) {
 		xn9c = (-mRetReg - mHouseOut - mCeiling) / RWATER / temperature[9] / airDensityHouse;
 		xn96 = 0;
@@ -293,9 +300,18 @@ void Moisture::mass_cond_bal(double* node_temps, double tempOut, double RHOut, d
 	A[9][7] = xn97;
 	A[9][8] = xn98;
 	A[9][9] = xn9t + xn9c;
+	//A[9][10] = xn910;
 	PWInit[9] = xn9o;
 
 	//NODE 10 IS HOUSE MASS
+	/*
+	xn10t =
+	xn10o =
+	xn109 =
+	A[10][9] = xn109;
+	A[10][10] = xn10t;
+	PWInit[10] = xn10o;
+*/
 
 /*
 cout << "Before gauss";
