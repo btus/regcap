@@ -750,21 +750,21 @@ int main(int argc, char *argv[], char* envp[])
 		bool tmyWeather;
 		bool epwWeather;
 		weatherFile >> row;
-// 		if(row.size() == 7) {			//TMY3, was >2
-// 			//double siteID = row[0];
-// 			//string siteName = row[1];
-// 			//string State = row[2];
-// 			timeZone = row[3];
-// 			latitude = row[4];
-// 			longitude = row[5];
-// 			altitude = row[6];
-// 			cout << "ID=" << row[0] << "TZ=" << timeZone << " lat=" << latitude << " long=" << longitude << " alt=" << altitude << endl;
-// 			weatherFile >> row;					// drop header
-// 			begin = readTMY3(weatherFile);	// duplicate first hour for interpolation of 0->1
-// 			end = begin;
-// 			tmyWeather = true;
-// 			epwWeather = false;
-// 		}
+		if(row.size() == 7) {			//TMY3, was >2
+			//double siteID = row[0];
+			//string siteName = row[1];
+			//string State = row[2];
+			timeZone = row[3];
+			latitude = row[4];
+			longitude = row[5];
+			altitude = row[6];
+			cout << "ID=" << row[0] << "TZ=" << timeZone << " lat=" << latitude << " long=" << longitude << " alt=" << altitude << endl;
+			weatherFile >> row;					// drop header
+			begin = readTMY3(weatherFile);	// duplicate first hour for interpolation of 0->1
+			end = begin;
+			tmyWeather = true;
+			epwWeather = false;
+		}
 		
 		if(row.size() == 10) {			//EnergyPlus weather file EPW
 			//double siteID = row[0];
@@ -777,8 +777,10 @@ int main(int argc, char *argv[], char* envp[])
 			cout << "ID=" << row[1] << "TZ=" << timeZone << " lat=" << latitude << " long=" << longitude << " alt=" << altitude << endl;
 			weatherFile >> row;					// drop header
 			begin = readEPW(weatherFile);	// duplicate first hour for interpolation of 0->1
-			//cout << begin.dryBulb, " ", begin.dewPoint << endl;
 			end = begin;
+// 			for(int i = 0; i < 7; ++i) {	//Brennan's attempt to skip 7 input rows. Stalls out. 
+// 				CSVRow row;;
+// 			}
 			tmyWeather = false;
 			epwWeather = true;
 		}
@@ -1241,7 +1243,7 @@ int main(int argc, char *argv[], char* envp[])
 					nonRivecVentSumOUT = 0;				// Setting sum of non-RIVEC exhaust mechanical ventilation to zero
 
 					// Read in or interpolate weather data
-					if(!tmyWeather || !epwWeather) {
+					if(!tmyWeather && !epwWeather) { //If both are false.
 						weather = readOneMinuteWeather(weatherFile);
 					}
 					else {
@@ -3384,12 +3386,12 @@ int main(int argc, char *argv[], char* envp[])
 						break;
 				}     // end of minute loop
 				begin = end;
-				end = readEPW(weatherFile);
-				// if(tmyWeather){
-// 					end = readTMY3(weatherFile);
-// 				} else if(epwWeather){
-// 					end = readEPW(weatherFile);
-// 				}
+				//end = readEPW(weatherFile);
+				if(tmyWeather){
+					end = readTMY3(weatherFile);
+				} else if(epwWeather){
+					end = readEPW(weatherFile);
+				}
 			}        // end of hour loop
 		}           // end of day loop
 		//} while (weatherFile);			// Run until end of weather file
