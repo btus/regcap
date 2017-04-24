@@ -748,26 +748,47 @@ int main(int argc, char *argv[], char* envp[])
 		CSVRow row;					// row of data to read from TMY3 csv
 		weatherData begin, end;	// hourly weather data
 		bool tmyWeather;
+		bool epwWeather;
 		weatherFile >> row;
-		if(row.size() > 2) {			// TMY3
+// 		if(row.size() == 7) {			//TMY3, was >2
+// 			//double siteID = row[0];
+// 			//string siteName = row[1];
+// 			//string State = row[2];
+// 			timeZone = row[3];
+// 			latitude = row[4];
+// 			longitude = row[5];
+// 			altitude = row[6];
+// 			cout << "ID=" << row[0] << "TZ=" << timeZone << " lat=" << latitude << " long=" << longitude << " alt=" << altitude << endl;
+// 			weatherFile >> row;					// drop header
+// 			begin = readTMY3(weatherFile);	// duplicate first hour for interpolation of 0->1
+// 			end = begin;
+// 			tmyWeather = true;
+// 			epwWeather = false;
+// 		}
+		
+		if(row.size() == 10) {			//EnergyPlus weather file EPW
 			//double siteID = row[0];
 			//string siteName = row[1];
 			//string State = row[2];
-			timeZone = row[3];
-			latitude = row[4];
-			longitude = row[5];
-			altitude = row[6];
-			cout << "ID=" << row[0] << "TZ=" << timeZone << " lat=" << latitude << " long=" << longitude << " alt=" << altitude << endl;
+			timeZone = row[8];
+			latitude = row[6];
+			longitude = row[7];
+			altitude = row[9];
+			cout << "ID=" << row[1] << "TZ=" << timeZone << " lat=" << latitude << " long=" << longitude << " alt=" << altitude << endl;
 			weatherFile >> row;					// drop header
-			begin = readTMY3(weatherFile);	// duplicate first hour for interpolation of 0->1
+			begin = readEPW(weatherFile);	// duplicate first hour for interpolation of 0->1
+			//cout << begin.dryBulb, " ", begin.dewPoint << endl;
 			end = begin;
-			tmyWeather = true;
+			tmyWeather = false;
+			epwWeather = true;
 		}
+		
 		else {							// 1 minute data
 			weatherFile.close();
 			weatherFile.open(weatherFileName);
 			weatherFile >> latitude >> longitude >> timeZone >> altitude;
 			tmyWeather = false;
+			epwWeather = false;
 			cout << "1 minute:" << "Lat:" << latitude << " Alt:" << altitude << endl;
 		}
 		latitude = M_PI * latitude / 180.0;					// convert to radians
@@ -1220,7 +1241,7 @@ int main(int argc, char *argv[], char* envp[])
 					nonRivecVentSumOUT = 0;				// Setting sum of non-RIVEC exhaust mechanical ventilation to zero
 
 					// Read in or interpolate weather data
-					if(!tmyWeather) {
+					if(!tmyWeather || !epwWeather) {
 						weather = readOneMinuteWeather(weatherFile);
 					}
 					else {
@@ -3363,7 +3384,12 @@ int main(int argc, char *argv[], char* envp[])
 						break;
 				}     // end of minute loop
 				begin = end;
-				end = readTMY3(weatherFile);
+				end = readEPW(weatherFile);
+				// if(tmyWeather){
+// 					end = readTMY3(weatherFile);
+// 				} else if(epwWeather){
+// 					end = readEPW(weatherFile);
+// 				}
 			}        // end of hour loop
 		}           // end of day loop
 		//} while (weatherFile);			// Run until end of weather file
