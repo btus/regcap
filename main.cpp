@@ -747,8 +747,7 @@ int main(int argc, char *argv[], char* envp[])
 		// Determine weather file type and read in header
 		CSVRow row;					// row of data to read from TMY3 csv
 		weatherData begin, end;	// hourly weather data
-		bool tmyWeather;
-		bool epwWeather;
+		int weatherFileType;
 		weatherFile >> row;
 		if(row.size() > 2 && row.size() < 10) {			//TMY3, was >2
 			//double siteID = row[0];
@@ -758,13 +757,12 @@ int main(int argc, char *argv[], char* envp[])
 			latitude = row[4];
 			longitude = row[5];
 			altitude = row[6];
-			cout << "ID=" << row[0] << "TZ=" << timeZone << " lat=" << latitude << " long=" << longitude << " alt=" << altitude << endl;
+			cout << "ID=" << row[0] << " TZ=" << timeZone << " lat=" << latitude << " long=" << longitude << " alt=" << altitude << endl;
 			cout << "Using TMY3 weather data file." << endl;
 			weatherFile >> row;					// drop header
 			begin = readTMY3(weatherFile);	// duplicate first hour for interpolation of 0->1
 			end = begin;
-			tmyWeather = true;
-			epwWeather = false;
+			weatherFileType = 1;
 		}
 		
 		else if(row.size() == 10) {			//EnergyPlus weather file EPW
@@ -775,24 +773,21 @@ int main(int argc, char *argv[], char* envp[])
 			latitude = row[6];
 			longitude = row[7];
 			altitude = row[9];
-			cout << "ID=" << row[1] << "TZ=" << timeZone << " lat=" << latitude << " long=" << longitude << " alt=" << altitude << endl;
+			cout << "ID=" << row[5] << " TZ=" << timeZone << " lat=" << latitude << " long=" << longitude << " alt=" << altitude << endl;
 			cout << "Using Energy Plus weather data file." << endl;
-			weatherFile >> row;					// drop header
+ 			for(int i = 0; i < 7; ++i) {	// drop rest of header lines
+			   weatherFile >> row;
+			   }
 			begin = readEPW(weatherFile);	// duplicate first hour for interpolation of 0->1
 			end = begin;
-// 			for(int i = 0; i < 7; ++i) {	//Brennan's attempt to skip 7 input rows. Stalls out. 
-// 				CSVRow row;;
-// 			}
-			tmyWeather = false;
-			epwWeather = true;
+			weatherFileType = 2;
 		}
 		
 		else {							// 1 minute data
 			weatherFile.close();
 			weatherFile.open(weatherFileName);
 			weatherFile >> latitude >> longitude >> timeZone >> altitude;
-			tmyWeather = false;
-			epwWeather = false;
+			weatherFileType = 0;
 			cout << "1 minute:" << "Lat:" << latitude << " Alt:" << altitude << endl;
 			cout << "Using REGCAP weather data file." << endl;
 		}
@@ -1246,7 +1241,7 @@ int main(int argc, char *argv[], char* envp[])
 					nonRivecVentSumOUT = 0;				// Setting sum of non-RIVEC exhaust mechanical ventilation to zero
 
 					// Read in or interpolate weather data
-					if(!tmyWeather && !epwWeather) { //If both are false.
+					if(weatherFileType == 0) {  // minute
 						weather = readOneMinuteWeather(weatherFile);
 					}
 					else {
@@ -3389,11 +3384,13 @@ int main(int argc, char *argv[], char* envp[])
 						break;
 				}     // end of minute loop
 				begin = end;
-				//end = readEPW(weatherFile);
-				if(tmyWeather){
+				switch (weatherFileType) {
+				case 1:
 					end = readTMY3(weatherFile);
-				} else if(epwWeather){
+					break;
+				case 2:
 					end = readEPW(weatherFile);
+					break;
 				}
 			}        // end of hour loop
 		}           // end of day loop
