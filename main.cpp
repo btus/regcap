@@ -750,7 +750,7 @@ int main(int argc, char *argv[], char* envp[])
 		bool tmyWeather;
 		bool epwWeather;
 		weatherFile >> row;
-		if(row.size() == 7) {			//TMY3, was >2
+		if(row.size() > 2 && row.size() < 10) {			//TMY3, was >2
 			//double siteID = row[0];
 			//string siteName = row[1];
 			//string State = row[2];
@@ -759,6 +759,7 @@ int main(int argc, char *argv[], char* envp[])
 			longitude = row[5];
 			altitude = row[6];
 			cout << "ID=" << row[0] << "TZ=" << timeZone << " lat=" << latitude << " long=" << longitude << " alt=" << altitude << endl;
+			cout << "Using TMY3 weather data file." << endl;
 			weatherFile >> row;					// drop header
 			begin = readTMY3(weatherFile);	// duplicate first hour for interpolation of 0->1
 			end = begin;
@@ -766,7 +767,7 @@ int main(int argc, char *argv[], char* envp[])
 			epwWeather = false;
 		}
 		
-		if(row.size() == 10) {			//EnergyPlus weather file EPW
+		else if(row.size() == 10) {			//EnergyPlus weather file EPW
 			//double siteID = row[0];
 			//string siteName = row[1];
 			//string State = row[2];
@@ -775,6 +776,7 @@ int main(int argc, char *argv[], char* envp[])
 			longitude = row[7];
 			altitude = row[9];
 			cout << "ID=" << row[1] << "TZ=" << timeZone << " lat=" << latitude << " long=" << longitude << " alt=" << altitude << endl;
+			cout << "Using Energy Plus weather data file." << endl;
 			weatherFile >> row;					// drop header
 			begin = readEPW(weatherFile);	// duplicate first hour for interpolation of 0->1
 			end = begin;
@@ -792,6 +794,7 @@ int main(int argc, char *argv[], char* envp[])
 			tmyWeather = false;
 			epwWeather = false;
 			cout << "1 minute:" << "Lat:" << latitude << " Alt:" << altitude << endl;
+			cout << "Using REGCAP weather data file." << endl;
 		}
 		latitude = M_PI * latitude / 180.0;					// convert to radians
 		// set 1 = air handler off, and house air temp below setpoint minus 0.5 degrees
