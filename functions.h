@@ -110,12 +110,16 @@ double sub_moldIndex(
 	
 double sub_Pollutant (
 
-	double outdoorConc, //ug/m3
-	double indoorConc, //ug/m3
-	double indoorSource, //ug/s
-	double houseVolume, //m3
-	double qHouse, //m3/s
-	double qDeposition
+	double outdoorConc, 
+	double indoorConc, 
+	double indoorSource, 
+	double houseVolume, 
+	double qHouse, 
+	double qDeposition,
+	double penetrationFactor, 
+	double qAH, 
+	double AHflag,
+	double filterEfficiency 
 	);
 
 

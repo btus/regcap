@@ -892,8 +892,10 @@ int main(int argc, char *argv[], char* envp[])
 		double outdoorConc = 4; //ug/m3
 		double indoorConc = 20; //ug/m3
 		double indoorSource = 23 * floorArea / 3600; //ug/s
-		double DepositionRate = 0.5; // deposition rate in air changes per hour
-		double qDeposition = DepositionRate * houseVolume / 3600;
+		double DepositionRate = 0.0; // deposition rate in air changes per hour, typical expression in the literature. 
+		double qDeposition = DepositionRate * houseVolume / 3600; //deposition rate converted to an equivalent airflow for this particular house, m3/s.
+		double penetrationFactor = 1.0; //Penetration factor is the fraction of infiltrating outside mass that gets inside. Default to 1 for no losses. 
+		double filterEfficiency = 0.0; //Filtration efficiency in the central HVAC system. Default to 0 for no filter. 
 
 		//For calculating the "real" exposure and dose, based on the actual air change of the house predicted by the mass balance. Standard exposure and dose use the sum of annual average infiltration and current total fan airflow.
 // 		double relDoseReal = 1;						// Initial value for relative dose using ACH of house, i.e. the real rel dose not based on ventSum
@@ -3200,7 +3202,7 @@ int main(int argc, char *argv[], char* envp[])
 					}
 					
 
-					indoorConc = sub_Pollutant(outdoorConc, indoorConc, indoorSource, houseVolume, qHouse, qDeposition);
+					indoorConc = sub_Pollutant(outdoorConc, indoorConc, indoorSource, houseVolume, qHouse, qDeposition, penetrationFactor, qAH, AHflag, filterEfficiency);
 
 					
 					//occupiedExp and occupiedDose are calculated and running summed only for occupied minutes of the year. Their values are otherwise remain fixed at the prior time step value. 

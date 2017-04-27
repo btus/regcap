@@ -269,16 +269,24 @@ double sub_moldIndex(
 
 double sub_Pollutant (
 
-	double outdoorConc, //ug/m3
-	double indoorConc, //ug/m3
-	double indoorSource, //ug/s
+	double outdoorConc, //Outdoor pollutant concentration, ug/m3
+	double indoorConc, //Indoor pollutant concentration, ug/m3
+	double indoorSource, //Indoor pollutant mass emission rate, ug/s
 	double houseVolume, //m3
-	double qHouse, //m3/s
-	double qDeposition //m3/s
+	double qHouse, //House airflow, equivalent to what a tracer gas would measure, m3/s
+	double qDeposition, //Indoor deposition flow (loss) rate, m3/s. Default to 0 for no deposition. 
+	double penetrationFactor, //Penetration factor is the fraction of infiltrating outside mass that gets inside. Default to 1 for no losses. 
+	double qAH, //Central HVAC system airflow, m3/s
+	double AHflag, //Air handler flag indicating status.
+	double filterEfficiency //Filtration efficiency in the central HVAC system. Default to 0 for no filter. 
 	)
 	{
-		//new concentration = total mass in house + net change in mass due to air exchange and indoor sources. Divided by the house volume. 
-		return 1/houseVolume * (indoorConc * houseVolume + 60 * (qHouse * (-indoorConc + outdoorConc) + indoorSource - qDeposition * indoorConc));
+		//new concentration = total mass in house + net change in mass due to air exchange and indoor sources. Divided by the house volume.
+		if(AHflag != 0){ //central AHU is ON.
+			return 1 / houseVolume * (indoorConc * houseVolume + 60 * (qHouse * (-indoorConc + penetrationFactor * outdoorConc) + indoorSource - qDeposition * indoorConc - qAH * filterEfficiency * indoorConc));
+		} else {
+			return 1 / houseVolume * (indoorConc * houseVolume + 60 * (qHouse * (-indoorConc + penetrationFactor * outdoorConc) + indoorSource - qDeposition * indoorConc));
+		}
 }
 					
 
