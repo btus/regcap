@@ -273,10 +273,12 @@ double sub_Pollutant (
 	double indoorConc, //ug/m3
 	double indoorSource, //ug/s
 	double houseVolume, //m3
-	double qHouse //m3/s
+	double qHouse, //m3/s
+	double qDeposition //m3/s
 	)
 	{
-		return 1/houseVolume * (indoorConc * houseVolume + 60 * (qHouse * (-indoorConc + outdoorConc) + indoorSource));
+		//new concentration = total mass in house + net change in mass due to air exchange and indoor sources. Divided by the house volume. 
+		return 1/houseVolume * (indoorConc * houseVolume + 60 * (qHouse * (-indoorConc + outdoorConc) + indoorSource - qDeposition * indoorConc));
 }
 					
 

@@ -114,7 +114,8 @@ double sub_Pollutant (
 	double indoorConc, //ug/m3
 	double indoorSource, //ug/s
 	double houseVolume, //m3
-	double qHouse //m3/s
+	double qHouse, //m3/s
+	double qDeposition
 	);
 
 

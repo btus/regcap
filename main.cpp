@@ -892,6 +892,8 @@ int main(int argc, char *argv[], char* envp[])
 		double outdoorConc = 4; //ug/m3
 		double indoorConc = 20; //ug/m3
 		double indoorSource = 23 * floorArea / 3600; //ug/s
+		double DepositionRate = 0.5; // deposition rate in air changes per hour
+		double qDeposition = DepositionRate * houseVolume / 3600;
 
 		//For calculating the "real" exposure and dose, based on the actual air change of the house predicted by the mass balance. Standard exposure and dose use the sum of annual average infiltration and current total fan airflow.
 // 		double relDoseReal = 1;						// Initial value for relative dose using ACH of house, i.e. the real rel dose not based on ventSum
@@ -3198,7 +3200,7 @@ int main(int argc, char *argv[], char* envp[])
 					}
 					
 
-					indoorConc = sub_Pollutant(outdoorConc, indoorConc, indoorSource, houseVolume, qHouse);
+					indoorConc = sub_Pollutant(outdoorConc, indoorConc, indoorSource, houseVolume, qHouse, qDeposition);
 
 					
 					//occupiedExp and occupiedDose are calculated and running summed only for occupied minutes of the year. Their values are otherwise remain fixed at the prior time step value. 
