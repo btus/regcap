@@ -889,9 +889,10 @@ int main(int argc, char *argv[], char* envp[])
 		double Q_stack = 0; 						//Stack airflow (L/s), 62.2-2016 
 		double Q_infiltration = 0; 					//Infiltration airflow (L/s), 62.2-2016 
 		
-		double outdoorConc = 4; //ug/m3
-		double indoorConc = 20; //ug/m3
-		double indoorSource = 23 * floorArea / 3600; //ug/s
+		double outdoorConc = 3.68; //Outdoor average formaldehyde concentration, average is roughly 3 ppb ~ 3.68 ug/m3
+		double indoorConc = 20; //Initialized value at typical indoor concentration, ug/m3
+		double indoorSource = 23 * floorArea / 3600; //Current default source term (23 ug/m2-hr) is based on the median from low-emitting homes in Hult et al. (2015). Converted here to, ug/s
+		//40 ug/m2-hr is a high estimate based on the median from Offermann (2009) winter homes. 
 		double DepositionRate = 0.0; // deposition rate in air changes per hour, typical expression in the literature. 
 		double qDeposition = DepositionRate * houseVolume / 3600; //deposition rate converted to an equivalent airflow for this particular house, m3/s.
 		double penetrationFactor = 1.0; //Penetration factor is the fraction of infiltrating outside mass that gets inside. Default to 1 for no losses. 
