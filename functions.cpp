@@ -265,10 +265,20 @@ double sub_moldIndex(
 	
 }	
 	
-	
-	
 
 
+double sub_Pollutant (
+
+	double outdoorConc, //ug/m3
+	double indoorConc, //ug/m3
+	double indoorSource, //ug/s
+	double houseVolume, //m3
+	double qHouse //m3/s
+	)
+	{
+		return 1/houseVolume * (indoorConc * houseVolume + 60 * (qHouse * (-indoorConc + outdoorConc) + indoorSource));
+}
+					
 
 //**********************************
 // Functions definitions...

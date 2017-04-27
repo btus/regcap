@@ -107,6 +107,16 @@ double sub_moldIndex(
 	int& Time_decl //MoldIndex decline time, hr
 
 	);	
+	
+double sub_Pollutant (
+
+	double outdoorConc, //ug/m3
+	double indoorConc, //ug/m3
+	double indoorSource, //ug/s
+	double houseVolume, //m3
+	double qHouse //m3/s
+	);
+
 
 // Additional functions
 
