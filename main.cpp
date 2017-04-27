@@ -729,7 +729,7 @@ int main(int argc, char *argv[], char* envp[])
 				cout << "Cannot open output file: " << outputFileName << endl;
 				return 1; 
 			}
-			outputFile << "Time\tMin\twindSpeed\ttempOut\ttempHouse\tsetpoint\ttempAttic\ttempSupply\ttempReturn\tAHflag\tAHpower\tcompressPower\tmechVentPower\tHR\tSHR\tMcoil\thousePress\tQhouse\tACH\tACHflue\tventSum\tnonRivecVentSum\tfan1\tfan2\tfan3\tfan4\tfan5\tfan6\tfan7\trivecOn\trelExp\trelDose\toccupied\tHROUT\tHRattic\tHRreturn\tHRsupply\tHRhouse\tHRmaterials\tRHhouse\tRHind60\tRHind70\tHumidityIndex\tDHcondensate" << endl; 
+			outputFile << "Time\tMin\twindSpeed\ttempOut\ttempHouse\tsetpoint\ttempAttic\ttempSupply\ttempReturn\tAHflag\tAHpower\tcompressPower\tmechVentPower\tHR\tSHR\tMcoil\thousePress\tQhouse\tACH\tACHflue\tventSum\tnonRivecVentSum\tfan1\tfan2\tfan3\tfan4\tfan5\tfan6\tfan7\trivecOn\trelExp\trelDose\toccupied\tHROUT\tHRattic\tHRreturn\tHRsupply\tHRhouse\tHRmaterials\tRHhouse\tRHind60\tRHind70\tHumidityIndex\tDHcondensate\tPollutantConc" << endl; 
 		}
 		
 		// 5 HR nodes
@@ -890,6 +890,15 @@ int main(int argc, char *argv[], char* envp[])
 		double Q_wind = 0; 							//Wind airflow (L/s), 62.2-2016 
 		double Q_stack = 0; 						//Stack airflow (L/s), 62.2-2016 
 		double Q_infiltration = 0; 					//Infiltration airflow (L/s), 62.2-2016 
+		
+		double outdoorConc = 3.68; //Outdoor average formaldehyde concentration, average is roughly 3 ppb ~ 3.68 ug/m3
+		double indoorConc = 20; //Initialized value at typical indoor concentration, ug/m3
+		double indoorSource = 23 * floorArea / 3600; //Current default source term (23 ug/m2-hr) is based on the median from low-emitting homes in Hult et al. (2015). Converted here to, ug/s
+		//40 ug/m2-hr is a high estimate based on the median from Offermann (2009) winter homes. 
+		double DepositionRate = 0.0; // deposition rate in air changes per hour, typical expression in the literature. 
+		double qDeposition = DepositionRate * houseVolume / 3600; //deposition rate converted to an equivalent airflow for this particular house, m3/s.
+		double penetrationFactor = 1.0; //Penetration factor is the fraction of infiltrating outside mass that gets inside. Default to 1 for no losses. 
+		double filterEfficiency = 0.0; //Filtration efficiency in the central HVAC system. Default to 0 for no filter. 
 
 		//For calculating the "real" exposure and dose, based on the actual air change of the house predicted by the mass balance. Standard exposure and dose use the sum of annual average infiltration and current total fan airflow.
 // 		double relDoseReal = 1;						// Initial value for relative dose using ACH of house, i.e. the real rel dose not based on ventSum
@@ -3196,7 +3205,9 @@ int main(int argc, char *argv[], char* envp[])
 						occupiedMinCount += 1; // counts number of minutes while house is occupied
 					}
 					
-					
+
+					indoorConc = sub_Pollutant(outdoorConc, indoorConc, indoorSource, houseVolume, qHouse, qDeposition, penetrationFactor, qAH, AHflag, filterEfficiency);
+
 					
 					//occupiedExp and occupiedDose are calculated and running summed only for occupied minutes of the year. Their values are otherwise remain fixed at the prior time step value. 
 					//Occupancy-based controls use relExp and occupiedDose.
@@ -3338,7 +3349,7 @@ int main(int argc, char *argv[], char* envp[])
 						outputFile << fan[0].on << "\t" << fan[1].on << "\t" << fan[2].on << "\t" << fan[3].on << "\t" << fan[4].on << "\t" << fan[5].on << "\t" << fan[6].on << "\t";
 						outputFile << rivecOn << "\t" << relExp << "\t" << relDose << "\t";
 						outputFile << occupied[weekend][hour] << "\t"; 
-						outputFile << weather.humidityRatio << "\t" << HR[0] << "\t" << HR[1] << "\t" << HR[2] << "\t" << HR[3] << "\t" << HR[4] << "\t" << RHhouse << "\t" << RHind60 << "\t" << RHind70 << "\t" << HumidityIndex << "\t" << dh.condensate << endl;
+						outputFile << weather.humidityRatio << "\t" << HR[0] << "\t" << HR[1] << "\t" << HR[2] << "\t" << HR[3] << "\t" << HR[4] << "\t" << RHhouse << "\t" << RHind60 << "\t" << RHind70 << "\t" << HumidityIndex << "\t" << dh.condensate << "\t" << indoorConc << endl;
 						//outputFile << mHouse << "\t" << mHouseIN << "\t" << mHouseOUT << "\t" << mIN << "\t" << mOUT << "\t" << mCeiling << "\t" << mSupReg << "\t" << mSupAHoff << "\t" << mRetAHoff << "\t" << mRetReg << "\t" << mFanCycler << "\t" << mFlue << "\t" << mFloor << "\t" << mAH << endl;
 						//outputFile << mHouse << "\t" << mHouseIN << "\t" << mHouseOUT << mCeiling << "\t" << mHouseIN << "\t" << mHouseOUT << "\t" << mSupReg << "\t" << mRetReg << "\t" << mSupAHoff << "\t" ;
 						//outputFile << mRetAHoff << "\t" << mHouse << "\t"<< flag << "\t"<< AIM2 << "\t" << AEQaim2FlowDiff << "\t" << qFanFlowRatio << "\t" << C << endl; //Breann/Yihuan added these for troubleshooting
