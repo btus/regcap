@@ -53,6 +53,7 @@ double interpolate(double begin, double end, int step);
 weatherData interpolateWind(weatherData begin, weatherData end, int step);
 weatherData interpWeather(weatherData begin, weatherData end, int minute);
 weatherData readTMY3(ifstream& file);
+weatherData readEPW(ifstream& file);
 weatherData readOneMinuteWeather(ifstream& file);
 double surfaceInsolation(double direct, double diffuse, double beta, double sigma, double gamma);
 

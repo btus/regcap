@@ -88,6 +88,25 @@ weatherData readTMY3(ifstream& file) {
 	return result;
 }	
 
+weatherData readEPW(ifstream& file) {
+	CSVRow row;
+	weatherData result;
+	file >> row;
+	if(row.size() >= 35) {							// hourly entry rows each have 35 columns. 10 is the header row. 
+		result.directNormal = row[14];
+		result.globalHorizontal = row[13];
+		result.dryBulb = row[6] + C_TO_K;		// convert from C to K
+		result.dewPoint = row[7] + C_TO_K;		// convert from C to K
+		result.relativeHumidity = row[8];
+		result.windSpeed = row[21];
+		result.windDirection = row[20];
+		result.pressure = row[9];			
+		result.skyCover = row[22] / 10.;			// convert to decimal fraction
+		result.humidityRatio = calcHumidityRatio(result.dewPoint, result.pressure);
+	}
+	return result;
+}	
+
 weatherData readOneMinuteWeather(ifstream& file) {
 	int day;
 	weatherData result;
