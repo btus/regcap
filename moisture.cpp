@@ -81,12 +81,17 @@ Moisture::Moisture(double atticVolume, double retVolume, double supVolume, doubl
 		PWOld[i] = calc_vapor_pressure(mcInit, tempInit, pressure);
 		}
 	// initialize air nodes
-	for(int i=6; i<MOISTURE_NODES; i++) {
+	for(int i=6; i<MOISTURE_NODES-1; i++) {
 		tempOld[i] = tempInit;
 		mTotal[i] = 0;
 		moistureContent[i] = RHInit;
 		PWOld[i] = saturationVaporPressure(tempInit) * RHInit / 100;
 		}
+	// house mass (need to move to end of wood nodes)
+	//tempOld[MOISTURE_NODES-1] = tempInit;
+	//mTotal[MOISTURE_NODES-1] = 0;
+	//moistureContent[MOISTURE_NODES-1] = mcInit;
+	//PWOld[MOISTURE_NODES-1] = calc_vapor_pressure(mcInit, tempInit, pressure);
 
 }							
 							
@@ -147,9 +152,8 @@ void Moisture::mass_cond_bal(double* node_temps, double tempOut, double RHOut, d
 	temperature[7] = node_temps[11];	// return air
 	temperature[8] = node_temps[14];	// supply air
 	temperature[9] = node_temps[15];	// house air
-/*
-	temperature[10] = node_temps[12];	// house mass
-*/
+	//temperature[10] = node_temps[12];	// house mass
+
 	PWOut = saturationVaporPressure(tempOut) * RHOut / 100;
 
 	//NODE  0 ON INSIDE OF SOUTH SHEATHING
@@ -242,7 +246,7 @@ void Moisture::mass_cond_bal(double* node_temps, double tempOut, double RHOut, d
 
 	//NODE 7 IS RETURN DUCT AIR
 	xn7t = volume[7] / RWATER / temperature[7] / timeStep;
-	xn7o = volume[7] * PWOld[7] / RWATER / temperature[7] / timeStep + mRetOut / RWATER / tempOut / airDensityOut;
+	xn7o = volume[7] * PWOld[7] / RWATER / temperature[7] / timeStep + mRetOut * PWOut / RWATER / tempOut / airDensityOut;
 	if(mCeiling < 0) {
 		xn7c = (mAH - mRetAHoff) / RWATER / temperature[7] / airDensityRet;
 		xn76 = mRetLeak / RWATER / temperature[6] / airDensityAttic;
@@ -280,9 +284,9 @@ void Moisture::mass_cond_bal(double* node_temps, double tempOut, double RHOut, d
 
 	//NODE 9 IS HOUSE AIR
 	xn9t = volume[9] / RWATER / temperature[9] / timeStep;
-	xn9o = volume[9] * PWOld[9] / RWATER / temperature[9] / timeStep + mHouseIn / RWATER / tempOut / airDensityOut - dhMoistRemv + latload;
+	xn9o = volume[9] * PWOld[9] / RWATER / temperature[9] / timeStep + mHouseIn * PWOut / RWATER / tempOut / airDensityOut - dhMoistRemv + latload;
 	xn98 = -mSupReg / RWATER / temperature[8] / airDensitySup;
-	//xn910 = haHouse;
+	xn910 = haHouse;
 	if(mCeiling < 0) {
 		xn9c = (-mHouseOut - mRetReg - mCeiling - mRetAHoff - mSupAHoff) / RWATER / temperature[9] / airDensityHouse;
 		xn96 = 0;
@@ -301,20 +305,18 @@ void Moisture::mass_cond_bal(double* node_temps, double tempOut, double RHOut, d
 	A[9][9] = xn9t + xn9c;
 	//A[9][10] = xn910;
 	PWInit[9] = xn9o;
-	double t1 = volume[9] * PWOld[9] / RWATER / temperature[9] / timeStep;
-	double t2 = mHouseIn / RWATER / tempOut / airDensityOut;
+	//double t1 = volume[9] * PWOld[9] / RWATER / temperature[9] / timeStep;
+	//double t2 = mHouseIn / RWATER / tempOut / airDensityOut;
 	//cout << xn9t << "," << xn9o << "," << xn98 << "," << xn9c << "," << xn96 << "," << xn97 << "," << xn98 << "," << t2 << "," << t2 << "," << dhMoistRemv << "," << latload << endl;
 	//cout << xn9o << "," << t1 << "," << t2 << "," << dhMoistRemv << "," << latload << endl;
 
-	//NODE 10 IS HOUSE MASS
-	/*
-	xn10t = massWHouse / timeStep;
+/*	//NODE 10 IS HOUSE MASS
+	xn10t = massWHouse / timeStep + haHouse;
 	xn10o = massWHouse * PWOld[10] / timeStep;
-	xn109 = haHouse / temperature[9];
+	xn109 = haHouse;
 	A[10][9] = xn109;
 	A[10][10] = xn10t;
-	PWInit[10] = xn10o;
-*/
+	PWInit[10] = xn10o; */
 
 /*
 cout << "Before gauss";
@@ -483,8 +485,8 @@ void Moisture::cond_bal(int pressure) {
 			for(int i=7; i<MOISTURE_NODES; i++) {
 				hasCondensedMass[i] = false;
 				if(PW[i] > PWSaturation[i]) {
-            	PW[i] = PWSaturation[i];
 				   cout << "Air node " << i << " > saturation: " << PW[i] << "> " << PWSaturation[i] << endl;
+            	PW[i] = PWSaturation[i];
             	}
             }
 
@@ -583,6 +585,8 @@ void Moisture::cond_bal(int pressure) {
 		for(int i=6; i<MOISTURE_NODES; i++) {
 			moistureContent[i] = PW[i] / PWSaturation[i] * 100;
 			}
+		// house mass
+		//moistureContent[MOISTURE_NODES-1] = max(mc_cubic(PW[MOISTURE_NODES-1], pressure, temperature[MOISTURE_NODES-1]), 0.032);
 		} while(redoMassBalance);
 }
 
