@@ -304,7 +304,7 @@ int main(int argc, char *argv[], char* envp[])
 				return 1; 
 			}
 
-			moistureFile << "atticTemp\tatticRH\tatticHR\t";
+			moistureFile << "atticTemp\tatticRH\thouseRH\t";
 			for(int i=0; i<10; i++) {
 				moistureFile << "MC" << i << "\tmTotal" << i << "\t";
 				}
@@ -804,7 +804,7 @@ int main(int argc, char *argv[], char* envp[])
 		double M12 = retVolume * airDensityRef;		// Mass of return air
 		double M15 = supVolume * airDensityRef;		// Mass of supply air
 		double M16 = houseVolume * airDensityRef;		// Mass of house air
-		double Mw5 = 60 * floorArea;						// Active mass of moisture in the house (empirical)
+		double Mw5 = 60 * floorArea;						// Active mass containing moisture in the house (empirical)
 
 		// Like the mass transport coefficient, the active mass for moisture scales with floor area
 
@@ -3336,7 +3336,7 @@ int main(int argc, char *argv[], char* envp[])
 						double atticSVP = saturationVaporPressure(tempAttic);
 						double RHAttic = 100 * ((weather.pressure*(HR[0]/0.621945))/(1+(HR[0]/0.621945)) / atticSVP);
 						//moistureFile << weather.humidityRatio << "\t" << HR[0] << "\t" << HR[1] << "\t" << HR[2] << "\t" << HR[3] << "\t" << HR[4] << "\t" << RHhouse << "\t" << RHind60 << "\t" << RHind70 << endl;
-						moistureFile << tempAttic << "\t" << RHAttic << "\t" << HR[0];
+						moistureFile << tempAttic << "\t" << RHAttic << "\t" << RHhouse;
 						for(int i=0; i<10; i++) {
 							moistureFile << "\t" << attic.moistureContent[i] << "\t" << attic.mTotal[i];
 							}

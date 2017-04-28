@@ -5,11 +5,12 @@
 
 using namespace std;
 
+const double rhoWood = 400.;		// Wood density (@TODO function.cpp uses 500 - need to make consistant)
+const double timeStep = 60.;		// Timestep (1 minute)
+const int MOISTURE_NODES = 10;  // Currently 11 nodes
+
 class Moisture {
 	private:
-		static const int rhoWood = 400;		// Wood density (@TODO function.cpp uses 500 - need to make consistant)
-		static const int timeStep = 60;		// Timestep (1 minute)
-		static const int MOISTURE_NODES = 10; // Currently 11 nodes
 		
 		double deltaX[MOISTURE_NODES];						// Node thickness
 		double area[MOISTURE_NODES];							// Node area

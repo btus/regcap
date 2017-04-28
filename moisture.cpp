@@ -68,8 +68,8 @@ Moisture::Moisture(double atticVolume, double retVolume, double supVolume, doubl
 	volume[8] = supVolume;
 	volume[9] = houseVolume;
 
-	haHouse = .5 * floorArea / 186;				// moisture transport coefficient scales with floor area (to scale with surface area of moisture)
-	massWHouse = 60 * floorArea;					// Active mass of moisture in the house (empirical)
+	haHouse = 0.622 * .5 * floorArea / 186;	// moisture transport coefficient scales with floor area (kg/s) - 0.622 (dHR/dVP), 186 (area of std house in m2), 0.5 empirical coefficient (kg/s)
+	massWHouse = 60 * floorArea;					// active mass containing moisture in the house (kg) - empirical
 
 /*	volume[10] = 10; // @TODO@ need volume */
 
@@ -133,9 +133,9 @@ void Moisture::mass_cond_bal(double* node_temps, double tempOut, double RHOut, d
 	const double LEWIS23 = pow(0.919, 2.0/3.0);	// Lewis number for air and water vapor from ASHRAE 1989 p5-9 to the 2/3rds power
 	const double DIFFCOEF = 3E-10; // diffusion coefficient for pine from Cunningham 1990 (m2/s)
 	const int RWATER = 462;			// gas constant for water vapor (J/KgK)
-	double PWOut;						// Outdoor air vapor pressure (Pa)
-	double hw;							// Mass transfer coefficient for water vapor (m/s)
-
+	double PWOut;						// outdoor air vapor pressure (Pa)
+	double hw;							// mass transfer coefficient for water vapor (m/s)
+	
 	// set node temperatures 
 	temperature[0] = node_temps[3];	// inner south sheathing
 	temperature[1] = node_temps[1];	// inner north sheathing
@@ -151,7 +151,6 @@ void Moisture::mass_cond_bal(double* node_temps, double tempOut, double RHOut, d
 	temperature[10] = node_temps[12];	// house mass
 */
 	PWOut = saturationVaporPressure(tempOut) * RHOut / 100;
-	double PWHouse = saturationVaporPressure(node_temps[15]) * RHHouse / 100;
 
 	//NODE  0 ON INSIDE OF SOUTH SHEATHING
 	hw = hU0 / CpAir / LEWIS23 / airDensityAttic;
@@ -221,14 +220,14 @@ void Moisture::mass_cond_bal(double* node_temps, double tempOut, double RHOut, d
 	x15 = volume[6] * PWOld[6] / RWATER / temperature[6] / timeStep;
    x17 = mAtticIn * PWOut / airDensityOut / RWATER / tempOut;
 	if(mCeiling < 0) {
-		xn67 = (mRetAHoff - mRetLeak) / RWATER / temperature[7] / airDensityRet;
-		xn68 = (mSupAHoff - mSupLeak) / RWATER / temperature[8] / airDensitySup;
+		xn67 = (mRetAHoff + mRetLeak) / RWATER / temperature[7] / airDensityRet;
+		xn68 = (mSupAHoff + mSupLeak) / RWATER / temperature[8] / airDensitySup;
 		xn69 = mCeiling / RWATER / temperature[9] / airDensityHouse;
 		x16 = 0;
 		}
 	else {
-		xn67 = -mRetLeak / RWATER / temperature[7] / airDensityRet;
-		xn68 = -mSupLeak / RWATER / temperature[8] / airDensitySup;
+		xn67 = mRetLeak / RWATER / temperature[7] / airDensityRet;
+		xn68 = mSupLeak / RWATER / temperature[8] / airDensitySup;
 		xn69 = 0;
 		x16 = (mCeiling + mSupAHoff + mRetAHoff) / RWATER / temperature[6] / airDensityAttic;
 		}
@@ -243,7 +242,7 @@ void Moisture::mass_cond_bal(double* node_temps, double tempOut, double RHOut, d
 
 	//NODE 7 IS RETURN DUCT AIR
 	xn7t = volume[7] / RWATER / temperature[7] / timeStep;
-	xn7o = volume[7] * PWOld[7] / RWATER / temperature[7] / timeStep - mRetOut / RWATER / tempOut / airDensityOut;
+	xn7o = volume[7] * PWOld[7] / RWATER / temperature[7] / timeStep + mRetOut / RWATER / tempOut / airDensityOut;
 	if(mCeiling < 0) {
 		xn7c = (mAH - mRetAHoff) / RWATER / temperature[7] / airDensityRet;
 		xn76 = mRetLeak / RWATER / temperature[6] / airDensityAttic;
@@ -261,15 +260,15 @@ void Moisture::mass_cond_bal(double* node_temps, double tempOut, double RHOut, d
 
 	//NODE 8 IS SUPPLY DUCT AIR
 	xn8t = volume[8] / RWATER / temperature[8] / timeStep;
-	xn8o = volume[8] * PWOld[8] / RWATER / temperature[8] / timeStep + latcap / 2501000;
+	xn8o = volume[8] * PWOld[8] / RWATER / temperature[8] / timeStep - latcap / 2501000;
 	xn87 = -mAH / RWATER / temperature[7] / airDensityRet;
 	if(mCeiling < 0) {
-		xn8c = (mSupReg - mSupAHoff) / RWATER / temperature[8] / airDensitySup;
+		xn8c = (mSupReg + mSupLeak - mSupAHoff) / RWATER / temperature[8] / airDensitySup;
 		xn86 = 0;
 		xn89 = mSupAHoff / RWATER / temperature[9] / airDensityHouse;
 		}
 	else {
-		xn8c = (mSupReg + mSupAHoff) / RWATER / temperature[8] / airDensitySup;
+		xn8c = (mSupReg + mSupLeak + mSupAHoff) / RWATER / temperature[8] / airDensitySup;
 		xn86 = - mSupAHoff / RWATER / temperature[6] / airDensityAttic;
 		xn89 = 0;
 		}
@@ -281,20 +280,20 @@ void Moisture::mass_cond_bal(double* node_temps, double tempOut, double RHOut, d
 
 	//NODE 9 IS HOUSE AIR
 	xn9t = volume[9] / RWATER / temperature[9] / timeStep;
-	xn9o = volume[9] * PWOld[9] / RWATER / temperature[9] / timeStep - mHouseIn / RWATER / tempOut / airDensityOut + dhMoistRemv - latload;
+	xn9o = volume[9] * PWOld[9] / RWATER / temperature[9] / timeStep + mHouseIn / RWATER / tempOut / airDensityOut - dhMoistRemv + latload;
 	xn98 = -mSupReg / RWATER / temperature[8] / airDensitySup;
-	//xn910 = 
+	//xn910 = haHouse;
 	if(mCeiling < 0) {
-		xn9c = (-mRetReg - mHouseOut - mCeiling) / RWATER / temperature[9] / airDensityHouse;
+		xn9c = (-mHouseOut - mRetReg - mCeiling - mRetAHoff - mSupAHoff) / RWATER / temperature[9] / airDensityHouse;
 		xn96 = 0;
 		xn97 = 0;
 		xn98 = 0;
 		}
 	else {
-		xn9c = (-mRetReg - mHouseOut) / RWATER / temperature[9] / airDensityHouse;
-		xn96 = - mCeiling / RWATER / temperature[6] / airDensityAttic;
-		xn97 = - mRetAHoff / RWATER / temperature[7] / airDensityRet;
-		xn98 = - mSupAHoff / RWATER / temperature[8] / airDensitySup;
+		xn9c = (-mHouseOut - mRetReg) / RWATER / temperature[9] / airDensityHouse;
+		xn96 = -mCeiling / RWATER / temperature[6] / airDensityAttic;
+		xn97 = -mRetAHoff / RWATER / temperature[7] / airDensityRet;
+		xn98 = -mSupAHoff / RWATER / temperature[8] / airDensitySup;
 		}
 	A[9][6] = xn96;
 	A[9][7] = xn97;
@@ -302,12 +301,16 @@ void Moisture::mass_cond_bal(double* node_temps, double tempOut, double RHOut, d
 	A[9][9] = xn9t + xn9c;
 	//A[9][10] = xn910;
 	PWInit[9] = xn9o;
+	double t1 = volume[9] * PWOld[9] / RWATER / temperature[9] / timeStep;
+	double t2 = mHouseIn / RWATER / tempOut / airDensityOut;
+	//cout << xn9t << "," << xn9o << "," << xn98 << "," << xn9c << "," << xn96 << "," << xn97 << "," << xn98 << "," << t2 << "," << t2 << "," << dhMoistRemv << "," << latload << endl;
+	//cout << xn9o << "," << t1 << "," << t2 << "," << dhMoistRemv << "," << latload << endl;
 
 	//NODE 10 IS HOUSE MASS
 	/*
-	xn10t =
-	xn10o =
-	xn109 =
+	xn10t = massWHouse / timeStep;
+	xn10o = massWHouse * PWOld[10] / timeStep;
+	xn109 = haHouse / temperature[9];
 	A[10][9] = xn109;
 	A[10][10] = xn10t;
 	PWInit[10] = xn10o;
