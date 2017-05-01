@@ -385,7 +385,8 @@ void sub_heat (
 	double& airDensityRET,
 	int& numStories,
 	double& storyHeight,
-	double dhSensibleGain
+	double dhSensibleGain,
+	int radiantBarrier
 ) {
 	
 	int rhoSheathing;
@@ -425,7 +426,7 @@ void sub_heat (
 	double HR8t4, HR8t2;
 	double HR11t2, HR11t4;
 	double HR14t2, HR14t4;
-	double EPS1, epsshingles;	
+	double EPS1, EPS2, epsshingles;	
 	double hr7;
 	double HRG3, HRG5, HRS3, HRS5;
 	double FRS, FG;
@@ -452,6 +453,14 @@ void sub_heat (
 
 	woodThickness = .015;		// thickness of sheathing material
 	EPS1 = .9;         			// Emissivity of building materials
+	
+	if(radiantBarrier == 1) {
+		EPS2 = 0.05;				// Emissivity of a radiant barrier, per T24 2016 mandatory reqs. Installed on inside of roof deck.
+	} else {
+		EPS2 = EPS1;
+	}
+		
+		
 	switch(roofType) {
 		case 1:			// asphalt shingles
 			alpha5 = .92;
@@ -504,7 +513,7 @@ void sub_heat (
 	A4 = A2;
 	
 	// the following are commented out for ConSOl becasue cement tile is flat and does not have increased surface area
-	if(roofType == 2 || roofType == 3) {
+	if(roofType == 2 || roofType == 3 || roofType == 5) {
         A3 = 1.5 * A2;	   // tile roof has more surface area for convection heat transfer
 	} else {
 		A3 = A2;																
@@ -750,12 +759,12 @@ void sub_heat (
 			F4t2 = (1 - F4t8 - F4t11 - F4t14);
 
 			// North Sheathing
-			HR2t11 = radTranCoef(EPS1, tempOld[1], tempOld[10], F2t11, A2/(A11/3));
-			HR2t14 = radTranCoef(EPS1, tempOld[1], tempOld[13], F2t14, A2/(A14/3));
+			HR2t11 = radTranCoef(EPS2, tempOld[1], tempOld[10], F2t11, A2/(A11/3));
+			HR2t14 = radTranCoef(EPS2, tempOld[1], tempOld[13], F2t14, A2/(A14/3));
 
 			// South Sheathing
-			HR4t11 = radTranCoef(EPS1, tempOld[3], tempOld[10], F4t11, A4/(A11/3));
-			HR4t14 = radTranCoef(EPS1, tempOld[3], tempOld[13], F4t14, A4/(A14/3));
+			HR4t11 = radTranCoef(EPS2, tempOld[3], tempOld[10], F4t11, A4/(A11/3));
+			HR4t14 = radTranCoef(EPS2, tempOld[3], tempOld[13], F4t14, A4/(A14/3));
 
 			// Return Ducts (note, No radiative exchange w/ supply ducts)
 			HR11t4 = radTranCoef(EPS1, tempOld[10], tempOld[3], F11t4, A11/A4);
@@ -766,15 +775,15 @@ void sub_heat (
 			HR14t2 = radTranCoef(EPS1, tempOld[13], tempOld[1], F14t2, A14/A2);
 		}
 
-		// North Sheathing
-		HR2t4 = radTranCoef(EPS1, tempOld[1], tempOld[3], F2t4, A2/A4);
-		HR2t8 = radTranCoef(EPS1, tempOld[1], tempOld[7], F2t8, A2/A8);
+		// North Sheathing to south sheathing (4) and attic floor (8)
+		HR2t4 = radTranCoef(EPS2, tempOld[1], tempOld[3], F2t4, A2/A4);
+		HR2t8 = radTranCoef(EPS2, tempOld[1], tempOld[7], F2t8, A2/A8);
 
-		// South Sheathing
-		HR4t2 = radTranCoef(EPS1, tempOld[3], tempOld[1], F4t2, A4/A2);
-		HR4t8 = radTranCoef(EPS1, tempOld[3], tempOld[7], F4t8, A4/A8);
+		// South Sheathing to north sheathing (2) and attic floor (8)
+		HR4t2 = radTranCoef(EPS2, tempOld[3], tempOld[1], F4t2, A4/A2);
+		HR4t8 = radTranCoef(EPS2, tempOld[3], tempOld[7], F4t8, A4/A8);
 
-		// Attic Floor
+		// Attic Floor to north (4) and south (2) sheathing.
 		HR8t4 = radTranCoef(EPS1, tempOld[7], tempOld[3], F8t4, A8/A4);
 		HR8t2 = radTranCoef(EPS1, tempOld[7], tempOld[1], F8t2, A8/A2);
 

@@ -259,6 +259,7 @@ int main(int argc, char *argv[], char* envp[])
 		double dhEnergyFactor;	// Dehumidifier energy factor (L/kWh)
 		double dhSetPoint;		// Dehumidifier set point (%RH)
 		double dhDeadBand;		// Dehumidifier dead band (+/- %RH)
+		int radiantBarrier; 	// Index variable indicating presence of radiant barrier in attic.
 		string endOfFile;
 		
 		// Zeroing the variables to create the sums for the .ou2 file
@@ -508,6 +509,8 @@ int main(int argc, char *argv[], char* envp[])
 		buildingFile >> dhEnergyFactor;
 		buildingFile >> dhSetPoint;	
 		buildingFile >> dhDeadBand;
+		
+		buildingFile >> radiantBarrier;
 		
 		buildingFile >> endOfFile;
 		if(endOfFile != "E_O_F") {
@@ -3063,7 +3066,7 @@ int main(int argc, char *argv[], char* envp[])
 							retrho, weather.pressure, weather.humidityRatio, uaSolAir, uaTOut, matticenvin, matticenvout, mHouseIN, mHouseOUT, planArea, mSupAHoff,
 							mRetAHoff, solgain, tsolair, mFanCycler, roofPeakHeight, eaveHeight, retLength, supLength,
 							roofType, M1, M12, M15, M16, roofRval, rceil, AHflag, mERV_AH, ERV_SRE, mHRV, HRV_ASE, mHRV_AH,
-							capacityc, capacityh, evapcap, internalGains, airDensityIN, airDensityOUT, airDensityATTIC, airDensitySUP, airDensityRET, numStories, storyHeight, dh.sensible);
+							capacityc, capacityh, evapcap, internalGains, airDensityIN, airDensityOUT, airDensityATTIC, airDensitySUP, airDensityRET, numStories, storyHeight, dh.sensible, radiantBarrier);
 
 						if((abs(b[0] - tempAttic) < .2) || (mainIterations > 10)) {	// Testing for convergence
 							tempAttic        = b[0];					
