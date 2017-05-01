@@ -78,7 +78,8 @@ void sub_infiltrationModel(
 	double& Q_total, //Total airflow combined infiltration and mechanical, L/s
 	double wInfil,
 	int InfCalc,
-	int BalancedFan
+	int BalancedFan,
+	double qHouse //actual house airflow predicted by full mass balance model.
 	
 	) 
 	
@@ -102,21 +103,23 @@ void sub_infiltrationModel(
 	
 	Q_stack = envC_LitersPerSec * Cs * pow(abs((C_TO_K + 20) - dryBulb), envPressureExp); //Calculation stack airflow, assumes 68F (20C indoor temp), L/s.
 	
-	if(InfCalc == 0){ //Use annual infiltration estimate from 62.2-2016.
-		Q_infiltration = wInfil;
-	} else { //Use real-time infiltration calculation.
-		Q_infiltration = sqrt(pow(Q_wind, 2) + pow(Q_stack, 2)); //Calculate combined infiltration airflow using quadrature, L/s.
-	}
-	
-	if(BalancedFan == 1){
-		phi = 1;
+	if(InfCalc != 2) {
+		if(InfCalc == 0){ //Use annual infiltration estimate from 62.2-2016.
+			Q_infiltration = wInfil;
+		} else if(InfCalc == 1) { //Use real-time infiltration calculation.
+			Q_infiltration = sqrt(pow(Q_wind, 2) + pow(Q_stack, 2)); //Calculate combined infiltration airflow using quadrature, L/s.
+		} 
+		if(BalancedFan == 1){
+			phi = 1;
+		} else {
+			phi = Q_infiltration / (Q_infiltration + ventSum_flow); // Calculate the additivity coefficient
+		}
+		Q_total = ventSum_flow + phi * Q_infiltration; //Calculate total airflow combined mechanical and natural, L/s.
+		
 	} else {
-		phi = Q_infiltration / (Q_infiltration + ventSum_flow); // Calculate the additivity coefficient
+			Q_total = qHouse * 1000.;
 	}
-	
-	Q_total = ventSum_flow + phi * Q_infiltration; //Calculate total airflow combined mechanical and natural, L/s.
-	
-	}
+}
 	
 double sub_relativeExposure(
 

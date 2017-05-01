@@ -83,7 +83,8 @@ void sub_infiltrationModel (
 	double& Q_total, //Total airflow combined infiltration and mechanical, L/s
 	double wInfil,
 	int InfCalc,
-	int BalancedFan
+	int BalancedFan,
+	double qHouse
 	
 	);
 	
