@@ -7,7 +7,7 @@ using namespace std;
 
 const double rhoWood = 400.;		// Wood density (@TODO function.cpp uses 500 - need to make consistant)
 const double timeStep = 60.;		// Timestep (1 minute)
-const int MOISTURE_NODES = 10;  // Currently 11 nodes
+const int MOISTURE_NODES = 11;   // Currently 11 nodes
 
 class Moisture {
 	private:
@@ -48,5 +48,6 @@ class Moisture {
                double mSupAHoff, double mSupLeak, double mSupReg, double latcap, double dhMoistRemv, double latload);
 };
 
+void print_matrix(vector< vector<double> > A);
 
 #endif

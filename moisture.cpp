@@ -81,17 +81,10 @@ Moisture::Moisture(double atticVolume, double retVolume, double supVolume, doubl
 		PWOld[i] = calc_vapor_pressure(mcInit, tempInit, pressure);
 		}
 	// initialize air nodes
-	for(int i=6; i<MOISTURE_NODES-1; i++) {
+	for(int i=6; i<MOISTURE_NODES; i++) {
 		tempOld[i] = tempInit;
-		mTotal[i] = 0;
-		moistureContent[i] = RHInit;
 		PWOld[i] = saturationVaporPressure(tempInit) * RHInit / 100;
 		}
-	// house mass (need to move to end of wood nodes)
-	//tempOld[MOISTURE_NODES-1] = tempInit;
-	//mTotal[MOISTURE_NODES-1] = 0;
-	//moistureContent[MOISTURE_NODES-1] = mcInit;
-	//PWOld[MOISTURE_NODES-1] = calc_vapor_pressure(mcInit, tempInit, pressure);
 
 }							
 							
@@ -152,7 +145,7 @@ void Moisture::mass_cond_bal(double* node_temps, double tempOut, double RHOut, d
 	temperature[7] = node_temps[11];	// return air
 	temperature[8] = node_temps[14];	// supply air
 	temperature[9] = node_temps[15];	// house air
-	//temperature[10] = node_temps[12];	// house mass
+	temperature[10] = node_temps[12];	// house mass
 
 	PWOut = saturationVaporPressure(tempOut) * RHOut / 100;
 
@@ -283,62 +276,55 @@ void Moisture::mass_cond_bal(double* node_temps, double tempOut, double RHOut, d
 	PWInit[8] = xn8o;
 
 	//NODE 9 IS HOUSE AIR
-	xn9t = volume[9] / RWATER / temperature[9] / timeStep;
+	xn9t = volume[9] / RWATER / temperature[9] / timeStep + haHouse;
 	xn9o = volume[9] * PWOld[9] / RWATER / temperature[9] / timeStep + mHouseIn * PWOut / RWATER / tempOut / airDensityOut - dhMoistRemv + latload;
-	xn98 = -mSupReg / RWATER / temperature[8] / airDensitySup;
 	xn910 = haHouse;
 	if(mCeiling < 0) {
 		xn9c = (-mHouseOut - mRetReg - mCeiling - mRetAHoff - mSupAHoff) / RWATER / temperature[9] / airDensityHouse;
 		xn96 = 0;
 		xn97 = 0;
-		xn98 = 0;
+		xn98 = -mSupReg / RWATER / temperature[8] / airDensitySup;
 		}
 	else {
 		xn9c = (-mHouseOut - mRetReg) / RWATER / temperature[9] / airDensityHouse;
 		xn96 = -mCeiling / RWATER / temperature[6] / airDensityAttic;
 		xn97 = -mRetAHoff / RWATER / temperature[7] / airDensityRet;
-		xn98 = -mSupAHoff / RWATER / temperature[8] / airDensitySup;
+		xn98 = (-mSupReg - mSupAHoff) / RWATER / temperature[8] / airDensitySup;
 		}
 	A[9][6] = xn96;
 	A[9][7] = xn97;
 	A[9][8] = xn98;
 	A[9][9] = xn9t + xn9c;
-	//A[9][10] = xn910;
+	A[9][10] = xn910;
 	PWInit[9] = xn9o;
 	//double t1 = volume[9] * PWOld[9] / RWATER / temperature[9] / timeStep;
 	//double t2 = mHouseIn / RWATER / tempOut / airDensityOut;
 	//cout << xn9t << "," << xn9o << "," << xn98 << "," << xn9c << "," << xn96 << "," << xn97 << "," << xn98 << "," << t2 << "," << t2 << "," << dhMoistRemv << "," << latload << endl;
 	//cout << xn9o << "," << t1 << "," << t2 << "," << dhMoistRemv << "," << latload << endl;
+	//cout << "Node 9:" << xn96 << "," << xn97 << "," << xn98 << "," << A[9][9] << "," << xn910 << "," << xn9o << endl;
 
-/*	//NODE 10 IS HOUSE MASS
+	//NODE 10 IS HOUSE MASS
 	xn10t = massWHouse / timeStep + haHouse;
-	xn10o = massWHouse * PWOld[10] / timeStep;
+	xn10o = massWHouse * 0.622 * (PWOld[10] / (pressure - PWOld[10])) / timeStep;
 	xn109 = haHouse;
 	A[10][9] = xn109;
 	A[10][10] = xn10t;
-	PWInit[10] = xn10o; */
+	PWInit[10] = xn10o;
+	// << "Node10:" << xn109 << "," << xn10t << "," << xn10o << endl;
 
-/*
-cout << "Before gauss";
-for(int i=0; i<MOISTURE_NODES; i++) {
-	cout << ", " << PW[i];
-	}
-cout << endl;
-*/
-    for (int i=0; i<MOISTURE_NODES; i++) {
-        A[i][MOISTURE_NODES] = PWInit[i];
-        }
-    PW = gauss(A);
+   for (int i=0; i<MOISTURE_NODES; i++) {
+       A[i][MOISTURE_NODES] = PWInit[i];
+       }
+   
+	//cout << "Before solve" << endl;
+	//print_matrix(A);
+   PW = gauss(A);
+	//cout << "After solve" << endl;
+	//print_matrix(A);
 	// once the attic moisture nodes have been calculated assuming no condensation (as above)
 	// then we call cond_bal to check for condensation and redo the calculations if necessasry
 	// cond_bal performs an iterative scheme that tests for condensation
-/*
-cout << "After gauss";
-for(int i=0; i<MOISTURE_NODES; i++) {
-	cout << ", " << PW[i];
-	}
-cout << endl;
-*/
+
 	cond_bal(pressure);
 
 	for(int i=0; i<MOISTURE_NODES; i++) {
@@ -346,6 +332,21 @@ cout << endl;
 		PWOld[i] = abs(PW[i]);			// in case negative PW's are generated (should get set to 0??)
 		}
 }
+
+void print_matrix(vector< vector<double> > A) {
+    int n = A.size();
+    for (int i=0; i<n; i++) {
+        for (int j=0; j<n+1; j++) {
+            printf("%5e\t",A[i][j]);
+            if (j == n-1) {
+                cout << "| ";
+            }
+        }
+        cout << "\n";
+    }
+    cout << endl;
+}
+
 
 /*
  * cond_bal - checks for condensation at the various nodes and corrects the mass balances
@@ -483,7 +484,7 @@ void Moisture::cond_bal(int pressure) {
 			
 			// Other air nodes - do we need to recalc PW? just fix PW at saturation for now as there is no place to put the moisture
 			for(int i=7; i<MOISTURE_NODES; i++) {
-				hasCondensedMass[i] = false;
+				//hasCondensedMass[i] = false;
 				if(PW[i] > PWSaturation[i]) {
 				   cout << "Air node " << i << " > saturation: " << PW[i] << "> " << PWSaturation[i] << endl;
             	PW[i] = PWSaturation[i];
