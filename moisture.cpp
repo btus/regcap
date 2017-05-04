@@ -68,8 +68,8 @@ Moisture::Moisture(double atticVolume, double retVolume, double supVolume, doubl
 	volume[8] = supVolume;
 	volume[9] = houseVolume;
 
-	haHouse = 0.622 * .5 * floorArea / 186;	// moisture transport coefficient scales with floor area (kg/s) - 0.622 (dHR/dVP), 186 (area of std house in m2), 0.5 empirical coefficient (kg/s)
-	massWHouse = 60 * floorArea;					// active mass containing moisture in the house (kg) - empirical
+	haHouse = 0.1 * 0.622 * .5 * floorArea / 186;	// moisture transport coefficient scales with floor area (kg/s) - 0.622 (dHR/dVP), 186 (area of std house in m2), 0.5 empirical coefficient (kg/s)
+	massWHouse = 10 * 0.622 * 60 * floorArea;					// active mass containing moisture in the house (kg) - empirical
 
 /*	volume[10] = 10; // @TODO@ need volume */
 
@@ -276,9 +276,9 @@ void Moisture::mass_cond_bal(double* node_temps, double tempOut, double RHOut, d
 	PWInit[8] = xn8o;
 
 	//NODE 9 IS HOUSE AIR
-	xn9t = volume[9] / RWATER / temperature[9] / timeStep + haHouse;
+	xn9t = volume[9] / RWATER / temperature[9] / timeStep + haHouse / pressure;
 	xn9o = volume[9] * PWOld[9] / RWATER / temperature[9] / timeStep + mHouseIn * PWOut / RWATER / tempOut / airDensityOut - dhMoistRemv + latload;
-	xn910 = haHouse;
+	xn910 = haHouse / pressure;
 	if(mCeiling < 0) {
 		xn9c = (-mHouseOut - mRetReg - mCeiling - mRetAHoff - mSupAHoff) / RWATER / temperature[9] / airDensityHouse;
 		xn96 = 0;
@@ -304,9 +304,9 @@ void Moisture::mass_cond_bal(double* node_temps, double tempOut, double RHOut, d
 	//cout << "Node 9:" << xn96 << "," << xn97 << "," << xn98 << "," << A[9][9] << "," << xn910 << "," << xn9o << endl;
 
 	//NODE 10 IS HOUSE MASS
-	xn10t = massWHouse / timeStep + haHouse;
-	xn10o = massWHouse * 0.622 * (PWOld[10] / (pressure - PWOld[10])) / timeStep;
-	xn109 = haHouse;
+	xn10t = massWHouse / pressure / timeStep + haHouse / pressure;
+	xn10o = massWHouse * PWOld[10] / pressure / timeStep;
+	xn109 = haHouse / pressure;
 	A[10][9] = xn109;
 	A[10][10] = xn10t;
 	PWInit[10] = xn10o;
@@ -316,15 +316,18 @@ void Moisture::mass_cond_bal(double* node_temps, double tempOut, double RHOut, d
        A[i][MOISTURE_NODES] = PWInit[i];
        }
    
-	//cout << "Before solve" << endl;
+	//cout << "Matrix:" << endl;
 	//print_matrix(A);
    PW = gauss(A);
-	//cout << "After solve" << endl;
-	//print_matrix(A);
+	//cout << "PW,";
+	//for(int i=0; i<MOISTURE_NODES; i++) {
+	//	cout << PW[i] << ",";
+	//	}
+	//cout << endl;
+	
 	// once the attic moisture nodes have been calculated assuming no condensation (as above)
 	// then we call cond_bal to check for condensation and redo the calculations if necessasry
 	// cond_bal performs an iterative scheme that tests for condensation
-
 	cond_bal(pressure);
 
 	for(int i=0; i<MOISTURE_NODES; i++) {
@@ -367,9 +370,6 @@ void Moisture::cond_bal(int pressure) {
 	// Calculate saturation vapor pressure for each node (moved from mass_cond_bal)
 	for(int i=0; i<MOISTURE_NODES; i++) {
 		PWSaturation[i] = saturationVaporPressure(temperature[i]);
-		//moistureContent[i] = max(moistureContent[i], 0.032);	// no need to do this here as it is checked when set
-		//PWInit[i] = PW[i];
-//cout << "PW=" << PW[i] << " PWSat=" << PWSaturation[i] << " MC=" << moistureContent[i] << endl;
 		}
 			
 //MASSTOOUT = 0
