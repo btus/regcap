@@ -304,9 +304,12 @@ int main(int argc, char *argv[], char* envp[])
 				return 1; 
 			}
 
-			moistureFile << "atticTemp\tatticRH\thouseRH\t";
-			for(int i=0; i<MOISTURE_NODES; i++) {
-				moistureFile << "MC" << i << "\tmTotal" << i << "\t";
+			moistureFile << "atticRH\tretRH\tsupRH\thouseRH\tmassRH";
+			for(int i=0; i<6; i++) {
+				moistureFile << "\t" << "MC" << i << "\tmTotal" << i;
+				}
+			for(int i=6; i<MOISTURE_NODES; i++) {
+				moistureFile << "\t" << "MC" << i;
 				}
 			moistureFile << endl;
 			//moistureFile << "HROUT\tHRattic\tHRreturn\tHRsupply\tHRhouse\tHRmaterials\tRH%house\tRHind60\tRHind70" << endl;
@@ -3365,14 +3368,20 @@ int main(int argc, char *argv[], char* envp[])
 					//File column names, for reference.
 					//moistureFile << "HROUT\tHRattic\tHRreturn\tHRsupply\tHRhouse\tHRmaterials\tRH%house\tRHind60\tRHind70" << endl;
 					if(printMoistureFile) {
-						double atticSVP = saturationVaporPressure(tempAttic);
-						double RHAttic = 100 * ((weather.pressure*(HR[0]/0.621945))/(1+(HR[0]/0.621945)) / atticSVP);
 						//moistureFile << weather.humidityRatio << "\t" << HR[0] << "\t" << HR[1] << "\t" << HR[2] << "\t" << HR[3] << "\t" << HR[4] << "\t" << RHhouse << "\t" << RHind60 << "\t" << RHind70 << endl;
-						moistureFile << tempAttic << "\t" << RHAttic << "\t" << RHhouse;
-						for(int i=0; i<MOISTURE_NODES; i++) {
-							moistureFile << "\t" << attic.moistureContent[i] << "\t" << attic.mTotal[i];
+						int HRtoT[5] = {0, 11, 14, 15, 12};  // map humidity nodes to temp nodes
+						for(int n=0; n < 5; n++) {   // old humidity model nodes
+							double SVP = saturationVaporPressure(b[HRtoT[n]]);
+							double RH = 100 * ((weather.pressure*(HR[n]/0.621945))/(1+(HR[n]/0.621945)) / SVP);
+							moistureFile << RH << "\t";
 							}
-						moistureFile << endl;
+						for(int i=0; i<6; i++) {   // new humidity model wood nodes
+							moistureFile << attic.moistureContent[i] << "\t" << attic.mTotal[i] << "\t";
+							}
+						for(int i=6; i<MOISTURE_NODES-1; i++) {   // new humidty model air nodes
+							moistureFile << attic.moistureContent[i] << "\t";
+							}
+						moistureFile << attic.moistureContent[MOISTURE_NODES-1] << endl;
 					}
 			
 					// ================================= WRITING Filter Loading DATA FILE =================================
