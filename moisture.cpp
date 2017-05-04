@@ -68,8 +68,8 @@ Moisture::Moisture(double atticVolume, double retVolume, double supVolume, doubl
 	volume[8] = supVolume;
 	volume[9] = houseVolume;
 
-	haHouse = 0.1 * 0.622 * .5 * floorArea / 186;	// moisture transport coefficient scales with floor area (kg/s) - 0.622 (dHR/dVP), 186 (area of std house in m2), 0.5 empirical coefficient (kg/s)
-	massWHouse = 10 * 0.622 * 60 * floorArea;					// active mass containing moisture in the house (kg) - empirical
+	haHouse = 1 * 0.622 * .5 * floorArea / 186;	// moisture transport coefficient scales with floor area (kg/s) - 0.622 (dHR/dVP), 186 (area of std house in m2), 0.5 empirical coefficient (kg/s)
+	massWHouse = 1 * 0.622 * 60 * floorArea;					// active mass containing moisture in the house (kg) - empirical
 
 /*	volume[10] = 10; // @TODO@ need volume */
 
@@ -278,7 +278,7 @@ void Moisture::mass_cond_bal(double* node_temps, double tempOut, double RHOut, d
 	//NODE 9 IS HOUSE AIR
 	xn9t = volume[9] / RWATER / temperature[9] / timeStep + haHouse / pressure;
 	xn9o = volume[9] * PWOld[9] / RWATER / temperature[9] / timeStep + mHouseIn * PWOut / RWATER / tempOut / airDensityOut - dhMoistRemv + latload;
-	xn910 = haHouse / pressure;
+	xn910 = -haHouse / pressure;
 	if(mCeiling < 0) {
 		xn9c = (-mHouseOut - mRetReg - mCeiling - mRetAHoff - mSupAHoff) / RWATER / temperature[9] / airDensityHouse;
 		xn96 = 0;
@@ -306,7 +306,7 @@ void Moisture::mass_cond_bal(double* node_temps, double tempOut, double RHOut, d
 	//NODE 10 IS HOUSE MASS
 	xn10t = massWHouse / pressure / timeStep + haHouse / pressure;
 	xn10o = massWHouse * PWOld[10] / pressure / timeStep;
-	xn109 = haHouse / pressure;
+	xn109 = -haHouse / pressure;
 	A[10][9] = xn109;
 	A[10][10] = xn10t;
 	PWInit[10] = xn10o;
