@@ -311,7 +311,7 @@ int main(int argc, char *argv[], char* envp[])
 			for(int i=6; i<MOISTURE_NODES; i++) {
 				moistureFile << "\t" << "MC" << i;
 				}
-			moistureFile << endl;
+			moistureFile << "\tTSupply\tTReturn\tHRReturn\tHRHouse" << endl;
 			//moistureFile << "HROUT\tHRattic\tHRreturn\tHRsupply\tHRhouse\tHRmaterials\tRH%house\tRHind60\tRHind70" << endl;
 			//moistureFile << "HR_Attic\tHR_Return\tHR_Supply\tHR_House\tHR_Materials" << endl; This is the old format.
 		}
@@ -2979,9 +2979,9 @@ int main(int argc, char *argv[], char* envp[])
 						// SHR ramps up for first three minutes of operation
 						// compTime tracks the number of minutes the compressor is on for
 						if(compTime == 1) {
-							SHR = SHR + 2 / 3 * (1 - SHR);
+							SHR = SHR + 2.0 / 3.0 * (1 - SHR);
 						} else if(compTime == 2) {
-							SHR = SHR + 1 / 3 * (1 - SHR);
+							SHR = SHR + 1.0 / 3.0 * (1 - SHR);
 						}
 
 						capacityc = SHR * capacity / 3.413;									// sensible (equals total if SHR=1)
@@ -3381,7 +3381,9 @@ int main(int argc, char *argv[], char* envp[])
 						for(int i=6; i<MOISTURE_NODES-1; i++) {   // new humidty model air nodes
 							moistureFile << attic.moistureContent[i] << "\t";
 							}
-						moistureFile << attic.moistureContent[MOISTURE_NODES-1] << endl;
+						double HRReturn = 0.62198 * attic.PW[7] / (weather.pressure - attic.PW[7]);  
+						double HRHouse = 0.62198 * attic.PW[9] / (weather.pressure - attic.PW[9]);  
+						moistureFile << attic.moistureContent[MOISTURE_NODES-1] << "\t" << tempSupply - C_TO_K << "\t" << tempReturn - C_TO_K << "\t" << HRReturn << "\t" << HRHouse << endl;
 					}
 			
 					// ================================= WRITING Filter Loading DATA FILE =================================
