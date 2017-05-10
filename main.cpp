@@ -104,6 +104,7 @@ int main(int argc, char *argv[], char* envp[])
 	// configuration vars
 	double atticMCInit = config.pDouble("atticMCInit");			// initial moisture content of attic wood (fraction)
 	double dhDeadBand = config.pDouble("dhDeadBand");				// Dehumidifier dead band (+/- %RH)
+	double cCapAdjustTime = config.pDouble("cCapAdjustTime");	// First minute adjustment of cooling capacity (fraction)
 
 	// Simulation Batch Timing
 	time_t startTime, endTime;
@@ -311,7 +312,7 @@ int main(int argc, char *argv[], char* envp[])
 			for(int i=6; i<MOISTURE_NODES; i++) {
 				moistureFile << "\t" << "MC" << i;
 				}
-			moistureFile << "\tTSupply\tTReturn\tHRReturn\tHRHouse" << endl;
+			moistureFile << "\tTSupply\tTReturn\tHRReturn\tHRHouse\tHRSupply\tcapcityc\tevapcap" << endl;
 			//moistureFile << "HROUT\tHRattic\tHRreturn\tHRsupply\tHRhouse\tHRmaterials\tRH%house\tRHind60\tRHind70" << endl;
 			//moistureFile << "HR_Attic\tHR_Return\tHR_Supply\tHR_House\tHR_Materials" << endl; This is the old format.
 		}
@@ -2983,10 +2984,16 @@ int main(int argc, char *argv[], char* envp[])
 						} else if(compTime == 2) {
 							SHR = SHR + 1.0 / 3.0 * (1 - SHR);
 						}
+						
+						// Reduce capacity over cCapAdjustTime minutes (to reduce sensible spike)
+						if(compTime > 0 && compTime < cCapAdjustTime) {
+							capacity *= (compTime / cCapAdjustTime);
+							}
 
 						capacityc = SHR * capacity / 3.413;									// sensible (equals total if SHR=1)
 						// correct the sensible cooling for fan power heating
 						capacityc = capacityc - AHfanHeat;
+						//cout << "minute" << minute << " comptime=" << compTime << " compTimeCount=" << compTimeCount << "capc=" << capacityc << " SHR=" << SHR << endl;
 						// tracking mass on coil (Mcoil) including condensation and evaporation - do this in main program
 						evapcap = 0;
 						latcap = 0;
@@ -3383,7 +3390,9 @@ int main(int argc, char *argv[], char* envp[])
 							}
 						double HRReturn = 0.62198 * attic.PW[7] / (weather.pressure - attic.PW[7]);  
 						double HRHouse = 0.62198 * attic.PW[9] / (weather.pressure - attic.PW[9]);  
-						moistureFile << attic.moistureContent[MOISTURE_NODES-1] << "\t" << tempSupply - C_TO_K << "\t" << tempReturn - C_TO_K << "\t" << HRReturn << "\t" << HRHouse << endl;
+						double HRSupply = 0.62198 * attic.PW[8] / (weather.pressure - attic.PW[8]);  
+						moistureFile << attic.moistureContent[MOISTURE_NODES-1] << "\t" << tempSupply - C_TO_K << "\t" << tempReturn - C_TO_K << "\t";
+						moistureFile << HRReturn << "\t" << HRHouse << "\t" << HRSupply << "\t" << capacityc << "\t" << evapcap << endl;
 					}
 			
 					// ================================= WRITING Filter Loading DATA FILE =================================
