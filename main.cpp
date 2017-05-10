@@ -1143,11 +1143,11 @@ int main(int argc, char *argv[], char* envp[])
 				weekend = 0;
 
 			// Solar declination and equation of time from ASHRAE HOF 2009 SI ch14
-			double dec = 23.45 * sin(360 * (day + 284) / 365 * M_PI / 180) * M_PI / 180;
-			double gamma = 360 * (day - 1) / 365 * M_PI / 180;
+			double dec = 23.45 * sin(360 * (day + 284) / 365.0 * M_PI / 180) * M_PI / 180;
+			double gamma = 360.0 * (day - 1) / 365.0 * M_PI / 180;
 			double equationOfTime = 2.2918 * (0.0075 + 0.1868 * cos(gamma) - 3.2077 * sin(gamma)
 										 - 1.4615 * cos(2 * gamma) - 4.089 * sin(2 * gamma));
-			double timeCorrection = equationOfTime / 60 + (longitude - 15 * timeZone) / 15;
+			double timeCorrection = equationOfTime / 60 + (longitude - 15 * timeZone) / 15.0;
 			// month used for humidity control.
 			int month;
 			if(day <= 31) {
