@@ -2965,9 +2965,9 @@ int main(int argc, char *argv[], char* envp[])
 						// SHR ramps up for first three minutes of operation
 						// compTime tracks the number of minutes the compressor is on for
 						if(compTime == 1) {
-							SHR = SHR + 2 / 3 * (1 - SHR);
+							SHR = SHR + (2. / 3.) * (1 - SHR);
 						} else if(compTime == 2) {
-							SHR = SHR + 1 / 3 * (1 - SHR);
+							SHR = SHR + (1. / 3.) * (1 - SHR);
 						}
 
 						capacityc = SHR * capacity / 3.413;									// sensible (equals total if SHR=1)
