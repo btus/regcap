@@ -123,6 +123,20 @@ double sub_Pollutant (
 	double AHflag,
 	double filterEfficiency 
 	);
+	
+void sub_atticAirflow(
+
+	double& mCeiling,
+	double& matticenvin,
+	double& matticenvout,
+	double& mSupLeak,
+	double& mRetLeak,
+	double& airDensityOUT,
+	double& airDensityATTIC,
+	double& airDensitySUP,
+	double& airDensityRET,
+	double& Q_attic
+	);	
 
 
 // Additional functions

@@ -732,7 +732,7 @@ int main(int argc, char *argv[], char* envp[])
 				cout << "Cannot open output file: " << outputFileName << endl;
 				return 1; 
 			}
-			outputFile << "Time\tMin\twindSpeed\ttempOut\ttempHouse\tsetpoint\ttempAttic\ttempSupply\ttempReturn\tAHflag\tAHpower\tcompressPower\tmechVentPower\tHR\tSHR\tMcoil\thousePress\tQhouse\tACH\tACHflue\tventSum\tnonRivecVentSum\tfan1\tfan2\tfan3\tfan4\tfan5\tfan6\tfan7\trivecOn\trelExp\trelDose\toccupied\tHROUT\tHRattic\tHRreturn\tHRsupply\tHRhouse\tHRmaterials\tRHhouse\tRHind60\tRHind70\tHumidityIndex\tDHcondensate\tPollutantConc" << endl; 
+			outputFile << "Time\tMin\twindSpeed\ttempOut\ttempHouse\tsetpoint\ttempAttic\ttempSupply\ttempReturn\tAHflag\tAHpower\tcompressPower\tmechVentPower\tHR\tSHR\tMcoil\thousePress\tQhouse\tACH\tACHflue\tventSum\tnonRivecVentSum\tfan1\tfan2\tfan3\tfan4\tfan5\tfan6\tfan7\trivecOn\trelExp\trelDose\toccupied\tHROUT\tHRattic\tHRreturn\tHRsupply\tHRhouse\tHRmaterials\tRHhouse\tRHind60\tRHind70\tHumidityIndex\tDHcondensate\tPollutantConc\tQ_total\tQ_attic" << endl; 
 		}
 		
 		// 5 HR nodes
@@ -902,6 +902,9 @@ int main(int argc, char *argv[], char* envp[])
 		double qDeposition = DepositionRate * houseVolume / 3600; //deposition rate converted to an equivalent airflow for this particular house, m3/s.
 		double penetrationFactor = 1.0; //Penetration factor is the fraction of infiltrating outside mass that gets inside. Default to 1 for no losses. 
 		double filterEfficiency = 0.0; //Filtration efficiency in the central HVAC system. Default to 0 for no filter. 
+
+		double Q_attic = 0.0; //air exchange rate of the attic, including flow between house-attic and attic-outside, m3/s.
+
 
 		//For calculating the "real" exposure and dose, based on the actual air change of the house predicted by the mass balance. Standard exposure and dose use the sum of annual average infiltration and current total fan airflow.
 // 		double relDoseReal = 1;						// Initial value for relative dose using ACH of house, i.e. the real rel dose not based on ventSum
@@ -3115,7 +3118,9 @@ int main(int argc, char *argv[], char* envp[])
 // 						moldIndex_BulkFraming = sub_moldIndex(0, moldIndex_BulkFraming, attic.temperature[2], attic.PW[2], Time_decl_Bulk); //Bulk Attic Framing Surface Node
 // 					
 // 					}		
-						
+					
+					//Calculating the attic air exchange, m3/s
+					sub_atticAirflow(mCeiling, matticenvin, matticenvout, mSupLeak, mRetLeak, airDensityOUT, airDensityATTIC, airDensitySUP, airDensityRET, Q_attic); 
 		
 
 					// ************** house ventilation rate  - what would be measured with a tracer gas i.e., not just envelope and vent fan flows
@@ -3352,7 +3357,7 @@ int main(int argc, char *argv[], char* envp[])
 						outputFile << fan[0].on << "\t" << fan[1].on << "\t" << fan[2].on << "\t" << fan[3].on << "\t" << fan[4].on << "\t" << fan[5].on << "\t" << fan[6].on << "\t";
 						outputFile << rivecOn << "\t" << relExp << "\t" << relDose << "\t";
 						outputFile << occupied[weekend][hour] << "\t"; 
-						outputFile << weather.humidityRatio << "\t" << HR[0] << "\t" << HR[1] << "\t" << HR[2] << "\t" << HR[3] << "\t" << HR[4] << "\t" << RHhouse << "\t" << RHind60 << "\t" << RHind70 << "\t" << HumidityIndex << "\t" << dh.condensate << "\t" << indoorConc << "\t" << Q_total << endl;
+						outputFile << weather.humidityRatio << "\t" << HR[0] << "\t" << HR[1] << "\t" << HR[2] << "\t" << HR[3] << "\t" << HR[4] << "\t" << RHhouse << "\t" << RHind60 << "\t" << RHind70 << "\t" << HumidityIndex << "\t" << dh.condensate << "\t" << indoorConc << "\t" << Q_total << "\t" << Q_attic << endl;
 						//outputFile << mHouse << "\t" << mHouseIN << "\t" << mHouseOUT << "\t" << mIN << "\t" << mOUT << "\t" << mCeiling << "\t" << mSupReg << "\t" << mSupAHoff << "\t" << mRetAHoff << "\t" << mRetReg << "\t" << mFanCycler << "\t" << mFlue << "\t" << mFloor << "\t" << mAH << endl;
 						//outputFile << mHouse << "\t" << mHouseIN << "\t" << mHouseOUT << mCeiling << "\t" << mHouseIN << "\t" << mHouseOUT << "\t" << mSupReg << "\t" << mRetReg << "\t" << mSupAHoff << "\t" ;
 						//outputFile << mRetAHoff << "\t" << mHouse << "\t"<< flag << "\t"<< AIM2 << "\t" << AEQaim2FlowDiff << "\t" << qFanFlowRatio << "\t" << C << endl; //Breann/Yihuan added these for troubleshooting

@@ -296,6 +296,34 @@ double sub_Pollutant (
 			return 1 / houseVolume * (indoorConc * houseVolume + 60 * (qHouse * (-indoorConc + penetrationFactor * outdoorConc) + indoorSource - qDeposition * indoorConc));
 		}
 }
+
+void sub_atticAirflow(
+
+	double& mCeiling,
+	double& matticenvin,
+	double& matticenvout,
+	double& mSupLeak,
+	double& mRetLeak,
+	double& airDensityOUT,
+	double& airDensityATTIC,
+	double& airDensitySUP,
+	double& airDensityRET,
+	double& Q_attic
+	
+	)
+	
+	{
+	//mass flow from attic to house. mCeiling, matticenvout, mRetAHoff and mSupAHoff all out-flows from attic. 
+	//so we calculate total in-flow into the attic, from outside to attic and from supply duct to attic.
+	if(mCeiling >= 0){
+		Q_attic = matticenvin / airDensityOUT + mSupLeak / airDensitySUP;
+	//mass flow from house to attic.	
+	//so we calculate total out-flow from the attic, from attic to outside and from ret leak to ret duct. 
+	} else {
+		Q_attic = matticenvout / airDensityATTIC + mRetLeak / airDensityRET;
+	}
+}
+
 					
 
 //**********************************
@@ -1013,6 +1041,7 @@ void sub_heat (
 		x[i] = b[i];
 		}
 }
+
 
 // void sub_moisture ( 
 // 	double* HR, 
