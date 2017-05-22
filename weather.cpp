@@ -63,7 +63,6 @@ weatherData interpWeather(weatherData begin, weatherData end, int minute) {
 	result.relativeHumidity = interpolate(begin.relativeHumidity, end.relativeHumidity, minute);
 	result.pressure = interpolate(begin.pressure, end.pressure, minute);
 	result.skyCover = interpolate(begin.skyCover, end.skyCover, minute);
-	//result.humidityRatio = calcHumidityRatio(result.dewPoint, result.pressure);
 	result.humidityRatio = interpolate(begin.humidityRatio, end.humidityRatio, minute);
 	
 	return result;
@@ -83,7 +82,7 @@ weatherData readTMY3(ifstream& file) {
 		result.windDirection = row[43];
 		result.pressure = row[40] * 100;			// convert from mbar to Pa
 		result.skyCover = row[25] / 10;			// convert to decimal fraction
-		result.humidityRatio = calcHumidityRatio(result.dewPoint, result.pressure);
+		result.humidityRatio = calcHumidityRatio(saturationVaporPressure(result.dewPoint), result.pressure);
 	}
 	return result;
 }	
@@ -102,7 +101,7 @@ weatherData readEPW(ifstream& file) {
 		result.windDirection = row[20];
 		result.pressure = row[9];			
 		result.skyCover = row[22] / 10.;			// convert to decimal fraction
-		result.humidityRatio = calcHumidityRatio(result.dewPoint, result.pressure);
+		result.humidityRatio = calcHumidityRatio(saturationVaporPressure(result.dewPoint), result.pressure);
 	}
 	return result;
 }	

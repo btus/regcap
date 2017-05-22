@@ -66,9 +66,15 @@ int main (int argc, char** argv) {
 	cout << "Here is PI:";
 	cout << M_PI -3.14159 << endl;
 	
-	cout << "asize =" << sizeof(A)/sizeof(A[0]);
-	cout << " asize2 =" << sizeof(A[0])/sizeof(A[0][0]);
-	cout << " bsize =" << sizeof(b)/sizeof(b[0]) << endl;
+	// cout << "asize =" << sizeof(A)/sizeof(A[0]);
+	// cout << " asize2 =" << sizeof(A[0])/sizeof(A[0][0]);
+	// cout << " bsize =" << sizeof(b)/sizeof(b[0]) << endl;
 
+	double b = 280.0;
+	int day = 2;
+	double gamma1 = 360 * (day - 1) / 365 * 3.14159 / 180;
+	double gamma2 = 360 * (day - 1) / 365.0 * 3.14159 / 180;
 
+	cout << "1:" << gamma1 << " 2:" << gamma2 << endl;
+	
 }

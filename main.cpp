@@ -290,7 +290,6 @@ int main(int argc, char *argv[], char* envp[])
 		double RHind70 = 0; //index value (0 or 1) if RHhouse > 70 
 		double RHtot70 = 0; //cumulative sum of index value (0 or 1) if RHhouse > 70
 		double RHexcAnnual70 = 0; //annual fraction of the year where RHhouse > 70
-		double hret = 28;				// Initial number for hret in Btu/lb
 		double latitude;
 		double longitude;
 		int timeZone;
@@ -1031,8 +1030,6 @@ int main(int argc, char *argv[], char* envp[])
 		double capacityh = 0;
 		double compressorPower = 0;
 		double capacityc = 0;
-		double Toutf = 0;
-		double dhret = 0;
 		double chargecapd = 0;
 		double chargeeerd = 0;
 		double EER = 0;
@@ -1205,6 +1202,8 @@ int main(int argc, char *argv[], char* envp[])
 					double solgain = 0;
 					double tsolair;
 					double H2, H4, H6;
+					double airDensityOUT,airDensityIN,airDensityATTIC,airDensitySUP,airDensityRET;
+					double HRReturn, HRHouse, HRSupply;  
 
 					target = minute - 39;			// Target is used for fan cycler operation currently set for 20 minutes operation, in the last 20 minutes of the hour.
 					if(target < 0)
@@ -1291,11 +1290,11 @@ int main(int argc, char *argv[], char* envp[])
 					}
 
 					// Calculate air densities
-					double airDensityOUT = airDensityRef * airTempRef / weather.dryBulb;		// Outside Air Density
-					double airDensityIN = airDensityRef * airTempRef / tempHouse;		// Inside Air Density
-					double airDensityATTIC = airDensityRef * airTempRef / tempAttic;	// Attic Air Density
-					double airDensitySUP = airDensityRef * airTempRef / tempSupply;		// Supply Duct Air Density
-					double airDensityRET = airDensityRef * airTempRef / tempReturn;		// Return Duct Air Density
+					airDensityOUT = airDensityRef * airTempRef / weather.dryBulb;		// Outside Air Density
+					airDensityIN = airDensityRef * airTempRef / tempHouse;		// Inside Air Density
+					airDensityATTIC = airDensityRef * airTempRef / tempAttic;	// Attic Air Density
+					airDensitySUP = airDensityRef * airTempRef / tempSupply;		// Supply Duct Air Density
+					airDensityRET = airDensityRef * airTempRef / tempReturn;		// Return Duct Air Density
 
 					// Solar calculations
 					hourAngle = 15 * (hour + minute / 60.0 + timeCorrection - 12) * M_PI / 180;
@@ -2908,9 +2907,6 @@ int main(int argc, char *argv[], char* envp[])
 					capacityh = 0;
 					compressorPower = 0;
 					
-					// hret is in btu/lb and is used in capacity calculations
-					hret = .24 * ((b[11] - 273.15) * 9 / 5 + 32) + HR[1] * (1061 + .444 * ((b[11] - 273.15) * 9 / 5 + 32));
-					
 
 					if(AHflag == 0) {										// AH OFF
 						capacityc = 0;
@@ -2926,10 +2922,9 @@ int main(int argc, char *argv[], char* envp[])
 						capacityh = hcapacity + AHfanHeat;					// include fan heat in furnace capacity (converted to W in main program)
 						capacityc = 0;
 					} else {												// we have cooling
-						Toutf = (weather.dryBulb - 273.15) * (9.0 / 5.0) + 32;
-						dhret = AHfanHeat / mAH / 2326;										// added to hret in capacity caluations for wet coil - converted to Btu/lb
+						double Toutf = KtoF(weather.dryBulb);
 
-						// the following corerctions are for TXV only
+						// the following corrections are for TXV only
 						// test for wet/dry coil using SHR calculation
 						SHR = 1 - 50 * (HR[1] - .005);										// using humidity ratio - note only because we have small indoor dry bulb range
 
@@ -2968,7 +2963,9 @@ int main(int argc, char *argv[], char* envp[])
 							} else if(charge > 1) {
 								chargeeerw = 1 - (charge - 1) * .35;
 							}
-							capacity = capacityari * 1000 * (1 + ((hret + dhret) - 30) * .025) * qAHcorr * chargecapw * ((-.00007) * pow((Toutf - 95),2) - .0067 * (Toutf - 95) + 1);
+							double hret = .24 * ((b[11] - 273.15) * 9 / 5 + 32) + HR[1] * (1061 + .444 * ((b[11] - 273.15) * 9 / 5 + 32));   // return air enthalpy
+							hret += AHfanHeat / mAH / 2326.;										// add fan heat, converted to Btu/lb
+							capacity = capacityari * 1000 * (1 + (hret - 30) * .025) * qAHcorr * chargecapw * ((-.00007) * pow((Toutf - 95),2) - .0067 * (Toutf - 95) + 1);
 							// EER for wet coil
 							EER = EERari * qAHcorr * chargeeerw * ((-.00007) * pow((Toutf - 95),2) - .0085 * (Toutf - 95) + 1);
 						}
@@ -3106,6 +3103,9 @@ int main(int argc, char *argv[], char* envp[])
 						weather.pressure, H4, H2, H6, matticenvin, matticenvout, mCeiling, mHouseIN, mHouseOUT,
 						mAH, mRetAHoff, mRetLeak, mRetReg, mRetOut, mSupAHoff, mSupLeak, mSupReg,
 						latcap, dh.condensate, latentLoad);
+					HRReturn = calcHumidityRatio(attic.PW[7],weather.pressure);  
+					HRHouse = calcHumidityRatio(attic.PW[9],weather.pressure);  
+					HRSupply = calcHumidityRatio(attic.PW[8],weather.pressure);  
 
 					// Call moisture subroutine
 					sub_moisture(HR, M1, M12, M15, M16, Mw5, matticenvout, mCeiling, mSupAHoff, mRetAHoff,
@@ -3378,8 +3378,8 @@ int main(int argc, char *argv[], char* envp[])
 						//moistureFile << weather.humidityRatio << "\t" << HR[0] << "\t" << HR[1] << "\t" << HR[2] << "\t" << HR[3] << "\t" << HR[4] << "\t" << RHhouse << "\t" << RHind60 << "\t" << RHind70 << endl;
 						int HRtoT[5] = {0, 11, 14, 15, 12};  // map humidity nodes to temp nodes
 						for(int n=0; n < 5; n++) {   // old humidity model nodes
-							double SVP = saturationVaporPressure(b[HRtoT[n]]);
-							double RH = 100 * ((weather.pressure*(HR[n]/0.621945))/(1+(HR[n]/0.621945)) / SVP);
+							double pws = saturationVaporPressure(b[HRtoT[n]]);
+							double RH = 100 * ((weather.pressure*(HR[n]/0.621945))/(1+(HR[n]/0.621945)) / pws);
 							moistureFile << RH << "\t";
 							}
 						for(int i=0; i<6; i++) {   // new humidity model wood nodes
@@ -3388,9 +3388,6 @@ int main(int argc, char *argv[], char* envp[])
 						for(int i=6; i<MOISTURE_NODES-1; i++) {   // new humidty model air nodes
 							moistureFile << attic.moistureContent[i] << "\t";
 							}
-						double HRReturn = 0.62198 * attic.PW[7] / (weather.pressure - attic.PW[7]);  
-						double HRHouse = 0.62198 * attic.PW[9] / (weather.pressure - attic.PW[9]);  
-						double HRSupply = 0.62198 * attic.PW[8] / (weather.pressure - attic.PW[8]);  
 						moistureFile << attic.moistureContent[MOISTURE_NODES-1] << "\t" << tempSupply - C_TO_K << "\t" << tempReturn - C_TO_K << "\t";
 						moistureFile << HRReturn << "\t" << HRHouse << "\t" << HRSupply << "\t" << capacityc << "\t" << evapcap << endl;
 					}
