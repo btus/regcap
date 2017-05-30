@@ -94,7 +94,6 @@ Moisture::Moisture(double atticVolume, double retVolume, double supVolume, doubl
  * @param node_temps - array of node temperatures (deg K)
  * @param tempOut - Outdoor temperature (deg K)
  * @param RHOut - Outdoor relative humidity (%)
- * @param RHHouse - Indoor relative humidity (%)
  * @param airDensityOut - Outdoor air density (kg/m3)
  * @param airDensityAttic - Attic air density (kg/m3)
  * @param airDensityHouse - Indoor air density (kg/m3)
@@ -121,7 +120,7 @@ Moisture::Moisture(double atticVolume, double retVolume, double supVolume, doubl
  * @param dhMoistRemv - moisture removed by the dehumidifier (kg/s)
  * @param latload - indoor latent load (kg/s)
  */
-void Moisture::mass_cond_bal(double* node_temps, double tempOut, double RHOut, double RHHouse,
+void Moisture::mass_cond_bal(double* node_temps, double tempOut, double RHOut,
                   double airDensityOut, double airDensityAttic, double airDensityHouse, double airDensitySup, double airDensityRet,
                   int pressure, double hU0, double hU1, double hU2,
                   double mAtticIn, double mAtticOut, double mCeiling, double mHouseIn, double mHouseOut,

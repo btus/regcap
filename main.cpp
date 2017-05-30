@@ -105,6 +105,7 @@ int main(int argc, char *argv[], char* envp[])
 	double atticMCInit = config.pDouble("atticMCInit");			// initial moisture content of attic wood (fraction)
 	double dhDeadBand = config.pDouble("dhDeadBand");				// Dehumidifier dead band (+/- %RH)
 	double cCapAdjustTime = config.pDouble("cCapAdjustTime");	// First minute adjustment of cooling capacity (fraction)
+	double moistureModel = config.pDouble("moistureModel");
 
 	// Simulation Batch Timing
 	time_t startTime, endTime;
@@ -281,15 +282,13 @@ int main(int argc, char *argv[], char* envp[])
 		double mechVent_kWh = 0;
 		double furnace_kWh = 0;
 		double dehumidifier_kWh = 0;
-		double SatVaporPressure = 0; //Saturation vapor pressure, pa
-		double HRsaturation = 0; //humidity ratio at saturation
-		double RHhouse = 50; //house relative humidity
 		double RHind60 = 0; //index value (0 or 1) if RHhouse > 60 
 		double RHtot60 = 0; //cumulative sum of index value (0 or 1) if RHhouse > 60 
 		double RHexcAnnual60 = 0; //annual fraction of the year where RHhouse > 60
 		double RHind70 = 0; //index value (0 or 1) if RHhouse > 70 
 		double RHtot70 = 0; //cumulative sum of index value (0 or 1) if RHhouse > 70
 		double RHexcAnnual70 = 0; //annual fraction of the year where RHhouse > 70
+		double RHHouse = 50;  
 		double latitude;
 		double longitude;
 		int timeZone;
@@ -1088,6 +1087,8 @@ int main(int argc, char *argv[], char* envp[])
 		int Time_decl_Bulk = 0;
 
 		vector<double> averageTemp (0);	// Array to track the 7 day running average
+		double HRAttic = 0.008, HRReturn = 0.008, HRHouse = 0.008, HRSupply = 0.008;
+		double HRAttic1 = 0.008, HRReturn1 = 0.008, HRHouse1 = 0.008, HRSupply1 = 0.008;
 
 		//Variables Brennan added for Temperature Controlled Smart Ventilation.
 		double dailyCumulativeTemp = 0;
@@ -1102,7 +1103,7 @@ int main(int argc, char *argv[], char* envp[])
 
 		// Call class constructors
 		Dehumidifier dh(dhCapacity, dhEnergyFactor, dhSetPoint, dhDeadBand);	// Initialize Dehumidifier 
-		Moisture attic(atticVolume, retVolume, supVolume, houseVolume, floorArea, planArea, roofPitch, atticMCInit);   // initialize attic moisture model
+		Moisture moisture_nodes(atticVolume, retVolume, supVolume, houseVolume, floorArea, planArea, roofPitch, atticMCInit);   // initialize moisture model
 
 		cout << endl;
 		cout << "Simulation: " << simNum << endl;
@@ -1203,7 +1204,6 @@ int main(int argc, char *argv[], char* envp[])
 					double tsolair;
 					double H2, H4, H6;
 					double airDensityOUT,airDensityIN,airDensityATTIC,airDensitySUP,airDensityRET;
-					double HRReturn, HRHouse, HRSupply;  
 
 					target = minute - 39;			// Target is used for fan cycler operation currently set for 20 minutes operation, in the last 20 minutes of the hour.
 					if(target < 0)
@@ -2926,7 +2926,7 @@ int main(int argc, char *argv[], char* envp[])
 
 						// the following corrections are for TXV only
 						// test for wet/dry coil using SHR calculation
-						SHR = 1 - 50 * (HR[1] - .005);										// using humidity ratio - note only because we have small indoor dry bulb range
+						SHR = 1 - 50 * (HRReturn - .005);										// using humidity ratio - note only because we have small indoor dry bulb range
 
 						if(SHR < .25)
 							SHR = .25;  //setting low limit
@@ -2963,7 +2963,7 @@ int main(int argc, char *argv[], char* envp[])
 							} else if(charge > 1) {
 								chargeeerw = 1 - (charge - 1) * .35;
 							}
-							double hret = .24 * ((b[11] - 273.15) * 9 / 5 + 32) + HR[1] * (1061 + .444 * ((b[11] - 273.15) * 9 / 5 + 32));   // return air enthalpy
+							double hret = .24 * ((tempReturn - 273.15) * 9 / 5 + 32) + HRReturn * (1061 + .444 * ((tempReturn - 273.15) * 9 / 5 + 32));   // return air enthalpy
 							hret += AHfanHeat / mAH / 2326.;										// add fan heat, converted to Btu/lb
 							capacity = capacityari * 1000 * (1 + (hret - 30) * .025) * qAHcorr * chargecapw * ((-.00007) * pow((Toutf - 95),2) - .0067 * (Toutf - 95) + 1);
 							// EER for wet coil
@@ -3027,7 +3027,7 @@ int main(int argc, char *argv[], char* envp[])
 					Mcoilprevious = Mcoil;													// maybe put this at top of the hour
 
 					if(dhCapacity > 0) {
-						dh.run(RHhouse, tempHouse);	// run dehumidifier using house air node conditions
+						dh.run(RHHouse, tempHouse);	// run dehumidifier using house air node conditions
 						}
 					
 					// [END] Equipment Model ======================================================================================================================================
@@ -3098,29 +3098,45 @@ int main(int argc, char *argv[], char* envp[])
 
 					// Call attic moisture balance
 					double mRetOut = mFanCycler + mHRV_AH + mERV_AH;
-					attic.mass_cond_bal(b, weather.dryBulb, weather.relativeHumidity, RHhouse,
+					moisture_nodes.mass_cond_bal(b, weather.dryBulb, weather.relativeHumidity,
 						airDensityOUT, airDensityATTIC, airDensityIN, airDensitySUP, airDensityRET,
 						weather.pressure, H4, H2, H6, matticenvin, matticenvout, mCeiling, mHouseIN, mHouseOUT,
 						mAH, mRetAHoff, mRetLeak, mRetReg, mRetOut, mSupAHoff, mSupLeak, mSupReg,
 						latcap, dh.condensate, latentLoad);
-					HRReturn = calcHumidityRatio(attic.PW[7],weather.pressure);  
-					HRHouse = calcHumidityRatio(attic.PW[9],weather.pressure);  
-					HRSupply = calcHumidityRatio(attic.PW[8],weather.pressure);  
 
 					// Call moisture subroutine
 					sub_moisture(HR, M1, M12, M15, M16, Mw5, matticenvout, mCeiling, mSupAHoff, mRetAHoff,
 						matticenvin, weather.humidityRatio, mSupLeak, mAH, mRetReg, mRetLeak, mSupReg, latcap, mHouseIN, mHouseOUT,
 						latentLoad, mFanCycler, mHRV_AH, mERV_AH, ERV_TRE, MWha, airDensityIN, airDensityOUT, dh.condensate);
 
-					SatVaporPressure = saturationVaporPressure(tempHouse);
+					HRAttic1 = calcHumidityRatio(moisture_nodes.PW[6],weather.pressure);
+					HRReturn1 = calcHumidityRatio(moisture_nodes.PW[7],weather.pressure);  
+					HRSupply1 = calcHumidityRatio(moisture_nodes.PW[8],weather.pressure);
+					HRHouse1 = calcHumidityRatio(moisture_nodes.PW[9],weather.pressure);  
 
-					//Calculate Saturation Humidity Ratio, Equation 23 in ASHRAE HoF
-					HRsaturation = 0.621945*(SatVaporPressure/(weather.pressure-SatVaporPressure)); 
 
-					if(HR[1] == 0)
-						HR[1] = weather.humidityRatio;
-					if(HR[3] > HRsaturation) // Previously set by Iain to 0.02. Here we've replaced it with the saturation humidity ratio (Ws).
-						HR[3] = HRsaturation; //consider adding calculate saturation humidity ratio by indoor T and Pressure and lmit HR[3] to that.
+
+					if(moistureModel == 1) {
+						HRAttic = HRAttic1;
+						HRReturn = HRReturn1;
+						HRSupply = HRSupply1;
+						HRHouse = HRHouse1;
+						RHHouse = moisture_nodes.moistureContent[9];  
+						}
+					else {
+						//Calculate Saturation Humidity Ratio, Equation 23 in ASHRAE HoF
+						double SatVaporPressure = saturationVaporPressure(tempHouse);
+						double HRsaturation = calcHumidityRatio(SatVaporPressure, weather.pressure); 
+						if(HR[1] == 0)
+							HR[1] = weather.humidityRatio;
+						if(HR[3] > HRsaturation) // Previously set by Iain to 0.02. Here we've replaced it with the saturation humidity ratio (Ws).
+							HR[3] = HRsaturation; //consider adding calculate saturation humidity ratio by indoor T and Pressure and lmit HR[3] to that.
+						RHHouse = 100 * ((weather.pressure*(HR[3]/0.621945))/(1+(HR[3]/0.621945)) / SatVaporPressure);
+						HRAttic = HR[0];
+						HRReturn = HR[1];
+						HRSupply = HR[2];
+						HRHouse = HR[3];
+						}
 
 					// [END] Moisture Balance =======================================================================================================================================
 
@@ -3160,8 +3176,8 @@ int main(int argc, char *argv[], char* envp[])
 					//Calculation of dry and moist air ventilation loads. Currently all values are positive, ie don't differentiate between heat gains and losses. Load doens't necessarily mean energy use...
 					Dhda = 1.006 * abs(tempHouse - weather.dryBulb); // dry air enthalpy difference across non-ceiling envelope elements [kJ/kg].
 					ceilingDhda = 1.006 * abs(tempHouse - tempAttic); //Dry air enthalpy difference across ceiling [kJ/kg]
-					Dhma = abs((1.006 * (tempHouse - weather.dryBulb)) + ((HR[3] * (2501 + 1.86 * tempHouse))-(weather.humidityRatio * (2501 + 1.86 * weather.dryBulb)))); //moist air enthalpy difference across non-ceiling envelope elements [kJ/kg]
-					ceilingDhma = abs((1.006 * (tempHouse - tempAttic)) + ((HR[3] * (2501 + 1.86 * tempHouse)) - (HR[0] * (2501 + 1.86 * tempAttic)))); //moist air enthalpy difference across ceiling [kJ/kg]
+					Dhma = abs((1.006 * (tempHouse - weather.dryBulb)) + ((HRHouse * (2501 + 1.86 * (tempHouse - C_TO_K)))-(weather.humidityRatio * (2501 + 1.86 * (weather.dryBulb - C_TO_K))))); //moist air enthalpy difference across non-ceiling envelope elements [kJ/kg]
+					ceilingDhma = abs((1.006 * (tempHouse - tempAttic)) + ((HRHouse * (2501 + 1.86 * (tempHouse - C_TO_K))) - (HRAttic * (2501 + 1.86 * (tempAttic - C_TO_K))))); //moist air enthalpy difference across ceiling [kJ/kg]
 
 
 					DAventLoad = (mHouseIN * Dhda) + (mCeilingIN * ceilingDhda); //[kJ/min], I prevoiusly used mHouseIN, but changed to mHouse. This is super simplified, in that it does not account for differing dT across ducts, ceiling, walls, etc. these assume balanced mass flow (mHouseIN=mHouseOUT), I had assumed a need to multiply by 60 to convert kg/s kg/m, but that was not necessary once results were available, so I removed it.
@@ -3316,22 +3332,15 @@ int main(int argc, char *argv[], char* envp[])
 
 
 					// [END] IAQ calculations =======================================================================================================================================
-
-					//Calculation of house relative humidity, as ratio of Partial vapor pressure (calculated in rh variable below) to the Saturation vapor pressure (calculated above). 
-			
-					RHhouse = 100 * ((weather.pressure*(HR[3]/0.621945))/(1+(HR[3]/0.621945)) / SatVaporPressure);
-
-					//RHhouse = 100 * (pRef*(HR[3]/0.621945))/(1+(HR[3]/0.621945)) / (exp(77.345+(0.0057*tempHouse)-(7235/tempHouse))/(pow(tempHouse,8.2))); //This was Brennan's old rh calculation (used during smart ventilatoin humidity control), which was correct to within ~0.01% or less at possible house temperatures 15-30C. 
-
-					if(RHhouse >= 60){ //RHind60 and 70 count the minutes where high RH occurs
+					if(RHHouse >= 60){ //RHind60 and 70 count the minutes where high RH occurs
 						RHind60 = 1;
-						HumidityIndex = (RHhouse - 60) * (1.0 / (100 - 60));
+						HumidityIndex = (RHHouse - 60) * (1.0 / (100 - 60));
 					} else {
 						RHind60 = 0;
 						HumidityIndex = 0;
 					}
 					
-					if(RHhouse >= 70){
+					if(RHHouse >= 70){
 						RHind70 = 1;
 					} else {
 						RHind70 = 0;
@@ -3365,7 +3374,7 @@ int main(int argc, char *argv[], char* envp[])
 						outputFile << fan[0].on << "\t" << fan[1].on << "\t" << fan[2].on << "\t" << fan[3].on << "\t" << fan[4].on << "\t" << fan[5].on << "\t" << fan[6].on << "\t";
 						outputFile << rivecOn << "\t" << relExp << "\t" << relDose << "\t";
 						outputFile << occupied[weekend][hour] << "\t"; 
-						outputFile << weather.humidityRatio << "\t" << HR[0] << "\t" << HR[1] << "\t" << HR[2] << "\t" << HR[3] << "\t" << HR[4] << "\t" << RHhouse << "\t" << RHind60 << "\t" << RHind70 << "\t" << HumidityIndex << "\t" << dh.condensate << "\t" << indoorConc << endl;
+						outputFile << weather.humidityRatio << "\t" << HR[0] << "\t" << HR[1] << "\t" << HR[2] << "\t" << HR[3] << "\t" << HR[4] << "\t" << RHHouse << "\t" << RHind60 << "\t" << RHind70 << "\t" << HumidityIndex << "\t" << dh.condensate << "\t" << indoorConc << endl;
 						//outputFile << mHouse << "\t" << mHouseIN << "\t" << mHouseOUT << "\t" << mIN << "\t" << mOUT << "\t" << mCeiling << "\t" << mSupReg << "\t" << mSupAHoff << "\t" << mRetAHoff << "\t" << mRetReg << "\t" << mFanCycler << "\t" << mFlue << "\t" << mFloor << "\t" << mAH << endl;
 						//outputFile << mHouse << "\t" << mHouseIN << "\t" << mHouseOUT << mCeiling << "\t" << mHouseIN << "\t" << mHouseOUT << "\t" << mSupReg << "\t" << mRetReg << "\t" << mSupAHoff << "\t" ;
 						//outputFile << mRetAHoff << "\t" << mHouse << "\t"<< flag << "\t"<< AIM2 << "\t" << AEQaim2FlowDiff << "\t" << qFanFlowRatio << "\t" << C << endl; //Breann/Yihuan added these for troubleshooting
@@ -3379,17 +3388,17 @@ int main(int argc, char *argv[], char* envp[])
 						int HRtoT[5] = {0, 11, 14, 15, 12};  // map humidity nodes to temp nodes
 						for(int n=0; n < 5; n++) {   // old humidity model nodes
 							double pws = saturationVaporPressure(b[HRtoT[n]]);
-							double RH = 100 * ((weather.pressure*(HR[n]/0.621945))/(1+(HR[n]/0.621945)) / pws);
+							double RH = 100 * ((weather.pressure * (HR[n] / 0.621945)) / (1 + (HR[n] / 0.621945)) / pws);
 							moistureFile << RH << "\t";
 							}
 						for(int i=0; i<6; i++) {   // new humidity model wood nodes
-							moistureFile << attic.moistureContent[i] << "\t" << attic.mTotal[i] << "\t";
+							moistureFile << moisture_nodes.moistureContent[i] << "\t" << moisture_nodes.mTotal[i] << "\t";
 							}
 						for(int i=6; i<MOISTURE_NODES-1; i++) {   // new humidty model air nodes
-							moistureFile << attic.moistureContent[i] << "\t";
+							moistureFile << moisture_nodes.moistureContent[i] << "\t";
 							}
-						moistureFile << attic.moistureContent[MOISTURE_NODES-1] << "\t" << tempSupply - C_TO_K << "\t" << tempReturn - C_TO_K << "\t";
-						moistureFile << HRReturn << "\t" << HRHouse << "\t" << HRSupply << "\t" << capacityc << "\t" << evapcap << endl;
+						moistureFile << moisture_nodes.moistureContent[MOISTURE_NODES-1] << "\t" << tempSupply - C_TO_K << "\t" << tempReturn - C_TO_K << "\t";
+						moistureFile << HRReturn1 << "\t" << HRHouse1 << "\t" << HRSupply1 << "\t" << capacityc << "\t" << evapcap << endl;
 					}
 			
 					// ================================= WRITING Filter Loading DATA FILE =================================
@@ -3441,9 +3450,9 @@ int main(int argc, char *argv[], char* envp[])
 				// Sheathing surfaces are Sensitive (1) and bulk wood is Very Sensitive (0)
 				// Should these be using minute or avg hourly data?
 				/*
-				moldIndex_South = sub_moldIndex(1, moldIndex_South, b[3], attic.PW[0], Time_decl_South); //South Roof Sheathing Surface Node						
-				moldIndex_North = sub_moldIndex(1, moldIndex_North, b[1], attic.PW[1], Time_decl_North); //North Roof Sheathing Surface Node
-				moldIndex_BulkFraming = sub_moldIndex(0, moldIndex_BulkFraming, b[5], attic.PW[2], Time_decl_Bulk); //Bulk Attic Framing Surface Node
+				moldIndex_South = sub_moldIndex(1, moldIndex_South, b[3], moisture_nodes.PW[0], Time_decl_South); //South Roof Sheathing Surface Node						
+				moldIndex_North = sub_moldIndex(1, moldIndex_North, b[1], moisture_nodes.PW[1], Time_decl_North); //North Roof Sheathing Surface Node
+				moldIndex_BulkFraming = sub_moldIndex(0, moldIndex_BulkFraming, b[5], moisture_nodes.PW[2], Time_decl_Bulk); //Bulk Attic Framing Surface Node
 				*/
 			}        // end of hour loop
 		}           // end of day loop
