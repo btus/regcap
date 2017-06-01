@@ -288,7 +288,7 @@ int main(int argc, char *argv[], char* envp[])
 		double RHind70 = 0; //index value (0 or 1) if RHhouse > 70 
 		double RHtot70 = 0; //cumulative sum of index value (0 or 1) if RHhouse > 70
 		double RHexcAnnual70 = 0; //annual fraction of the year where RHhouse > 70
-		double RHHouse = 50;  
+		double RHHouse = 50, RHAttic = 50;  
 		double latitude;
 		double longitude;
 		int timeZone;
@@ -303,16 +303,12 @@ int main(int argc, char *argv[], char* envp[])
 				return 1; 
 			}
 
-			moistureFile << "atticRH\tretRH\tsupRH\thouseRH\tmassRH";
-			for(int i=0; i<6; i++) {
-				moistureFile << "\t" << "MC" << i << "\tmTotal" << i;
-				}
-			for(int i=6; i<MOISTURE_NODES; i++) {
-				moistureFile << "\t" << "MC" << i;
-				}
-			moistureFile << "\tTSupply\tTReturn\tHRReturn\tHRHouse\tHRSupply\tcapcityc\tevapcap" << endl;
-			//moistureFile << "HROUT\tHRattic\tHRreturn\tHRsupply\tHRhouse\tHRmaterials\tRH%house\tRHind60\tRHind70" << endl;
-			//moistureFile << "HR_Attic\tHR_Return\tHR_Supply\tHR_House\tHR_Materials" << endl; This is the old format.
+			if(moistureModel == 1)
+				for(int i=0; i<6; i++) {
+					moistureFile << "MC" << i << "\tmTotal" << i << "\t";
+					}
+			moistureFile << "HROut\tHRHouse\tHRAttic\tHRSupply\tHRReturn\t";
+			moistureFile << "RHHouse\tRHAttic\tTempHouse\ttempAttic" << endl;
 		}
 
 		// [START] Read in Building Inputs =========================================================================================================================
@@ -1088,7 +1084,6 @@ int main(int argc, char *argv[], char* envp[])
 
 		vector<double> averageTemp (0);	// Array to track the 7 day running average
 		double HRAttic = 0.008, HRReturn = 0.008, HRHouse = 0.008, HRSupply = 0.008;
-		double HRAttic1 = 0.008, HRReturn1 = 0.008, HRHouse1 = 0.008, HRSupply1 = 0.008;
 
 		//Variables Brennan added for Temperature Controlled Smart Ventilation.
 		double dailyCumulativeTemp = 0;
@@ -3096,34 +3091,28 @@ int main(int argc, char *argv[], char* envp[])
 					// setting "old" temps for next timestep to be current temps:
 					// [START] Moisture Balance ===================================================================================================================================
 
-					// Call attic moisture balance
-					double mRetOut = mFanCycler + mHRV_AH + mERV_AH;
-					moisture_nodes.mass_cond_bal(b, weather.dryBulb, weather.relativeHumidity,
+					if(moistureModel == 1) {
+						// Call moisture balance
+						double mRetOut = mFanCycler + mHRV_AH + mERV_AH;
+						moisture_nodes.mass_cond_bal(b, weather.dryBulb, weather.relativeHumidity,
 						airDensityOUT, airDensityATTIC, airDensityIN, airDensitySUP, airDensityRET,
 						weather.pressure, H4, H2, H6, matticenvin, matticenvout, mCeiling, mHouseIN, mHouseOUT,
 						mAH, mRetAHoff, mRetLeak, mRetReg, mRetOut, mSupAHoff, mSupLeak, mSupReg,
 						latcap, dh.condensate, latentLoad);
 
-					// Call moisture subroutine
-					sub_moisture(HR, M1, M12, M15, M16, Mw5, matticenvout, mCeiling, mSupAHoff, mRetAHoff,
-						matticenvin, weather.humidityRatio, mSupLeak, mAH, mRetReg, mRetLeak, mSupReg, latcap, mHouseIN, mHouseOUT,
-						latentLoad, mFanCycler, mHRV_AH, mERV_AH, ERV_TRE, MWha, airDensityIN, airDensityOUT, dh.condensate);
-
-					HRAttic1 = calcHumidityRatio(moisture_nodes.PW[6],weather.pressure);
-					HRReturn1 = calcHumidityRatio(moisture_nodes.PW[7],weather.pressure);  
-					HRSupply1 = calcHumidityRatio(moisture_nodes.PW[8],weather.pressure);
-					HRHouse1 = calcHumidityRatio(moisture_nodes.PW[9],weather.pressure);  
-
-
-
-					if(moistureModel == 1) {
-						HRAttic = HRAttic1;
-						HRReturn = HRReturn1;
-						HRSupply = HRSupply1;
-						HRHouse = HRHouse1;
-						RHHouse = moisture_nodes.moistureContent[9];  
+						HRAttic = calcHumidityRatio(moisture_nodes.PW[6],weather.pressure);
+						HRReturn = calcHumidityRatio(moisture_nodes.PW[7],weather.pressure);  
+						HRSupply = calcHumidityRatio(moisture_nodes.PW[8],weather.pressure);
+						HRHouse = calcHumidityRatio(moisture_nodes.PW[9],weather.pressure);  
+						RHHouse = moisture_nodes.moistureContent[9];
+						RHAttic = moisture_nodes.moistureContent[6];
 						}
 					else {
+						// Call moisture subroutine
+						sub_moisture(HR, M1, M12, M15, M16, Mw5, matticenvout, mCeiling, mSupAHoff, mRetAHoff,
+							matticenvin, weather.humidityRatio, mSupLeak, mAH, mRetReg, mRetLeak, mSupReg, latcap, mHouseIN, mHouseOUT,
+							latentLoad, mFanCycler, mHRV_AH, mERV_AH, ERV_TRE, MWha, airDensityIN, airDensityOUT, dh.condensate);
+
 						//Calculate Saturation Humidity Ratio, Equation 23 in ASHRAE HoF
 						double SatVaporPressure = saturationVaporPressure(tempHouse);
 						double HRsaturation = calcHumidityRatio(SatVaporPressure, weather.pressure); 
@@ -3132,6 +3121,8 @@ int main(int argc, char *argv[], char* envp[])
 						if(HR[3] > HRsaturation) // Previously set by Iain to 0.02. Here we've replaced it with the saturation humidity ratio (Ws).
 							HR[3] = HRsaturation; //consider adding calculate saturation humidity ratio by indoor T and Pressure and lmit HR[3] to that.
 						RHHouse = 100 * ((weather.pressure*(HR[3]/0.621945))/(1+(HR[3]/0.621945)) / SatVaporPressure);
+						SatVaporPressure = saturationVaporPressure(tempAttic);
+						RHAttic = 100 * ((weather.pressure*(HR[0]/0.621945))/(1+(HR[0]/0.621945)) / SatVaporPressure);
 						HRAttic = HR[0];
 						HRReturn = HR[1];
 						HRSupply = HR[2];
@@ -3384,21 +3375,12 @@ int main(int argc, char *argv[], char* envp[])
 					//File column names, for reference.
 					//moistureFile << "HROUT\tHRattic\tHRreturn\tHRsupply\tHRhouse\tHRmaterials\tRH%house\tRHind60\tRHind70" << endl;
 					if(printMoistureFile) {
-						//moistureFile << weather.humidityRatio << "\t" << HR[0] << "\t" << HR[1] << "\t" << HR[2] << "\t" << HR[3] << "\t" << HR[4] << "\t" << RHhouse << "\t" << RHind60 << "\t" << RHind70 << endl;
-						int HRtoT[5] = {0, 11, 14, 15, 12};  // map humidity nodes to temp nodes
-						for(int n=0; n < 5; n++) {   // old humidity model nodes
-							double pws = saturationVaporPressure(b[HRtoT[n]]);
-							double RH = 100 * ((weather.pressure * (HR[n] / 0.621945)) / (1 + (HR[n] / 0.621945)) / pws);
-							moistureFile << RH << "\t";
-							}
-						for(int i=0; i<6; i++) {   // new humidity model wood nodes
-							moistureFile << moisture_nodes.moistureContent[i] << "\t" << moisture_nodes.mTotal[i] << "\t";
-							}
-						for(int i=6; i<MOISTURE_NODES-1; i++) {   // new humidty model air nodes
-							moistureFile << moisture_nodes.moistureContent[i] << "\t";
-							}
-						moistureFile << moisture_nodes.moistureContent[MOISTURE_NODES-1] << "\t" << tempSupply - C_TO_K << "\t" << tempReturn - C_TO_K << "\t";
-						moistureFile << HRReturn1 << "\t" << HRHouse1 << "\t" << HRSupply1 << "\t" << capacityc << "\t" << evapcap << endl;
+						if(moistureModel == 1)
+							for(int i=0; i<6; i++) {   // new humidity model wood nodes
+								moistureFile << moisture_nodes.moistureContent[i] << "\t" << moisture_nodes.mTotal[i] << "\t";
+								}
+						moistureFile << weather.humidityRatio << "\t" << HRHouse << "\t" << HRAttic << "\t" << HRSupply << "\t" << HRReturn << "\t";
+						moistureFile << RHHouse << "\t" << RHAttic << "\t" << tempHouse - C_TO_K << "\t" << tempAttic - C_TO_K << endl;
 					}
 			
 					// ================================= WRITING Filter Loading DATA FILE =================================
