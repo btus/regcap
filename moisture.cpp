@@ -19,6 +19,7 @@ using namespace std;
  * @param floorArea - conditioned floor area (m2)
  * @param atticArea - attic area (m2)
  * @param roofPitch - roof pitch (degrees)
+ * @param ERV_TRE - ERV total recovery efficiency (fraction)
  * @param mcInit - initial wood moisture content (fraction - optional)
  *
  * The nodes are (0-5 wood, 6-10 air/mass):
@@ -112,7 +113,8 @@ Moisture::Moisture(double atticVolume, double retVolume, double supVolume, doubl
  * @param mRetOff - air mass flow through return with AH off (kg/s)
  * @param mRetLeak - air mass flow through return leaks (kg/s)
  * @param mRetReg - air mass flow through return register (kg/s)
- * @param mRetOut - air mass flow into return from outside (kg/s)
+ * @param mRetOut - air mass flow into return from outside due to HRV/ERV/Fan Cycler (kg/s)
+ * @param mErvHouse - ERV mass flow rate from house (kg/s)
  * @param mSupOff - air mass flow through supply with AH off (kg/s)
  * @param mSupLeak - air mass flow through supply leaks (kg/s)
  * @param mSupReg - air mass flow through supply register (kg/s)
@@ -124,7 +126,7 @@ void Moisture::mass_cond_bal(double* node_temps, double tempOut, double RHOut,
                   double airDensityOut, double airDensityAttic, double airDensityHouse, double airDensitySup, double airDensityRet,
                   int pressure, double hU0, double hU1, double hU2,
                   double mAtticIn, double mAtticOut, double mCeiling, double mHouseIn, double mHouseOut,
-                  double mAH, double mRetAHoff, double mRetLeak, double mRetReg, double mRetOut,
+                  double mAH, double mRetAHoff, double mRetLeak, double mRetReg, double mRetOut, double mErvHouse,
                   double mSupAHoff, double mSupLeak, double mSupReg, double latcap, double dhMoistRemv, double latload)
                                    {
 	const double LEWIS23 = pow(0.919, 2.0/3.0);	// Lewis number for air and water vapor from ASHRAE 1989 p5-9 to the 2/3rds power
@@ -238,16 +240,16 @@ void Moisture::mass_cond_bal(double* node_temps, double tempOut, double RHOut,
 
 	//NODE 7 IS RETURN DUCT AIR
 	xn7t = volume[7] / RWATER / temperature[7] / timeStep;
-	xn7o = volume[7] * PWOld[7] / RWATER / temperature[7] / timeStep + mRetOut * PWOut / RWATER / tempOut / airDensityOut;
+	xn7o = volume[7] * PWOld[7] / RWATER / temperature[7] / timeStep - mRetOut * PWOut / RWATER / tempOut / airDensityOut;
 	if(mCeiling < 0) {
 		xn7c = (mAH - mRetAHoff) / RWATER / temperature[7] / airDensityRet;
 		xn76 = mRetLeak / RWATER / temperature[6] / airDensityAttic;
-		xn79 = (mRetReg + mRetAHoff) / RWATER / temperature[9] / airDensityHouse;
+		xn79 = (mRetReg + mRetAHoff + mErvHouse) / RWATER / temperature[9] / airDensityHouse;
 		}
 	else {
 		xn7c = (mAH + mRetAHoff) / RWATER / temperature[7] / airDensityRet;
 		xn76 = (mRetLeak - mRetAHoff) / RWATER / temperature[6] / airDensityAttic;
-		xn79 = mRetReg / RWATER / temperature[9] / airDensityHouse;
+		xn79 = (mRetReg + mErvHouse) / RWATER / temperature[9] / airDensityHouse;
 		}
 	A[7][6] = xn76;
 	A[7][7] = xn7t + xn7c;

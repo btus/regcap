@@ -984,7 +984,7 @@ int main(int argc, char *argv[], char* envp[])
 		double hcap;				// Heating capacity of furnace (or gas burned by furnace)
 		double mHRV =0;			// Mass flow of stand-alone HRV unit
 		double mHRV_AH = 0;		// Mass flow of HRV unit integrated with the Air Handler
-		double mERV_AH = 0;		// Mass flow of stand-alone ERV unit
+		double mERV_AH = 0;		// Mass flow of ERV unit integrated with the Air Handler
 		double fanHeat;
 		double ventSumIN;				// Sum of all ventilation flows into house
 		double ventSumOUT;			// Sum of all ventilation flows out from house
@@ -3093,11 +3093,11 @@ int main(int argc, char *argv[], char* envp[])
 
 					if(moistureModel == 1) {
 						// Call moisture balance
-						double mRetOut = mFanCycler + mHRV_AH + mERV_AH;
+						double mRetOut = mFanCycler + mHRV_AH + mERV_AH * (1 - ERV_TRE);
 						moisture_nodes.mass_cond_bal(b, weather.dryBulb, weather.relativeHumidity,
 						airDensityOUT, airDensityATTIC, airDensityIN, airDensitySUP, airDensityRET,
 						weather.pressure, H4, H2, H6, matticenvin, matticenvout, mCeiling, mHouseIN, mHouseOUT,
-						mAH, mRetAHoff, mRetLeak, mRetReg, mRetOut, mSupAHoff, mSupLeak, mSupReg,
+						mAH, mRetAHoff, mRetLeak, mRetReg, mRetOut, mERV_AH * ERV_TRE, mSupAHoff, mSupLeak, mSupReg,
 						latcap, dh.condensate, latentLoad);
 
 						HRAttic = calcHumidityRatio(moisture_nodes.PW[6],weather.pressure);

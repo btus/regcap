@@ -44,7 +44,7 @@ class Moisture {
                double airDensityOut, double airDensityAttic, double airDensityHouse, double airDensitySup, double airDensityRet,
                int pressure, double hU0, double hU1, double hU2,
                double mAtticIn, double mAtticOut, double mCeiling, double mHouseIn, double mHouseOut,
-               double mAH, double mRetAHoff, double mRetLeak, double mRetReg, double mRetOut,
+               double mAH, double mRetAHoff, double mRetLeak, double mRetReg, double mRetOut, double mErvHouse,
                double mSupAHoff, double mSupLeak, double mSupReg, double latcap, double dhMoistRemv, double latload);
 };
 
