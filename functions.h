@@ -185,10 +185,6 @@ void sub_heat (
 	double& retLength,
 	double& supLength,
 	int& roofType,
-	double& M1,
-	double& M12,
-	double& M15,
-	double& M16,
 	double& roofRval,
 	double& rceil,
 	int& AHflag, 
@@ -209,39 +205,10 @@ void sub_heat (
 	double& airDensityRET,
 	int& numStories,
 	double& storyHeight,
-	double dhSensibleGain
-);
-
-void sub_moisture ( 
-	double* HR, 
-	double& Mw1, 
-	double& Mw2, 
-	double& Mw3, 
-	double& Mw4, 
-	double& Mw5, 
-	double& matticenvout, 
-	double& mCeiling, 
-	double& mSupAHoff, 
-	double& mRetAHoff, 
-	double& matticenvin, 
-	double& HROUT, 
-	double& mSupLeak, 
-	double& mAH, 
-	double& mRetReg, 
-	double& mRetLeak, 
-	double& mSupReg, 
-	double& latcap, 
-	double& mHouseIN, 
-	double& mHouseOUT, 
-	double& latentLoad, 
-	double& mFanCycler, 
-	double& mHRV_AH,
-	double& mERV_AH, 
-	double& ERV_TRE,
-	double& MWha,
-	double& airDensityIN,
-	double& airDensityOUT,
-	double dhMoistureRemoved
+	double dhSensibleGain,
+	double& H2,
+	double& H4,
+	double& H6
 );
 
 void sub_houseLeak ( 
