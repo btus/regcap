@@ -105,7 +105,6 @@ int main(int argc, char *argv[], char* envp[])
 	double atticMCInit = config.pDouble("atticMCInit");			// initial moisture content of attic wood (fraction)
 	double dhDeadBand = config.pDouble("dhDeadBand");				// Dehumidifier dead band (+/- %RH)
 	double cCapAdjustTime = config.pDouble("cCapAdjustTime");	// First minute adjustment of cooling capacity (fraction)
-	double moistureModel = config.pDouble("moistureModel");
 
 	// Simulation Batch Timing
 	time_t startTime, endTime;
@@ -146,7 +145,6 @@ int main(int argc, char *argv[], char* envp[])
 		double mechVentPower;
 		double b[ATTIC_NODES];
 		double tempOld[ATTIC_NODES];
-		double HR[5];		
 		double heatThermostat[24];
 		double coolThermostat[24];
 		int occupied[2][24];	    // Used for setting which hours of the weekday/weekend the house is occupied (1) or vacant (0)
@@ -303,10 +301,9 @@ int main(int argc, char *argv[], char* envp[])
 				return 1; 
 			}
 
-			if(moistureModel == 1)
-				for(int i=0; i<6; i++) {
-					moistureFile << "MC" << i << "\tmTotal" << i << "\t";
-					}
+			for(int i=0; i<6; i++) {
+				moistureFile << "MC" << i << "\tmTotal" << i << "\t";
+				}
 			moistureFile << "HROut\tHRHouse\tHRAttic\tHRSupply\tHRReturn\t";
 			moistureFile << "RHHouse\tRHAttic\tTempHouse\ttempAttic" << endl;
 		}
@@ -570,7 +567,6 @@ int main(int argc, char *argv[], char* envp[])
 		double supVolume = (pow(supDiameter, 2) * M_PI / 4) * supLength;			// Volume of supply ducts [m3]
 		double retVolume = (pow(retDiameter, 2) * M_PI / 4) * retLength;			// Volume of return ducts [m3]
 		hcapacity = hcapacity * .29307107 * 1000 * AFUE;			// Heating capacity of furnace converted from kBtu/hr to Watts and with AFUE adjustment
-		double MWha = .5 * floorArea / 186;							// MWha is the moisture transport coefficient that scales with floor area (to scale with surface area of moisture)
 					
 		// [START] Filter Loading ==================================================================================
 
@@ -736,13 +732,6 @@ int main(int argc, char *argv[], char* envp[])
 			outputFile << "Time\tMin\twindSpeed\ttempOut\ttempHouse\tsetpoint\ttempAttic\ttempSupply\ttempReturn\tAHflag\tAHpower\tcompressPower\tmechVentPower\tHR\tSHR\tMcoil\thousePress\tQhouse\tACH\tACHflue\tventSum\tnonRivecVentSum\tfan1\tfan2\tfan3\tfan4\tfan5\tfan6\tfan7\trivecOn\trelExp\trelDose\toccupied\tHROUT\tHRattic\tHRreturn\tHRsupply\tHRhouse\tHRmaterials\tRHhouse\tRHind60\tRHind70\tHumidityIndex\tDHcondensate\tPollutantConc" << endl; 
 		}
 		
-		// 5 HR nodes
-		// Node 1 is attic air (Node HR[0])
-		// Node 2 is return air (Node HR[1])
-		// Node 3 is supply air (Node HR[2])
-		// Node 4 is house air (Node HR[3])
-		// Node 5 is house materials that interact with house air only (Node HR[4])
-
 		// ================== OPEN WEATHER FILE FOR INPUT ========================================
 		ifstream weatherFile(weatherFileName);
 		if(!weatherFile) { 
@@ -817,15 +806,6 @@ int main(int argc, char *argv[], char* envp[])
 		double tempReturn = tempOld[11];
 		double tempSupply = tempOld[14];
 		double tempHouse = tempOld[15];
-
-		// Setting initial values of air mass for moisture balance:
-		double M1 = atticVolume * airDensityRef;		// Mass of attic air
-		double M12 = retVolume * airDensityRef;		// Mass of return air
-		double M15 = supVolume * airDensityRef;		// Mass of supply air
-		double M16 = houseVolume * airDensityRef;		// Mass of house air
-		double Mw5 = 60 * floorArea;						// Active mass containing moisture in the house (empirical)
-
-		// Like the mass transport coefficient, the active mass for moisture scales with floor area
 
 		// The following are defined for RIVEC ==============================================================================================================
 		// Start and end times for the RIVEC base, peak and recovery periods [h]
@@ -1278,12 +1258,6 @@ int main(int argc, char *argv[], char* envp[])
 					// Assumes operation of dryer and kitchen fans, then 1 - 3 bathroom fans
 					fanScheduleFile >> dryerFan >> kitchenFan >> bathOneFan >> bathTwoFan >> bathThreeFan;
 
-					if(minuteYear == 1) {				// Setting initial humidity conditions
-						for(int i = 0; i < 5; i++) {
-							HR[i] = weather.humidityRatio;
-						}
-					}
-
 					// Calculate air densities
 					airDensityOUT = airDensityRef * airTempRef / weather.dryBulb;		// Outside Air Density
 					airDensityIN = airDensityRef * airTempRef / tempHouse;		// Inside Air Density
@@ -1512,7 +1486,7 @@ int main(int argc, char *argv[], char* envp[])
 // 						Indoor and Outdoor sensor based control. 
 // 						if(HumContType == 2){
 // 							if(RHhouse >= 55){ //Engage increased or decreased ventilation only if house RH is >60 (or 55% maybe?). 
-// 								if(weather.humidityRatio > HR[3]){ //do not want to vent. Add some "by what amount" deadband value. 
+// 								if(weather.humidityRatio > HRHouse){ //do not want to vent. Add some "by what amount" deadband value. 
 // 									if(relExp >= 2.5 || relDose > 1.0){ //have to with high exp
 // 										rivecOn = 1;
 // 									} else { //otherwise off
@@ -1538,7 +1512,7 @@ int main(int argc, char *argv[], char* envp[])
 // 						Indoor and Outdoor sensor based control. 
 // 						if(HumContType == 3){							
 // 							if(RHhouse >= 55){ //Engage increased or decreased ventilation only if house RH is >60 (or 55% maybe?). 
-// 								if(weather.humidityRatio > HR[3]){ //do not want to vent. Add some "by what amount" deadband value. 
+// 								if(weather.humidityRatio > HRHouse){ //do not want to vent. Add some "by what amount" deadband value. 
 // 									if(AHflag == 2){
 // 										rivecOn = 1;
 // 									} else
@@ -1567,8 +1541,8 @@ int main(int argc, char *argv[], char* envp[])
 // 						Indoor and Outdoor sensor based control. 
 // 						if(HumContType == 4) {
 // 							if(RHhouse >= 55) {
-// 								if(weather.humidityRatio > HR[3]){ //More humid outside than inside, want to under-vent.  
-// 									relExpTarget = 1 + (2.5-1) * abs((HR[3]-weather.humidityRatio) / (wDiffMaxNeg)); //wDiffMax has to be an avergaed value, because in a real-world controller you would not know this. 
+// 								if(weather.humidityRatio > HRHouse){ //More humid outside than inside, want to under-vent.  
+// 									relExpTarget = 1 + (2.5-1) * abs((HRHouse-weather.humidityRatio) / (wDiffMaxNeg)); //wDiffMax has to be an avergaed value, because in a real-world controller you would not know this. 
 // 									if(relExpTarget > 2.5){
 // 										relExpTarget = 2.5;
 // 									}
@@ -1578,7 +1552,7 @@ int main(int argc, char *argv[], char* envp[])
 // 										rivecOn = 0;
 // 									}
 // 								} else { // More humid inside than outside, want to over-vent
-// 									relExpTarget = 1 - abs((HR[3]- weather.humidityRatio) / (wDiffMaxPos));
+// 									relExpTarget = 1 - abs((HRHouse- weather.humidityRatio) / (wDiffMaxPos));
 // 									if(relExpTarget < 0){
 // 										relExpTarget = 0;
 // 									}
@@ -1601,8 +1575,8 @@ int main(int argc, char *argv[], char* envp[])
 // 						Indoor and Outdoor sensor based control.
 // 						if(HumContType == 5) { 
 // 							if(RHhouse >= 55) {
-// 								if(weather.humidityRatio > HR[3]) { //More humid outside than inside, want to under-vent.  
-// 									relExpTarget = 1 + (2.5-1) * abs((HR[3]-weather.humidityRatio) / (wDiffMaxNeg)); //wDiffMax has to be an avergaed value, because in a real-world controller you would not know this. 
+// 								if(weather.humidityRatio > HRHouse) { //More humid outside than inside, want to under-vent.  
+// 									relExpTarget = 1 + (2.5-1) * abs((HRHouse-weather.humidityRatio) / (wDiffMaxNeg)); //wDiffMax has to be an avergaed value, because in a real-world controller you would not know this. 
 // 									if(relExpTarget > 2.5) {
 // 										relExpTarget = 2.5;
 // 									}
@@ -1614,7 +1588,7 @@ int main(int argc, char *argv[], char* envp[])
 // 										rivecOn = 0;
 // 									}
 // 								} else { // More humid inside than outside, want to over-vent
-// 									relExpTarget = 1 - abs((HR[3]- weather.humidityRatio) / (wDiffMaxPos));
+// 									relExpTarget = 1 - abs((HRHouse- weather.humidityRatio) / (wDiffMaxPos));
 // 									if(relExpTarget < 0) {
 // 										relExpTarget = 0;
 // 									}
@@ -1654,7 +1628,7 @@ int main(int argc, char *argv[], char* envp[])
 // 						Fixed control + cooling system tie-in + Monthly Seasonal Control.		   				
 // 						Indoor and Outdoor sensor based control.
 // 						if(HumContType == 7) { 
-// 							if(weather.humidityRatio > HR[3]) { //do not want to vent. 
+// 							if(weather.humidityRatio > HRHouse) { //do not want to vent. 
 // 								if(AHflag == 2) {
 // 									rivecOn = 1;
 // 								} else if(relExp >= 2.5 || relDose > HiDose) { 
@@ -1674,7 +1648,7 @@ int main(int argc, char *argv[], char* envp[])
 // 						Fixed control + cooling system tie-in + Monthly Seasonal Control.		   				
 // 						Indoor and Outdoor sensor based control.
 // 						if(HumContType == 7) { 
-// 							if(weather.humidityRatio > HR[3]) { //do not want to vent. 
+// 							if(weather.humidityRatio > HRHouse) { //do not want to vent. 
 // 								if(RHhouse >= 55){
 // 								if(AHflag == 2) {
 // 									rivecOn = 1;
@@ -1732,7 +1706,7 @@ int main(int argc, char *argv[], char* envp[])
 // 						Fixed control + Monthly Seasonal Control.		   				
 // 						Indoor and Outdoor sensor based control.
 // 						if(HumContType == 9) { 
-// 							if(weather.humidityRatio > HR[3]) { //do not want to vent. Add some "by what amount" deadband value. 
+// 							if(weather.humidityRatio > HRHouse) { //do not want to vent. Add some "by what amount" deadband value. 
 // 								if(relExp >= 2.5 || relDose > HiDose) { //have to with high exp 0.61
 // 									rivecOn = 1;
 // 								} else { //otherwise off
@@ -1750,7 +1724,7 @@ int main(int argc, char *argv[], char* envp[])
 // 						Fixed control + Monthly Seasonal Control.		   				
 // 						Indoor and Outdoor sensor based control.
 // 						if(HumContType == 9) { 
-// 							if(weather.humidityRatio > HR[3]) { //do not want to vent. Add some "by what amount" deadband value. 
+// 							if(weather.humidityRatio > HRHouse) { //do not want to vent. Add some "by what amount" deadband value. 
 // 								if(RHhouse >= 55) {
 // 								if(relExp >= 2.5 || relDose > HiDose) { //have to with high exp 0.61
 // 									rivecOn = 1;
@@ -1899,7 +1873,7 @@ int main(int argc, char *argv[], char* envp[])
 // 							if(month == HiMonths[0] || month == HiMonths[1]  || month == HiMonths[2] ||
 // 								month == LowMonths[0] || month == LowMonths[1]  || month == LowMonths[2]) {
 // 								doseTargetTmp = HiMonthDose;
-// 								if(weather.humidityRatio > HR[3]) { //do not want to vent. Add some "by what amount" deadband value. 
+// 								if(weather.humidityRatio > HRHouse) { //do not want to vent. Add some "by what amount" deadband value. 
 // 									if(AHflag == 2) {
 // 										rivecOn = 1;
 // 									} else if(relExp >= 2.5 || relDose > LowMonthDose) { //have to with high exp
@@ -1915,7 +1889,7 @@ int main(int argc, char *argv[], char* envp[])
 // 									}
 // 								}
 // 							} else {
-// 								if(weather.humidityRatio > HR[3]) { //do not want to vent. Add some "by what amount" deadband value. 
+// 								if(weather.humidityRatio > HRHouse) { //do not want to vent. Add some "by what amount" deadband value. 
 // 									if(AHflag == 2) {
 // 										rivecOn = 1;
 // 									} else if(relExp >= 2.5 || relDose > 1.5) { //have to with high exp
@@ -1940,7 +1914,7 @@ int main(int argc, char *argv[], char* envp[])
 // 							if(month == HiMonths[0] || month == HiMonths[1]  || month == HiMonths[2] || 
 // 								month == LowMonths[0] || month == LowMonths[1]  || month == LowMonths[2]) {
 // 								doseTargetTmp = HiMonthDose;
-// 								if(weather.humidityRatio > HR[3]) { //do not want to vent. Add some "by what amount" deadband value. 
+// 								if(weather.humidityRatio > HRHouse) { //do not want to vent. Add some "by what amount" deadband value. 
 // 									if(relExp >= 2.5 || relDose > LowMonthDose) { //have to with high exp
 // 										rivecOn = 1;
 // 									} else { //otherwise off
@@ -1954,7 +1928,7 @@ int main(int argc, char *argv[], char* envp[])
 // 									}
 // 								}
 // 							} else {
-// 								if(weather.humidityRatio > HR[3]) { //do not want to vent. Add some "by what amount" deadband value. 
+// 								if(weather.humidityRatio > HRHouse) { //do not want to vent. Add some "by what amount" deadband value. 
 // 									if(relExp >= 2.5 || relDose > 1.5) { //have to with high exp
 // 										rivecOn = 1;
 // 									} else { //otherwise off
@@ -3072,7 +3046,7 @@ int main(int argc, char *argv[], char* envp[])
 							retDiameter, supArea, retArea, supThickness, retThickness, supVolume, retVolume, supCp, retCp, supVel, retVel, suprho,
 							retrho, weather.pressure, weather.humidityRatio, uaSolAir, uaTOut, matticenvin, matticenvout, mHouseIN, mHouseOUT, planArea, mSupAHoff,
 							mRetAHoff, solgain, tsolair, mFanCycler, roofPeakHeight, eaveHeight, retLength, supLength,
-							roofType, M1, M12, M15, M16, roofRval, rceil, AHflag, mERV_AH, ERV_SRE, mHRV, HRV_ASE, mHRV_AH,
+							roofType, roofRval, rceil, AHflag, mERV_AH, ERV_SRE, mHRV, HRV_ASE, mHRV_AH,
 							capacityc, capacityh, evapcap, internalGains, airDensityIN, airDensityOUT, airDensityATTIC, airDensitySUP, airDensityRET, numStories, storyHeight,
 							dh.sensible, H2, H4, H6);
 
@@ -3091,52 +3065,26 @@ int main(int argc, char *argv[], char* envp[])
 					// setting "old" temps for next timestep to be current temps:
 					// [START] Moisture Balance ===================================================================================================================================
 
-					if(moistureModel == 1) {
-						// Call moisture balance
-						double mRetOut = mFanCycler + mHRV_AH + mERV_AH * (1 - ERV_TRE);
-						moisture_nodes.mass_cond_bal(b, weather.dryBulb, weather.relativeHumidity,
+					// Call moisture balance
+					double mRetOut = mFanCycler + mHRV_AH + mERV_AH * (1 - ERV_TRE);
+					moisture_nodes.mass_cond_bal(b, weather.dryBulb, weather.relativeHumidity,
 						airDensityOUT, airDensityATTIC, airDensityIN, airDensitySUP, airDensityRET,
 						weather.pressure, H4, H2, H6, matticenvin, matticenvout, mCeiling, mHouseIN, mHouseOUT,
 						mAH, mRetAHoff, mRetLeak, mRetReg, mRetOut, mERV_AH * ERV_TRE, mSupAHoff, mSupLeak, mSupReg,
 						latcap, dh.condensate, latentLoad);
 
-						HRAttic = calcHumidityRatio(moisture_nodes.PW[6],weather.pressure);
-						HRReturn = calcHumidityRatio(moisture_nodes.PW[7],weather.pressure);  
-						HRSupply = calcHumidityRatio(moisture_nodes.PW[8],weather.pressure);
-						HRHouse = calcHumidityRatio(moisture_nodes.PW[9],weather.pressure);  
-						RHHouse = moisture_nodes.moistureContent[9];
-						RHAttic = moisture_nodes.moistureContent[6];
-						}
-					else {
-						// Call moisture subroutine
-						sub_moisture(HR, M1, M12, M15, M16, Mw5, matticenvout, mCeiling, mSupAHoff, mRetAHoff,
-							matticenvin, weather.humidityRatio, mSupLeak, mAH, mRetReg, mRetLeak, mSupReg, latcap, mHouseIN, mHouseOUT,
-							latentLoad, mFanCycler, mHRV_AH, mERV_AH, ERV_TRE, MWha, airDensityIN, airDensityOUT, dh.condensate);
-
-						//Calculate Saturation Humidity Ratio, Equation 23 in ASHRAE HoF
-						double SatVaporPressure = saturationVaporPressure(tempHouse);
-						double HRsaturation = calcHumidityRatio(SatVaporPressure, weather.pressure); 
-						if(HR[1] == 0)
-							HR[1] = weather.humidityRatio;
-						if(HR[3] > HRsaturation) // Previously set by Iain to 0.02. Here we've replaced it with the saturation humidity ratio (Ws).
-							HR[3] = HRsaturation; //consider adding calculate saturation humidity ratio by indoor T and Pressure and lmit HR[3] to that.
-						RHHouse = 100 * ((weather.pressure*(HR[3]/0.621945))/(1+(HR[3]/0.621945)) / SatVaporPressure);
-						SatVaporPressure = saturationVaporPressure(tempAttic);
-						RHAttic = 100 * ((weather.pressure*(HR[0]/0.621945))/(1+(HR[0]/0.621945)) / SatVaporPressure);
-						HRAttic = HR[0];
-						HRReturn = HR[1];
-						HRSupply = HR[2];
-						HRHouse = HR[3];
-						}
+					HRAttic = calcHumidityRatio(moisture_nodes.PW[6],weather.pressure);
+					HRReturn = calcHumidityRatio(moisture_nodes.PW[7],weather.pressure);  
+					HRSupply = calcHumidityRatio(moisture_nodes.PW[8],weather.pressure);
+					HRHouse = calcHumidityRatio(moisture_nodes.PW[9],weather.pressure);  
+					RHHouse = moisture_nodes.moistureContent[9];
+					RHAttic = moisture_nodes.moistureContent[6];
 
 					// [END] Moisture Balance =======================================================================================================================================
 
 					for(int i = 0; i < ATTIC_NODES; i++) {
 						tempOld[i]  = b[i];
 						}
-						
-						
-		
 
 					// ************** house ventilation rate  - what would be measured with a tracer gas i.e., not just envelope and vent fan flows
 					// mIN has msupreg added in mass balance calculations and mRetLeak contributes to house ventilation rate
@@ -3360,12 +3308,12 @@ int main(int argc, char *argv[], char* envp[])
 					if(printOutputFile) {
 						outputFile << hour << "\t" << minuteYear << "\t" << weather.windSpeed << "\t" << weather.dryBulb << "\t" << tempHouse << "\t" << setpoint << "\t";
 						outputFile << tempAttic << "\t" << tempSupply << "\t" << tempReturn << "\t" << AHflag << "\t" << AHfanPower << "\t";
-						outputFile << compressorPower << "\t" << mechVentPower << "\t" << HR[3] * 1000 << "\t" << SHR << "\t" << Mcoil << "\t";
+						outputFile << compressorPower << "\t" << mechVentPower << "\t" << HRHouse * 1000 << "\t" << SHR << "\t" << Mcoil << "\t";
 						outputFile << Pint << "\t"<< qHouse << "\t" << houseACH << "\t" << flueACH << "\t" << ventSum << "\t" << nonRivecVentSum << "\t";
 						outputFile << fan[0].on << "\t" << fan[1].on << "\t" << fan[2].on << "\t" << fan[3].on << "\t" << fan[4].on << "\t" << fan[5].on << "\t" << fan[6].on << "\t";
 						outputFile << rivecOn << "\t" << relExp << "\t" << relDose << "\t";
 						outputFile << occupied[weekend][hour] << "\t"; 
-						outputFile << weather.humidityRatio << "\t" << HR[0] << "\t" << HR[1] << "\t" << HR[2] << "\t" << HR[3] << "\t" << HR[4] << "\t" << RHHouse << "\t" << RHind60 << "\t" << RHind70 << "\t" << HumidityIndex << "\t" << dh.condensate << "\t" << indoorConc << endl;
+						outputFile << weather.humidityRatio << "\t" << HRAttic << "\t" << HRReturn << "\t" << HRSupply << "\t" << HRHouse << "\t" << RHHouse << "\t" << RHind60 << "\t" << RHind70 << "\t" << HumidityIndex << "\t" << dh.condensate << "\t" << indoorConc << endl;
 						//outputFile << mHouse << "\t" << mHouseIN << "\t" << mHouseOUT << "\t" << mIN << "\t" << mOUT << "\t" << mCeiling << "\t" << mSupReg << "\t" << mSupAHoff << "\t" << mRetAHoff << "\t" << mRetReg << "\t" << mFanCycler << "\t" << mFlue << "\t" << mFloor << "\t" << mAH << endl;
 						//outputFile << mHouse << "\t" << mHouseIN << "\t" << mHouseOUT << mCeiling << "\t" << mHouseIN << "\t" << mHouseOUT << "\t" << mSupReg << "\t" << mRetReg << "\t" << mSupAHoff << "\t" ;
 						//outputFile << mRetAHoff << "\t" << mHouse << "\t"<< flag << "\t"<< AIM2 << "\t" << AEQaim2FlowDiff << "\t" << qFanFlowRatio << "\t" << C << endl; //Breann/Yihuan added these for troubleshooting
@@ -3375,10 +3323,9 @@ int main(int argc, char *argv[], char* envp[])
 					//File column names, for reference.
 					//moistureFile << "HROUT\tHRattic\tHRreturn\tHRsupply\tHRhouse\tHRmaterials\tRH%house\tRHind60\tRHind70" << endl;
 					if(printMoistureFile) {
-						if(moistureModel == 1)
-							for(int i=0; i<6; i++) {   // new humidity model wood nodes
-								moistureFile << moisture_nodes.moistureContent[i] << "\t" << moisture_nodes.mTotal[i] << "\t";
-								}
+						for(int i=0; i<6; i++) {   // new humidity model wood nodes
+							moistureFile << moisture_nodes.moistureContent[i] << "\t" << moisture_nodes.mTotal[i] << "\t";
+							}
 						moistureFile << weather.humidityRatio << "\t" << HRHouse << "\t" << HRAttic << "\t" << HRSupply << "\t" << HRReturn << "\t";
 						moistureFile << RHHouse << "\t" << RHAttic << "\t" << tempHouse - C_TO_K << "\t" << tempAttic - C_TO_K << endl;
 					}
