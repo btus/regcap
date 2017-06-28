@@ -353,10 +353,6 @@ void sub_heat (
 	double& retLength,
 	double& supLength,
 	int& roofType,
-	double& M1,
-	double& M12,
-	double& M15,
-	double& M16,
 	double& roofRval,
 	double& rceil,
 	int& AHflag, 
@@ -377,7 +373,10 @@ void sub_heat (
 	double& airDensityRET,
 	int& numStories,
 	double& storyHeight,
-	double dhSensibleGain
+	double dhSensibleGain,
+	double& H2,
+	double& H4,
+	double& H6
 ) {
 	
 	int rhoSheathing;
@@ -397,15 +396,15 @@ void sub_heat (
 	double PW;
 	double A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16;
 	double denShingles;
-	double M2, M3, M4, M5, M6, M7, M8, M9, M10, M11, M13, M14;
+	double M1, M2, M3, M4, M5, M6, M7, M8, M9, M10, M11, M12, M13, M14, M15, M16;
 	double cp1, cp2, cp3, cp4, cp5, cp6, cp7, cp8, cp9, cp10, cp11, cp12, cp13, cp14, cp15, cp16;
 	double kWood;
 	double kAir;
 	double muAir;
 	double Rshingles;
 	double Rval2, Rval3, Rval4, Rval5, Rval7, Rval8, Rval9, Rval10, Rval11, Rval14;
-	double u;
-	double H2, H3, H4, H5, H6, H7, H8, H9, H10, H11, H13, H14;
+	double characteristicVelocity;
+	double H3, H5, H7, H8, H9, H10, H11, H13, H14;
 	double HI11, HI14;
 	double F8t2, F8t4, F8t11, F8t14;
 	double F2t4, F2t8, F2t11, F2t14;
@@ -586,11 +585,11 @@ void sub_heat (
 	and it seemed to work for him*/
 
 	// Characteristic velocity
-	u = (matticenvin - matticenvout) / airDensityATTIC / AL4 / 4.0;
-	if(u == 0) {
-		u = abs(mCeiling) / 2 / airDensityATTIC / AL4 * 2 / 4.0;
-		if(u == 0)
-			u = .1;
+	characteristicVelocity = (matticenvin - matticenvout) / airDensityATTIC / AL4 / 4.0;
+	if(characteristicVelocity == 0) {
+		characteristicVelocity = abs(mCeiling) / 2 / airDensityATTIC / AL4 * 2 / 4.0;
+		if(characteristicVelocity == 0)
+			characteristicVelocity = .1;
 	}
 
 	// ITERATION OF TEMPERATURES WITHIN HEAT SUBROUTINE
@@ -606,30 +605,25 @@ void sub_heat (
 		
 		// reset array A to 0
 		if(heatIterations > 1) {
-//			for(int i=0; i < ATTIC_NODES; i++) {
-//				for(int j=0; j < ATTIC_NODES+1; j++) {
-//					A[i][j] = 0;
-//				}
-//			}
 			A.clear();
 			A.resize(ATTIC_NODES, vector<double>(ATTIC_NODES+1));
 		}
 
 		// convection heat transfer coefficients
 		// inner north sheathing
-		H2 = heatTranCoef(tempOld[1], tempOld[0], u);
+		H2 = heatTranCoef(tempOld[1], tempOld[0], characteristicVelocity);
 
 		// outer north sheathing
 		H3 = heatTranCoef(tempOld[2], tempOut, windSpeed);
 
 		// inner south sheathing
-		H4 = heatTranCoef(tempOld[3], tempOld[0], u);
+		H4 = heatTranCoef(tempOld[3], tempOld[0], characteristicVelocity);
 
 		// outer north sheathing
 		H5 = heatTranCoef(tempOld[4], tempOut, windSpeed);
 
 		// Wood (joists,truss,etc.)
-		H6 = heatTranCoef(tempOld[5], tempOld[0], u);
+		H6 = heatTranCoef(tempOld[5], tempOld[0], characteristicVelocity);
 
 		// Underside of Ceiling
 		// modified to use fixed numbers from ASHRAE Fundamentals ch.3 on 05/18/2000
@@ -643,10 +637,10 @@ void sub_heat (
 		H13 = H7;
 
 		// Attic Floor
-		H8 = heatTranCoef(tempOld[7], tempOld[0], u);
+		H8 = heatTranCoef(tempOld[7], tempOld[0], characteristicVelocity);
 
 		// Inner side of gable endwalls (lumped together)
-		H9 = heatTranCoef(tempOld[8], tempOld[0], u);
+		H9 = heatTranCoef(tempOld[8], tempOld[0], characteristicVelocity);
 
 		// Outer side of gable ends
 		//tfilm10 = (tempOld[9] + tempOut) / 2;
@@ -663,8 +657,8 @@ void sub_heat (
 				H14 = H11;
 			}
 		} else {
-			H11 = heatTranCoef(tempOld[10], tempOld[0], u);			// Outer Surface of Return Ducts
-			H14 = heatTranCoef(tempOld[13], tempOld[0], u);			// Outer Surface of Supply Ducts
+			H11 = heatTranCoef(tempOld[10], tempOld[0], characteristicVelocity);			// Outer Surface of Return Ducts
+			H14 = heatTranCoef(tempOld[13], tempOld[0], characteristicVelocity);			// Outer Surface of Supply Ducts
 		}
 
 		// Inner Surface of Ducts
@@ -915,7 +909,7 @@ void sub_heat (
 		A[12][6] = -hr7 * A7;
 		b[12] = M13 * cp13 * tempOld[12] / dtau + .95 * solgain;
 
-		// NODE 14
+		// NODE 14 Exterior Supply Duct Surface
 		b[13] = M14 * cp14 * tempOld[13] / dtau;
 		A[13][14] = -A15 / (Rval14 + 1 / HI14);
 		if(ductLocation == 1) {			// ducts in house
@@ -988,201 +982,6 @@ void sub_heat (
 		x[i] = b[i];
 		}
 }
-
-// void sub_moisture ( 
-// 	double* HR, 
-// 	double& Mw1, 
-// 	double& Mw2, 
-// 	double& Mw3, 
-// 	double& Mw4, 
-// 	double& Mw5, 
-// 	double& matticenvout, 
-// 	double& mCeiling, 
-// 	double& mSupAHoff, 
-// 	double& mRetAHoff, 
-// 	double& matticenvin, 
-// 	double& HROUT, 
-// 	double& mSupLeak, 
-// 	double& mAH, 
-// 	double& mRetReg, 
-// 	double& mRetLeak, 
-// 	double& mSupReg, 
-// 	double& latcap, 
-// 	double& mHouseIN, 
-// 	double& mHouseOUT, 
-// 	double& latentLoad, 
-// 	double& mFanCycler, 
-// 	double& mHRV_AH,
-// 	double& mERV_AH, 
-// 	double& ERV_TRE,
-// 	double& MWha,
-// 	double& airDensityIN,
-// 	double& airDensityOUT,
-// 	double dhMoistureRemoved
-// 	) {
-// 		double Q;
-// 		double R;
-// 		double hrold[5];
-// 
-// 		// 5 nodes
-// 		// Node 1 is attic air (Node HR[0])
-// 		// Node 2 is return air (Node HR[1])
-// 		// Node 3 is supply air (Node HR[2])
-// 		// Node 4 is house air (Node HR[3])
-// 		// Node 5 is house materials that interact with house air only (Node HR[4])
-// 		// this routine takes humidity ratios and mass flows and calculates W in each zone
-// 
-// 		for(int i=0; i < 5; i++) {
-// 			hrold[i] = HR[i];
-// 		}
-// 
-// 		// Node 1 - Attic Air
-// 		if(mCeiling >= 0) {
-// 			// flow from attic to house
-// 			Q = Mw1 / dtau - matticenvout - mRetLeak + mCeiling + mSupAHoff + mRetAHoff;
-// 			R = Mw1 * hrold[0] / dtau + matticenvin * HROUT + mSupLeak * hrold[2];
-// 		} else {
-// 			// flow from house to attic
-// 			Q = Mw1 / dtau - matticenvout - mRetLeak;
-// 			R = Mw1 * hrold[0] / dtau + matticenvin * HROUT + mSupLeak * hrold[2] - mCeiling * hrold[3] - mSupAHoff * hrold[2] - mRetAHoff * hrold[1];
-// 		}
-// 		HR[0] = R / Q;
-// 
-// 		// Node 2 - Return Air
-// 		if(mCeiling >= 0) { // flow from attic to house
-// 			Q = Mw2 / dtau + mAH + mRetAHoff;
-// 			R = Mw2 * hrold[1] / dtau - mRetLeak * hrold[0] + mRetAHoff * hrold[0] - mRetReg * hrold[3] - mFanCycler * HROUT - mERV_AH * ((1-ERV_TRE) * HROUT + ERV_TRE * hrold[3]) - mHRV_AH * HROUT; 
-// 		} else { // flow from house to attic
-// 			Q = Mw2 / dtau - mRetAHoff + mAH;
-// 			R = Mw2 * hrold[1] / dtau - mRetAHoff * hrold[3] - mRetLeak * hrold[0] - mRetReg * hrold[3] - mFanCycler * HROUT - mERV_AH * ((1-ERV_TRE) * HROUT + ERV_TRE * hrold[3]) - mHRV_AH * HROUT;
-// 		}
-// 		HR[1] = R / Q;
-// 
-// 		// Node 3 - Supply Air
-// 		if(mCeiling >= 0) { // flow from attic to house
-// 			Q = Mw3 / dtau + mSupLeak + mSupReg + mSupAHoff;
-// 			R = Mw3 * hrold[2] / dtau + mAH * hrold[1] + mSupAHoff * hrold[0] - latcap / 2501000;
-// 		} else { // flow from house to attic
-// 			Q = Mw3 / dtau + mSupLeak + mSupReg - mSupAHoff;
-// 			R = Mw3 * hrold[2] / dtau + mAH * hrold[1] - mSupAHoff * hrold[3] - latcap / 2501000;
-// 		}
-// 		HR[2] = R / Q;
-// 
-// 		// Node 4 - House Air
-// 		if(mCeiling >= 0) { // flow from attic to house
-// 			Q = Mw4 / dtau - mHouseOUT - mRetReg + MWha;
-// 			R = Mw4 * hrold[3] / dtau + mHouseIN * HROUT + mSupReg * hrold[2] + mCeiling * hrold[0] + mSupAHoff * hrold[2] + mRetAHoff * hrold[1] + latentLoad + MWha * hrold[4] - dhMoistureRemoved;
-// 		} else { // flow from house to attic
-// 			Q = Mw4 / dtau - mHouseOUT - mRetReg - mCeiling - mSupAHoff - mRetAHoff + MWha;
-// 			R = Mw4 * hrold[3] / dtau + mHouseIN * HROUT + mSupReg * hrold[2] + latentLoad + MWha * hrold[4] - dhMoistureRemoved;
-// 		}
-// 		HR[3] = R / Q;
-// 
-// 		// Node 5 - House furnishings/storage
-// 		Q = Mw5 / dtau + MWha;
-// 		R = Mw5 * hrold[4] / dtau + MWha * hrold[3];
-// 		HR[4] = R / Q;
-// 		
-// }
-
-
-void sub_moisture ( 
-	double* HR, 
-	double& Mw1, 
-	double& Mw2, 
-	double& Mw3, 
-	double& Mw4, 
-	double& Mw5, 
-	double& matticenvout, 
-	double& mCeiling, 
-	double& mSupAHoff, 
-	double& mRetAHoff, 
-	double& matticenvin, 
-	double& HROUT, 
-	double& mSupLeak, 
-	double& mAH, 
-	double& mRetReg, 
-	double& mRetLeak, 
-	double& mSupReg, 
-	double& latcap, 
-	double& mHouseIN, 
-	double& mHouseOUT, 
-	double& latentLoad, 
-	double& mFanCycler, 
-	double& mHRV_AH,
-	double& mERV_AH, 
-	double& ERV_TRE,
-	double& MWha,
-	double& airDensityIN,
-	double& airDensityOUT,
-	double dhMoistureRemoved
-	) {
-		double Q;
-		double R;
-		double hrold[5];
-
-		// 5 nodes
-		// Node 1 is attic air (Node HR[0])
-		// Node 2 is return air (Node HR[1])
-		// Node 3 is supply air (Node HR[2])
-		// Node 4 is house air (Node HR[3])
-		// Node 5 is house materials that interact with house air only (Node HR[4])
-		// this routine takes humidity ratios and mass flows and calculates W in each zone
-
-		for(int i=0; i < 5; i++) {
-			hrold[i] = HR[i];
-		}
-
-		// Node 1 - Attic Air
-		if(mCeiling >= 0) {
-			// flow from attic to house
-			Q = Mw1 / dtau - matticenvout - mRetLeak + mCeiling + mSupAHoff + mRetAHoff;
-			R = Mw1 * hrold[0] / dtau + matticenvin * HROUT + mSupLeak * hrold[2];
-		} else {
-			// flow from house to attic
-			Q = Mw1 / dtau - matticenvout - mRetLeak;
-			R = Mw1 * hrold[0] / dtau + matticenvin * HROUT + mSupLeak * hrold[2] - mCeiling * hrold[3] - mSupAHoff * hrold[2] - mRetAHoff * hrold[1];
-		}
-		HR[0] = R / Q;
-
-		// Node 2 - Return Air
-		if(mCeiling >= 0) { // flow from attic to house
-			Q = Mw2 / dtau + mAH + mRetAHoff;
-			R = Mw2 * hrold[1] / dtau - mRetLeak * HR[0] + mRetAHoff * HR[0] - mRetReg * hrold[3] - mFanCycler * HROUT - mERV_AH * ((1-ERV_TRE) * HROUT + ERV_TRE * hrold[3]) - mHRV_AH * HROUT; 
-		} else { // flow from house to attic
-			Q = Mw2 / dtau - mRetAHoff + mAH;
-			R = Mw2 * hrold[1] / dtau - mRetAHoff * hrold[3] - mRetLeak * HR[0] - mRetReg * hrold[3] - mFanCycler * HROUT - mERV_AH * ((1-ERV_TRE) * HROUT + ERV_TRE * hrold[3]) - mHRV_AH * HROUT;
-		}
-		HR[1] = R / Q;
-
-		// Node 3 - Supply Air
-		if(mCeiling >= 0) { // flow from attic to house
-			Q = Mw3 / dtau + mSupLeak + mSupReg + mSupAHoff;
-			R = Mw3 * hrold[2] / dtau + mAH * HR[1] + mSupAHoff * HR[0] - latcap / 2501000; //Brennan swapped out old- for current-values. hrold[1] -> HR[1]
-		} else { // flow from house to attic
-			Q = Mw3 / dtau + mSupLeak + mSupReg - mSupAHoff;
-			R = Mw3 * hrold[2] / dtau + mAH * HR[1] - mSupAHoff * hrold[3] - latcap / 2501000;
-		}
-		HR[2] = R / Q;
-
-		// Node 4 - House Air
-		if(mCeiling >= 0) { // flow from attic to house
-			Q = Mw4 / dtau - mHouseOUT - mRetReg + MWha;
-			R = Mw4 * hrold[3] / dtau + mHouseIN * HROUT + mSupReg * HR[2] + mCeiling * HR[0] + mSupAHoff * HR[2] + mRetAHoff * HR[1] + latentLoad + MWha * hrold[4] - dhMoistureRemoved;
-		} else { // flow from house to attic
-			Q = Mw4 / dtau - mHouseOUT - mRetReg - mCeiling - mSupAHoff - mRetAHoff + MWha;
-			R = Mw4 * hrold[3] / dtau + mHouseIN * HROUT + mSupReg * HR[2] + latentLoad + MWha * hrold[4] - dhMoistureRemoved;
-		}
-		HR[3] = R / Q;
-
-		// Node 5 - House furnishings/storage
-		Q = Mw5 / dtau + MWha;
-		R = Mw5 * hrold[4] / dtau + MWha * HR[3];
-		HR[4] = R / Q;
-		
-}	
-
-
 
 
 void sub_houseLeak (
@@ -2385,7 +2184,7 @@ void f_atticFanFlow(fan_struct& atticFan, double& airDensityOUT, double& airDens
 * From Walker (1993) eqn 3-41, 3-55
 * @param tempi - surface temperature (deg K)
 * @param tempa - air temperature (deg K)
-* @param flow velocity - (m/s)
+* @param velocity - air velocity (m/s)
 * @return heat transfer coefficient (W/m2K)
 */
 

@@ -32,9 +32,8 @@ double saturationVaporPressure(double temp) {
 	}
 }
 
-double calcHumidityRatio(double dewpoint, double pressure) {
-	double pws = saturationVaporPressure(dewpoint);
-	return 0.621945 * (pws / (pressure - pws));
+double calcHumidityRatio(double pw, double pressure) {
+	return 0.621945 * (pw / (pressure - pw));
 }
 
 double KtoF(double degK) {
