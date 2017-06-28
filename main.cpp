@@ -729,7 +729,7 @@ int main(int argc, char *argv[], char* envp[])
 				cout << "Cannot open output file: " << outputFileName << endl;
 				return 1; 
 			}
-			outputFile << "Time\tMin\twindSpeed\ttempOut\ttempHouse\tsetpoint\ttempAttic\ttempSupply\ttempReturn\tAHflag\tAHpower\tcompressPower\tmechVentPower\tHR\tSHR\tMcoil\thousePress\tQhouse\tACH\tACHflue\tventSum\tnonRivecVentSum\tfan1\tfan2\tfan3\tfan4\tfan5\tfan6\tfan7\trivecOn\trelExp\trelDose\toccupied\tHROUT\tHRattic\tHRreturn\tHRsupply\tHRhouse\tHRmaterials\tRHhouse\tRHind60\tRHind70\tHumidityIndex\tDHcondensate\tPollutantConc" << endl; 
+			outputFile << "Time\tMin\twindSpeed\ttempOut\ttempHouse\tsetpoint\ttempAttic\ttempSupply\ttempReturn\tAHflag\tAHpower\tcompressPower\tmechVentPower\tHR\tSHR\tMcoil\thousePress\tQhouse\tACH\tACHflue\tventSum\tnonRivecVentSum\tfan1\tfan2\tfan3\tfan4\tfan5\tfan6\tfan7\trivecOn\trelExp\trelDose\toccupied\tHROUT\tHRattic\tHRreturn\tHRsupply\tHRhouse\tRHhouse\tRHind60\tRHind70\tHumidityIndex\tDHcondensate\tPollutantConc\tmoldIndex_South\tmoldIndex_North\tmoldIndex_BulkFraming" << endl; 
 		}
 		
 		// ================== OPEN WEATHER FILE FOR INPUT ========================================
@@ -3313,7 +3313,7 @@ int main(int argc, char *argv[], char* envp[])
 						outputFile << fan[0].on << "\t" << fan[1].on << "\t" << fan[2].on << "\t" << fan[3].on << "\t" << fan[4].on << "\t" << fan[5].on << "\t" << fan[6].on << "\t";
 						outputFile << rivecOn << "\t" << relExp << "\t" << relDose << "\t";
 						outputFile << occupied[weekend][hour] << "\t"; 
-						outputFile << weather.humidityRatio << "\t" << HRAttic << "\t" << HRReturn << "\t" << HRSupply << "\t" << HRHouse << "\t" << RHHouse << "\t" << RHind60 << "\t" << RHind70 << "\t" << HumidityIndex << "\t" << dh.condensate << "\t" << indoorConc << endl;
+						outputFile << weather.humidityRatio << "\t" << HRAttic << "\t" << HRReturn << "\t" << HRSupply << "\t" << HRHouse << "\t" << RHHouse << "\t" << RHind60 << "\t" << RHind70 << "\t" << HumidityIndex << "\t" << dh.condensate << "\t" << indoorConc << "\t" << moldIndex_South << "\t" << moldIndex_North << "\t" << moldIndex_BulkFraming << endl;
 						//outputFile << mHouse << "\t" << mHouseIN << "\t" << mHouseOUT << "\t" << mIN << "\t" << mOUT << "\t" << mCeiling << "\t" << mSupReg << "\t" << mSupAHoff << "\t" << mRetAHoff << "\t" << mRetReg << "\t" << mFanCycler << "\t" << mFlue << "\t" << mFloor << "\t" << mAH << endl;
 						//outputFile << mHouse << "\t" << mHouseIN << "\t" << mHouseOUT << mCeiling << "\t" << mHouseIN << "\t" << mHouseOUT << "\t" << mSupReg << "\t" << mRetReg << "\t" << mSupAHoff << "\t" ;
 						//outputFile << mRetAHoff << "\t" << mHouse << "\t"<< flag << "\t"<< AIM2 << "\t" << AEQaim2FlowDiff << "\t" << qFanFlowRatio << "\t" << C << endl; //Breann/Yihuan added these for troubleshooting
@@ -3378,11 +3378,11 @@ int main(int argc, char *argv[], char* envp[])
 				// Mold Index Calculations per ASHRAE 160, BDL 12/2016
 				// Sheathing surfaces are Sensitive (1) and bulk wood is Very Sensitive (0)
 				// Should these be using minute or avg hourly data?
-				/*
+				
 				moldIndex_South = sub_moldIndex(1, moldIndex_South, b[3], moisture_nodes.PW[0], Time_decl_South); //South Roof Sheathing Surface Node						
 				moldIndex_North = sub_moldIndex(1, moldIndex_North, b[1], moisture_nodes.PW[1], Time_decl_North); //North Roof Sheathing Surface Node
 				moldIndex_BulkFraming = sub_moldIndex(0, moldIndex_BulkFraming, b[5], moisture_nodes.PW[2], Time_decl_Bulk); //Bulk Attic Framing Surface Node
-				*/
+
 			}        // end of hour loop
 		}           // end of day loop
 		//} while (weatherFile);			// Run until end of weather file
