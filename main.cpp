@@ -732,7 +732,8 @@ int main(int argc, char *argv[], char* envp[])
 				cout << "Cannot open output file: " << outputFileName << endl;
 				return 1; 
 			}
-			outputFile << "Time\tMin\twindSpeed\ttempOut\ttempHouse\tsetpoint\ttempAttic\ttempSupply\ttempReturn\tAHflag\tAHpower\tcompressPower\tmechVentPower\tHR\tSHR\tMcoil\thousePress\tQhouse\tACH\tACHflue\tventSum\tnonRivecVentSum\tfan1\tfan2\tfan3\tfan4\tfan5\tfan6\tfan7\trivecOn\trelExp\trelDose\toccupied\tHROUT\tHRattic\tHRreturn\tHRsupply\tHRhouse\tHRmaterials\tRHhouse\tRHind60\tRHind70\tHumidityIndex\tDHcondensate\tPollutantConc\tQ_total\tQ_attic" << endl; 
+			outputFile << "Time\tMin\twindSpeed\ttempOut\ttempHouse\tsetpoint\ttempAttic\ttempSupply\ttempReturn\tAHflag\tAHpower\tcompressPower\theatingPower\tmechVentPower\tHR\tSHR\tMcoil\thousePress\tQhouse\tACH\tACHflue\tventSum\tnonRivecVentSum\tfan1\tfan2\tfan3\tfan4\tfan5\tfan6\tfan7\trivecOn\trelExp\trelDose\toccupied\tHROUT\tHRattic\tHRreturn\tHRsupply\tHRhouse\tHRmaterials\tRHhouse\tRHind60\tRHind70\tHumidityIndex\tDHcondensate\tPollutantConc\tQ_total\tQ_attic\tmHouse\tmHouseIN\tmHouseOUT\tmIN\tmOUT\tmCeiling\tmSupReg\tmSupAHoff\tmRetAHoff\tmRetReg\tmFanCycler\tmFlue\tmFloor\tmAH\tmAtticIN\tmAtticOUT" << endl; 
+			//outputFile << "Time\tMin\twindSpeed\ttempOut\ttempHouse\tsetpoint\ttempAttic\ttempSupply\ttempReturn\tAHflag\tAHpower\tcompressPower\tmechVentPower\tHR\tSHR\tMcoil\thousePress\tQhouse\tACH\tACHflue\tventSum\tnonRivecVentSum\tfan1\tfan2\tfan3\tfan4\tfan5\tfan6\tfan7\trivecOn\trelExp\trelDose\toccupied\tHROUT\tHRattic\tHRreturn\tHRsupply\tHRhouse\tHRmaterials\tRHhouse\tRHind60\tRHind70\tHumidityIndex\tDHcondensate\tPollutantConc\tQ_total\tQ_attic";
 		}
 		
 		// 5 HR nodes
@@ -1269,6 +1270,11 @@ int main(int argc, char *argv[], char* envp[])
 						weather.windSpeed = 1;					// Wind speed is never zero
 					dailyCumulativeTemp = dailyCumulativeTemp + weather.dryBulb - C_TO_K;
 					tsolair = weather.dryBulb;
+					//BRENNAN REMOVE WEATHER VARIATION
+// 					weather.directNormal = 0.;
+// 					weather.globalHorizontal = 0.;
+// 					weather.dryBulb = 0 + C_TO_K;		// convert from C to K
+// 					weather.windSpeed = 0;
 
 					for(int k=0; k < 4; k++)			// Wind direction as a compass direction?
 						Sw[k] = pow(Swinit[k][weather.windDirection],2);		// store square of Sw to pass to attic_leak and house_leak
@@ -3204,9 +3210,9 @@ int main(int argc, char *argv[], char* envp[])
 					totalRelDose = totalRelDose + relDose;
 
 					if(OccContType > 2 && occupied[weekend][hour] == 0){ //unoccupied period AND occupancy SVC
-						totalRelExp = totalRelExp - relExp; //undo the addition.	
+						totalRelExp = totalRelExp - relExp; //undo the addition, do not count these values in the annual average.	
 						relDose = relDoseOld; //revert to prior time step value of relDose. relExp keeps being calculated in real-time.
-						totalRelDose = totalRelDose - relDose; //undo the addition
+						totalRelDose = totalRelDose - relDose; //undo the addition, do not count these values in the annual average.
 					}
 					
 					if(occupied[weekend][hour] == 1) { //house is occupied, then increment counter. 
@@ -3352,13 +3358,13 @@ int main(int argc, char *argv[], char* envp[])
 					if(printOutputFile) {
 						outputFile << hour << "\t" << minuteYear << "\t" << weather.windSpeed << "\t" << weather.dryBulb << "\t" << tempHouse << "\t" << setpoint << "\t";
 						outputFile << tempAttic << "\t" << tempSupply << "\t" << tempReturn << "\t" << AHflag << "\t" << AHfanPower << "\t";
-						outputFile << compressorPower << "\t" << mechVentPower << "\t" << HR[3] * 1000 << "\t" << SHR << "\t" << Mcoil << "\t";
+						outputFile << compressorPower << "\t" << hcap << "\t" << mechVentPower << "\t" << HR[3] * 1000 << "\t" << SHR << "\t" << Mcoil << "\t";
 						outputFile << Pint << "\t"<< qHouse << "\t" << houseACH << "\t" << flueACH << "\t" << ventSum << "\t" << nonRivecVentSum << "\t";
 						outputFile << fan[0].on << "\t" << fan[1].on << "\t" << fan[2].on << "\t" << fan[3].on << "\t" << fan[4].on << "\t" << fan[5].on << "\t" << fan[6].on << "\t";
 						outputFile << rivecOn << "\t" << relExp << "\t" << relDose << "\t";
 						outputFile << occupied[weekend][hour] << "\t"; 
-						outputFile << weather.humidityRatio << "\t" << HR[0] << "\t" << HR[1] << "\t" << HR[2] << "\t" << HR[3] << "\t" << HR[4] << "\t" << RHhouse << "\t" << RHind60 << "\t" << RHind70 << "\t" << HumidityIndex << "\t" << dh.condensate << "\t" << indoorConc << "\t" << Q_total << "\t" << Q_attic << endl;
-						//outputFile << mHouse << "\t" << mHouseIN << "\t" << mHouseOUT << "\t" << mIN << "\t" << mOUT << "\t" << mCeiling << "\t" << mSupReg << "\t" << mSupAHoff << "\t" << mRetAHoff << "\t" << mRetReg << "\t" << mFanCycler << "\t" << mFlue << "\t" << mFloor << "\t" << mAH << endl;
+						outputFile << weather.humidityRatio << "\t" << HR[0] << "\t" << HR[1] << "\t" << HR[2] << "\t" << HR[3] << "\t" << HR[4] << "\t" << RHhouse << "\t" << RHind60 << "\t" << RHind70 << "\t" << HumidityIndex << "\t" << dh.condensate << "\t" << indoorConc << "\t" << Q_total << "\t" << Q_attic << "\t";// endl;
+						outputFile << mHouse << "\t" << mHouseIN << "\t" << mHouseOUT << "\t" << mIN << "\t" << mOUT << "\t" << mCeiling << "\t" << mSupReg << "\t" << mSupAHoff << "\t" << mRetAHoff << "\t" << mRetReg << "\t" << mFanCycler << "\t" << mFlue << "\t" << mFloor << "\t" << mAH << "\t" << mAtticIN << "\t" << mAtticOUT << "\t" << Patticint << endl;
 						//outputFile << mHouse << "\t" << mHouseIN << "\t" << mHouseOUT << mCeiling << "\t" << mHouseIN << "\t" << mHouseOUT << "\t" << mSupReg << "\t" << mRetReg << "\t" << mSupAHoff << "\t" ;
 						//outputFile << mRetAHoff << "\t" << mHouse << "\t"<< flag << "\t"<< AIM2 << "\t" << AEQaim2FlowDiff << "\t" << qFanFlowRatio << "\t" << C << endl; //Breann/Yihuan added these for troubleshooting
 					}
