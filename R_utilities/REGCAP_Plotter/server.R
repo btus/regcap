@@ -3,7 +3,7 @@
 library(xts); library(dygraphs); library(data.table); library(lubridate)
 
 #increase max file upload to 160 mb
-options(shiny.maxRequestSize=160*1024^2) 
+options(shiny.maxRequestSize=600*1024^2)
 
 #colSelct takes a data object and a flexible number of column indexes, and returns a new data object including just those columns selected by the user. The dygraph plotting utility requires an entire data object, rather than selecting columns from existing object.
 
