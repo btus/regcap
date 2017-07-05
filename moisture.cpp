@@ -38,15 +38,17 @@ using namespace std;
 Moisture::Moisture(double atticVolume, double retVolume, double supVolume, double houseVolume, 
 						double floorArea, double atticArea, double roofPitch, double mcInit) {
    int pressure = 101325;		// 1 atmosphere
-   double woodThick = 0.015;  // should match what is set in sub_heat for now
+   double sheathThick = 0.015;  // Roof sheathing thickness (m). match what is set in sub_heat for now
+   double bulkThick = 0.038;    // Bulk wood thickness (m). this is low, should be .038 for 2x4 construction
+   double surfaceThick = 0.005; // Surface wood layer thickness (m)
 	double tempInit = airTempRef; // node initialization temperature (deg K)
 	double RHInit = 50;	// initial air RH (%)
 
    A.resize(MOISTURE_NODES, vector<double>(MOISTURE_NODES+1, 0));		// set size of equation vectors to number of nodes (A contains both)
    PW.resize(MOISTURE_NODES, 0);
-	deltaX[0] = woodThick / 2;                // distance between the centers of the surface and bulk wood layers. it is half the characteristic thickness of the wood member
+	deltaX[0] = sheathThick / 2;                // distance between the centers of the surface and inside wood layers. it is half the characteristic thickness of the wood member
 	deltaX[1] = deltaX[0];                    // same as for the other sheathing surface
-	deltaX[2] = .015;									// assume 1.5 cm as approximate wood half thickness - this is low, should be .038 for 2x4 construction
+	deltaX[2] = bulkThick / 2;
 	deltaX[3] = deltaX[0];
 	deltaX[4] = deltaX[1];
 	deltaX[5] = deltaX[2];
@@ -58,12 +60,12 @@ Moisture::Moisture(double atticVolume, double retVolume, double supVolume, doubl
 	area[4] = area[1];
 	area[5] = area[2];
 
-	volume[0] = area[0] * woodThick / 3;       // one third of sheathing volume is the volume of the surface layer for the sheathing
-	volume[1] = area[1] * woodThick / 3;
-	volume[2] = area[2] * .001;
-	volume[3] = 2 * volume[0];
-	volume[4] = 2 * volume[1];
-	volume[5] = 0.02 * area[2] - volume[2];	// this is close for 2x4 construction and may change a bit if 2x6 (I redid the calculations and for 2x4 this would be 0.017 but I dont think we can really justify that second significant digit!
+	volume[0] = area[0] * surfaceThick;
+	volume[1] = area[1] * surfaceThick;
+	volume[2] = area[2] * surfaceThick;  // was .001;
+	volume[3] = area[0] * sheathThick - volume[0];
+	volume[4] = area[1] * sheathThick - volume[1];
+	volume[5] = area[2] * sheathThick - volume[2]; // was: 0.02 * area[2] - volume[2];	// this is close for 2x4 construction and may change a bit if 2x6 (I redid the calculations and for 2x4 this would be 0.017 but I dont think we can really justify that second significant digit!
 	volume[6] = atticVolume;
 	volume[7] = retVolume;
 	volume[8] = supVolume;
