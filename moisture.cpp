@@ -298,11 +298,6 @@ void Moisture::mass_cond_bal(double* node_temps, double tempOut, double RHOut,
 	A[9][9] = xn9t + xn9c;
 	A[9][10] = xn910;
 	PWInit[9] = xn9o;
-	//double t1 = volume[9] * PWOld[9] / RWATER / temperature[9] / timeStep;
-	//double t2 = mHouseIn / RWATER / tempOut / airDensityOut;
-	//cout << xn9t << "," << xn9o << "," << xn98 << "," << xn9c << "," << xn96 << "," << xn97 << "," << xn98 << "," << t2 << "," << t2 << "," << dhMoistRemv << "," << latload << endl;
-	//cout << xn9o << "," << t1 << "," << t2 << "," << dhMoistRemv << "," << latload << endl;
-	//cout << "Node 9:" << xn96 << "," << xn97 << "," << xn98 << "," << A[9][9] << "," << xn910 << "," << xn9o << endl;
 
 	//NODE 10 IS HOUSE MASS
 	xn10t = massWHouse / pressure / timeStep + haHouse / pressure;
@@ -311,20 +306,11 @@ void Moisture::mass_cond_bal(double* node_temps, double tempOut, double RHOut,
 	A[10][9] = xn109;
 	A[10][10] = xn10t;
 	PWInit[10] = xn10o;
-	// << "Node10:" << xn109 << "," << xn10t << "," << xn10o << endl;
 
    for (int i=0; i<MOISTURE_NODES; i++) {
        A[i][MOISTURE_NODES] = PWInit[i];
        }
-   
-	//cout << "Matrix:" << endl;
-	//print_matrix(A);
    PW = gauss(A);
-	//cout << "PW,";
-	//for(int i=0; i<MOISTURE_NODES; i++) {
-	//	cout << PW[i] << ",";
-	//	}
-	//cout << endl;
 	
 	// once the attic moisture nodes have been calculated assuming no condensation (as above)
 	// then we call cond_bal to check for condensation and redo the calculations if necessasry

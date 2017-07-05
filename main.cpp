@@ -955,8 +955,6 @@ int main(int argc, char *argv[], char* envp[])
 		int compTime = 0;
 		int compTimeCount = 0;
 		int rivecOn = 0;		   // 0 (off) or 1 (on) for RIVEC devices
-		int mainIterations;
-		int ERRCODE = 0;
 		int hcFlag = 1;         // Start with HEATING (simulations start in January)
 
 		weatherData weather;		// current minute of weather data
@@ -1011,8 +1009,6 @@ int main(int argc, char *argv[], char* envp[])
 		double chargecapw = 0;
 		double chargeeerw = 0;
 		double Mcoilprevious = 0;
-		double mCeilingOld;
-		double limit;
 		double matticenvout = 0;
 		double mCeiling = 0;
 		//double mretahaoff;
@@ -1030,7 +1026,6 @@ int main(int argc, char *argv[], char* envp[])
 		double Patticint = 0;
 		double mAtticIN = 0;
 		double mAtticOUT = 0;
-		double TSKY = 0;
 		double mHouse = 0;
 		double qHouse = 0;
 		double houseACH = 0;
@@ -3002,34 +2997,34 @@ int main(int argc, char *argv[], char* envp[])
 					// [END] Equipment Model ======================================================================================================================================
 
 					// [START] Heat and Mass Transport ==============================================================================================================================
-					mCeilingOld = -1000;														// inital guess
-					mainIterations = 0;
-					limit = envC / 10;
-					if(limit < .00001)
-						limit = .00001;
+					double mCeilingOld = -1000;														// inital guess
+					double mCeilingLimit = envC / 10;
+					if(mCeilingLimit < .00001)
+						mCeilingLimit = .00001;
 
 					// Ventilation and heat transfer calculations
+					int mainIterations = 0;
 					while(1) {
 						mainIterations = mainIterations + 1;	// counting # of temperature/ventilation iterations
-						int flag = 0;
+						int leakIterations = 0;
 
 						while(1) {
 							// Call houseleak subroutine to calculate air flow. Brennan added the variable mCeilingIN to be passed to the subroutine. Re-add between mHouseIN and mHouseOUT
-							sub_houseLeak(AHflag, flag, weather.windSpeed, weather.windDirection, tempHouse, tempAttic, weather.dryBulb, envC, envPressureExp, eaveHeight,
+							sub_houseLeak(AHflag, leakIterations, weather.windSpeed, weather.windDirection, tempHouse, tempAttic, weather.dryBulb, envC, envPressureExp, eaveHeight,
 								leakFracCeil, leakFracFloor, leakFracWall, numFlues, flue, wallFraction, floorFraction, Sw, flueShelterFactor, numWinDoor, winDoor, numFans, fan, numPipes,
 								Pipe, mIN, mOUT, Pint, mFlue, mCeiling, mFloor, atticC, dPflue, Crawl,
 								Hfloor, rowHouse, soffitFraction, Patticint, wallCp, mSupReg, mAH, mRetLeak, mSupLeak,
 								mRetReg, mHouseIN, mHouseOUT, supC, supn, retC, retn, mSupAHoff, mRetAHoff, airDensityIN, airDensityOUT, airDensityATTIC, houseVolume, windPressureExp);
 							//Yihuan : put the mCeilingIN on comment 
-							flag = flag + 1;
+							leakIterations = leakIterations + 1;
 
-							if(abs(mCeilingOld - mCeiling) < limit || flag > 5)
+							if(abs(mCeilingOld - mCeiling) < mCeilingLimit || leakIterations > 5)
 								break;
 							else
 								mCeilingOld = mCeiling;
 
 							// call atticleak subroutine to calculate air flow to/from the attic
-							sub_atticLeak(flag, weather.windSpeed, weather.windDirection, tempHouse, weather.dryBulb, tempAttic, atticC, atticPressureExp, eaveHeight, roofPeakHeight,
+							sub_atticLeak(leakIterations, weather.windSpeed, weather.windDirection, tempHouse, weather.dryBulb, tempAttic, atticC, atticPressureExp, eaveHeight, roofPeakHeight,
 								flueShelterFactor, Sw, numAtticVents, atticVent, soffit, mAtticIN, mAtticOUT, Patticint, mCeiling, rowHouse,
 								soffitFraction, roofPitch, roofPeakPerpendicular, numAtticFans, atticFan, mSupReg, mRetLeak, mSupLeak, matticenvin,
 								matticenvout, mSupAHoff, mRetAHoff, airDensityIN, airDensityOUT, airDensityATTIC);
@@ -3041,11 +3036,11 @@ int main(int argc, char *argv[], char* envp[])
 						//bsize = sizeof(b)/sizeof(b[0]);
 
 						// Call heat subroutine to calculate heat exchange
-						sub_heat(weather.dryBulb, mCeiling, AL4, weather.windSpeed, ssolrad, nsolrad, tempOld, atticVolume, houseVolume, weather.skyCover, b, ERRCODE, TSKY,
+						sub_heat(weather.dryBulb, mCeiling, AL4, weather.windSpeed, ssolrad, nsolrad, tempOld, atticVolume, houseVolume, weather.skyCover, b,
 							floorArea, roofPitch, ductLocation, mSupReg, mRetReg, mRetLeak, mSupLeak, mAH, supRval, retRval, supDiameter,
 							retDiameter, supArea, retArea, supThickness, retThickness, supVolume, retVolume, supCp, retCp, supVel, retVel, suprho,
 							retrho, weather.pressure, weather.humidityRatio, uaSolAir, uaTOut, matticenvin, matticenvout, mHouseIN, mHouseOUT, planArea, mSupAHoff,
-							mRetAHoff, solgain, tsolair, mFanCycler, roofPeakHeight, eaveHeight, retLength, supLength,
+							mRetAHoff, solgain, tsolair, mFanCycler, roofPeakHeight, retLength, supLength,
 							roofType, roofRval, rceil, AHflag, mERV_AH, ERV_SRE, mHRV, HRV_ASE, mHRV_AH,
 							capacityc, capacityh, evapcap, internalGains, airDensityIN, airDensityOUT, airDensityATTIC, airDensitySUP, airDensityRET, numStories, storyHeight,
 							dh.sensible, H2, H4, H6);

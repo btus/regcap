@@ -139,8 +139,6 @@ void sub_heat (
 	double& houseVolume, 
 	double& sc, 
 	double* b,
-	int& ERRCODE, 
-	double& TSKY, 
 	double& floorArea, 
 	double& roofPitch, 
 	double& ductLocation, 
@@ -180,8 +178,6 @@ void sub_heat (
 	double& tsolair, 
 	double& mFanCycler, 
 	double& roofPeakHeight, 
-	double& h, 
-	//double& Whouse,
 	double& retLength,
 	double& supLength,
 	int& roofType,
@@ -213,7 +209,7 @@ void sub_heat (
 
 void sub_houseLeak ( 
 	int& AHflag,
-	int& flag, 
+	int& leakIterations, 
 	double& U, 
 	int& windAngle, 
 	double& tempHouse, 
@@ -221,7 +217,7 @@ void sub_houseLeak (
 	double& tempOut, 
 	double& envC, 
 	double& n, 
-	double& h, 
+	double& eaveHeight, 
 	double leakFracCeil, 
 	double leakFracFloor,
 	double leakFracWall, 
@@ -275,7 +271,7 @@ void sub_houseLeak (
 );
 
 void sub_atticLeak ( 
-	int& flag, 
+	int& leakIterations, 
 	double& U, 
 	int& windAngle, 
 	double& tempHouse, 
@@ -283,7 +279,7 @@ void sub_atticLeak (
 	double& tempAttic, 
 	double& atticC, 
 	double& atticPressureExp, 
-	double& h, 
+	double& eaveHeight, 
 	double& roofPeakHeight, 
 	double& flueShelterFactor, 
 	double* Sw, 
