@@ -562,9 +562,9 @@ void sub_heat (
 	Uval3 = Uval2;
 	Uval4 = Uval2;
 	Uval5 = Uval2;
-	//if(tempOld[15] > tempOld[0])
-	//	Uval7 = 1 / ceilRval + 0.015;
-	//else
+	if(tempOld[15] > tempOld[0])
+		Uval7 = 1 / ceilRval + 0.015;
+	else
 		Uval7 = 1 / ceilRval;
 	Uval8 = Uval7;
 	Uval9 = 1 / gableEndRval;
@@ -575,12 +575,12 @@ void sub_heat (
 	// I think that the following may be an imperical relationship
 	// Return Ducts
 	HI11 = .023 * kAir / retDiameter * pow((retDiameter * airDensityRET * abs(retVel) / muAir), .8) * pow((CpAir * muAir / kAir), .4);
-	//if(HI11 <= 0) ??
+	//if(HI11 <= 0) ?? will never be negative
 	//	HI11 = H11;
 
 	// Supply Ducts
 	HI14 = .023 * kAir / supDiameter * pow((supDiameter * airDensitySUP * supVel / muAir), .8) * pow((CpAir * muAir / kAir), .4);
-	//if(HI14 <= 0) ??
+	//if(HI14 <= 0) ?? will never be negative
 	//	HI14 = H14;
 	Uval11 = 1 / (retRval + 1/HI11);
 	Uval14 = 1 / (supRval + 1/HI14);
