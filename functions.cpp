@@ -349,8 +349,10 @@ void sub_heat (
 	double& retLength,
 	double& supLength,
 	int& roofType,
-	double& roofRval,
-	double& rceil,
+	double roofExtRval,
+	double roofIntRval,
+	double ceilRval,
+	double gableEndRval,
 	int& AHflag, 
 	double& mERV_AH,
 	double& ERV_SRE,
@@ -397,7 +399,7 @@ void sub_heat (
 	double kAir;
 	double muAir;
 	double Rshingles;
-	double Rval2, Rval3, Rval4, Rval5, Rval7, Rval8, Rval9, Rval10, Rval11, Rval14;
+	double Uval2, Uval3, Uval4, Uval5, Uval7, Uval8, Uval9, Uval10, Uval11, Uval14;
 	double characteristicVelocity;
 	double H3, H5, H7, H8, H9, H10, H11, H13, H14;
 	double HI11, HI14;
@@ -555,25 +557,33 @@ void sub_heat (
 	kAir = 1.5207e-11 * pow(tempOld[15],3) - 4.8574e-8 * pow(tempOld[15],2) + 1.0184e-4 * tempOld[15] - 0.00039333;
 	muAir = 0.000018462;										// Dynamic viscosity of air (mu) [kg/ms] Make temperature dependent  (this value at 300K)
 
-	// changed to account for cathedralized attics
-	if(roofRval == 0) {
-		Rval2 = (woodThickness / kWood) + Rshingles;
-	} else {
-		Rval2 = roofRval + Rshingles;
-	}
+	// R-values
+	Uval2 = 1 / ((woodThickness / kWood) + Rshingles + roofExtRval);
+	Uval3 = Uval2;
+	Uval4 = Uval2;
+	Uval5 = Uval2;
+	//if(tempOld[15] > tempOld[0])
+	//	Uval7 = 1 / ceilRval + 0.015;
+	//else
+		Uval7 = 1 / ceilRval;
+	Uval8 = Uval7;
+	Uval9 = 1 / gableEndRval;
+	Uval10 = Uval9;
+	// Inner Surface of Ducts
+	// from Holman   Nu(D) = 0.023*Re(D)^0.8*Pr(D)^0.4
+	// Note Use of HI notation
+	// I think that the following may be an imperical relationship
+	// Return Ducts
+	HI11 = .023 * kAir / retDiameter * pow((retDiameter * airDensityRET * abs(retVel) / muAir), .8) * pow((CpAir * muAir / kAir), .4);
+	//if(HI11 <= 0) ??
+	//	HI11 = H11;
 
-	Rval3 = Rval2;
-	Rval4 = Rval2;
-	Rval5 = Rval2;
-	Rval7 = rceil;												// EFFECTIVE THERMAL RESISTANCE OF CEILING
-	Rval8 = Rval7;
-
-	Rval9 = 2.3;												// rvalue of insulated gable end walls
-	//Rval9 = .5;												// rvalue of uninsulated gable end walls
-
-	Rval10 = Rval9;
-	Rval11 = retRval;
-	Rval14 = supRval;
+	// Supply Ducts
+	HI14 = .023 * kAir / supDiameter * pow((supDiameter * airDensitySUP * supVel / muAir), .8) * pow((CpAir * muAir / kAir), .4);
+	//if(HI14 <= 0) ??
+	//	HI14 = H14;
+	Uval11 = 1 / (retRval + 1/HI11);
+	Uval14 = 1 / (supRval + 1/HI14);
 
 	/* most of the surfaces in the attic undergo both natural and forced convection
 	the overall convection is determined by the forced and natural convection coefficients
@@ -657,19 +667,6 @@ void sub_heat (
 			H14 = heatTranCoef(tempOld[13], tempOld[0], characteristicVelocity);			// Outer Surface of Supply Ducts
 		}
 
-		// Inner Surface of Ducts
-		// from Holman   Nu(D) = 0.023*Re(D)^0.8*Pr(D)^0.4
-		// Note Use of HI notation
-		// I think that the following may be an imperical relationship
-		// Return Ducts
-		HI11 = .023 * kAir / retDiameter * pow((retDiameter * airDensityRET * abs(retVel) / muAir), .8) * pow((CpAir * muAir / kAir), .4);
-		if(HI11 <= 0)
-			HI11 = H11;
-
-		// Supply Ducts
-		HI14 = .023 * kAir / supDiameter * pow((supDiameter * airDensitySUP * supVel / muAir), .8) * pow((CpAir * muAir / kAir), .4);
-		if(HI14 <= 0)
-			HI14 = H14;
 
 		// Radiation shape factors
 		/* Only 5 nodes (2,4,8,11,14) are involved in radiation transfer in the attic
@@ -792,9 +789,9 @@ void sub_heat (
 
 		// NODE 2 IS INSIDE NORTH SHEATHING
 		A[1][0] = -H2 * A2;
-		A[1][1] = M2 * cp2 / dtau + H2 * A2 + A2 / Rval2 + HR2t4 * A2 + HR2t8 * A2;
+		A[1][1] = M2 * cp2 / dtau + H2 * A2 + A2 * Uval2 + HR2t4 * A2 + HR2t8 * A2;
 		b[1] = M2 * cp2 * tempOld[1] / dtau;
-		A[1][2] = -A2 / Rval2;
+		A[1][2] = -A2 * Uval2;
 		A[1][3] = -HR2t4 * A2;
 		A[1][7] = -HR2t8 * A2;
 
@@ -805,16 +802,16 @@ void sub_heat (
 		}
 
 		// NODE 3 IS OUTSIDE NORTH SHEATHING
-		A[2][1] = -A2 / Rval3;
-		A[2][2] = M3 * cp3 / dtau + H3 * A3 + A2 / Rval3 + HRS3 * A2 + HRG3 * A2;
+		A[2][1] = -A2 * Uval3;
+		A[2][2] = M3 * cp3 / dtau + H3 * A3 + A2 * Uval3 + HRS3 * A2 + HRG3 * A2;
 		b[2] = M3 * cp3 * tempOld[2] / dtau + H3 * A3 * tempOut + A2 * nsolrad * alpha3 + HRS3 * A2 * TSKY + HRG3 * A2 * TGROUND;
 
 		// NODE 4 IS INSIDE SOUTH SHEATHING
 		A[3][0] = -H4 * A4;
 		A[3][1] = -HR4t2 * A4;
-		A[3][3] = M4 * cp4 / dtau + H4 * A4 + A4 / Rval4 + HR4t2 * A4 + HR4t8 * A4;
+		A[3][3] = M4 * cp4 / dtau + H4 * A4 + A4 * Uval4 + HR4t2 * A4 + HR4t8 * A4;
 		b[3] = M4 * cp4 * tempOld[3] / dtau;
-		A[3][4] = -A4 / Rval4;
+		A[3][4] = -A4 * Uval4;
 		A[3][7] = -HR4t8 * A4;
 
 		if(ductLocation == 0) {			// duct surface radiation to sheathing
@@ -824,8 +821,8 @@ void sub_heat (
 		}
 
 		// NODE 5 IS OUTSIDE SOUTH SHEATHING
-		A[4][3] = -A4 / Rval5;
-		A[4][4] = M5 * cp5 / dtau + H5 * A5 + A4 / Rval5 + HRS5 * A4 + HRG5 * A4;
+		A[4][3] = -A4 * Uval5;
+		A[4][4] = M5 * cp5 / dtau + H5 * A5 + A4 * Uval5 + HRS5 * A4 + HRG5 * A4;
 		b[4] = M5 * cp5 * tempOld[4] / dtau + H5 * A5 * tempOut + A4 * ssolrad * alpha5 + HRS5 * A4 * TSKY + HRG5 * A4 * TGROUND;
 
 		// NODE 6 IS MASS OF WOOD IN ATTIC I.E. JOISTS AND TRUSSES
@@ -834,61 +831,61 @@ void sub_heat (
 		b[5] = M6 * cp6 * tempOld[5] / dtau;
 
 		// NODE  7 ON INSIDE OF CEILING
-		A[6][6] = M7 * cp7 / dtau + H7 * A7 + hr7 * A7 + A7 / Rval7;
+		A[6][6] = M7 * cp7 / dtau + H7 * A7 + hr7 * A7 + A7 * Uval7;
 		b[6] = M7 * cp7 / dtau * tempOld[6];
-		A[6][7] = -A7 / Rval7;
+		A[6][7] = -A7 * Uval7;
 		A[6][15] = -H7 * A7;
 		A[6][12] = -hr7 * A7;
 
 		//if(ductLocation == 1) {
 			// ducts in house
-		//	A[6][6] = M7 * cp7 / dtau + H7 * A7 + hr7 * A7 + A7 / Rval7;
+		//	A[6][6] = M7 * cp7 / dtau + H7 * A7 + hr7 * A7 + A7 * Uval7;
 		//}
 
 		// NODE 8 ON ATTIC FLOOR
 		A[7][0] = -H8 * A8;
 		A[7][1] = -HR8t2 * A8;
 		A[7][3] = -HR8t4 * A8;
-		A[7][6] = -A8 / Rval8;
-		A[7][7] = M8 * cp8 / dtau + H8 * A8 + HR8t2 * A8 + HR8t4 * A8 + A8 / Rval8;				// + HR8t11 * A8 + HR8t14 * A8
+		A[7][6] = -A8 * Uval8;
+		A[7][7] = M8 * cp8 / dtau + H8 * A8 + HR8t2 * A8 + HR8t4 * A8 + A8 * Uval8;				// + HR8t11 * A8 + HR8t14 * A8
 		b[7] = M8 * cp8 / dtau * tempOld[7];
 
 		// NODE 9 IS INSIDE ENDWALLS THAT ARE BOTH LUMPED TOGETHER
 		A[8][0] = -H9 * A9;
-		A[8][8] = M9 * cp9 / dtau + H9 * A9 + A9 / Rval9;
-		A[8][9] = -A9 / Rval9;
+		A[8][8] = M9 * cp9 / dtau + H9 * A9 + A9 * Uval9;
+		A[8][9] = -A9 * Uval9;
 		b[8] = M9 * cp9 * tempOld[8] / dtau;
 
 		// NODE 10 IS OUTSIDE ENDWALLS THAT ARE BOTH LUMPED TOGETHER
-		A[9][8] = -A10 / Rval10;
-		A[9][9] = M10 * cp10 / dtau + H10 * A10 + A10 / Rval10;
+		A[9][8] = -A10 * Uval10;
+		A[9][9] = M10 * cp10 / dtau + H10 * A10 + A10 * Uval10;
 		b[9] = M10 * cp10 * tempOld[9] / dtau + H10 * A10 * tempOut;
 
 		// NODE 11 Exterior Return Duct Surface
 		// Remember that the fluid properties are evaluated at a constant temperature
 		// therefore, the convection on the inside of the ducts is
 		b[10] = M11 * cp11 * tempOld[10] / dtau;
-		A[10][11] = -A12 / (Rval11 + 1 / HI11);
+		A[10][11] = -A12 * Uval11;
 		if(ductLocation == 1) {			// ducts in house
-			A[10][10] = M11 * cp11 / dtau + H11 * A11 + A12 / (Rval11 + 1 / HI11);
+			A[10][10] = M11 * cp11 / dtau + H11 * A11 + A12 * Uval11;
 			A[10][15] = -A11 * H11;
 		} else {
 			A[10][0] = -A11 * H11 / 2;
 			A[10][1] = -A11 * HR11t2 / 3;
 			A[10][3] = -A11 * HR11t4 / 3;
-			A[10][10] += M11 * cp11 / dtau + H11 * A11 / 2 + A12 / (Rval11 + 1 / HI11) + A11 / 3 * HR11t2 + A11 / 3 * HR11t4;
+			A[10][10] += M11 * cp11 / dtau + H11 * A11 / 2 + A12 * Uval11 + A11 / 3 * HR11t2 + A11 / 3 * HR11t4;
 		}
 		
 		// NODE 12 Air in return duct
-		A[11][10] = -A12 / (Rval11 + 1 / HI11);
+		A[11][10] = -A12 * Uval11;
 		if(mCeiling >= 0) {
 			// flow from attic to house
-			A[11][11] = M12 * cp12 / dtau + A12 / (Rval11 + 1 / HI11) + mAH * cp12 + mRetAHoff * cp12;
+			A[11][11] = M12 * cp12 / dtau + A12 * Uval11 + mAH * cp12 + mRetAHoff * cp12;
 			b[11] = M12 * cp12 * tempOld[11] / dtau + mRetAHoff * cp1 * toldcur[0] - mRetLeak * cp1 * toldcur[0] - mRetReg * cp1 * toldcur[15] - mFanCycler * cp1 * tempOut - mHRV_AH * cp16 * ((1 - HRV_ASE) * tempOut + HRV_ASE * tempOld[15]) - mERV_AH * cp16 * ((1-ERV_SRE) * tempOut + ERV_SRE * tempOld[15]);
 			
 		} else {
 			// flow from house to attic
-			A[11][11] = M12 * cp12 / dtau + A12 / (Rval11 + 1 / HI11) + mAH * cp12 - mRetAHoff * cp12;
+			A[11][11] = M12 * cp12 / dtau + A12 * Uval11 + mAH * cp12 - mRetAHoff * cp12;
 			b[11] = M12 * cp12 * tempOld[11] / dtau - mRetAHoff * cp16 * toldcur[15] - mRetLeak * cp1 * toldcur[0] - mRetReg * cp1 * toldcur[15] - mFanCycler * cp1 * tempOut - mHRV_AH * cp16 * ((1 - HRV_ASE) * tempOut + HRV_ASE * tempOld[15]) - mERV_AH * cp16 * ((1-ERV_SRE) * tempOut + ERV_SRE * tempOld[15]);
 		}
 
@@ -903,28 +900,28 @@ void sub_heat (
 
 		// NODE 14 Exterior Supply Duct Surface
 		b[13] = M14 * cp14 * tempOld[13] / dtau;
-		A[13][14] = -A15 / (Rval14 + 1 / HI14);
+		A[13][14] = -A15 * Uval14;
 		if(ductLocation == 1) {			// ducts in house
-			A[13][13] = M14 * cp14 / dtau + H14 * A14 + A15 / (Rval14 + 1 / HI14);
+			A[13][13] = M14 * cp14 / dtau + H14 * A14 + A15 * Uval14;
 			A[13][15] = -A14 * H14;
 		} else {
 			A[13][0] = -A14 * H14 / 2;
 			A[13][1] = -A14 * HR14t2 / 3;
 			A[13][3] = -A14 * HR14t4 / 3;
-			A[13][13] = M14 * cp14 / dtau + H14 * A14 / 2 + A15 / (Rval14 + 1 / HI14) + A14 * HR14t2 / 3 + A14 / 3 * HR14t4;
+			A[13][13] = M14 * cp14 / dtau + H14 * A14 / 2 + A15 * Uval14 + A14 * HR14t2 / 3 + A14 / 3 * HR14t4;
 		}
 
 		// NODE 15 Air in SUPPLY duct
 		// capacity is AC unit capcity in Watts
 		// this is a sensible heat balance, the moisture is balanced in a separate routine.
-		A[14][13] = -A15 / (Rval14 + 1 / HI14);
+		A[14][13] = -A15 * Uval14;
 		if(mCeiling >= 0) {
 			// flow from attic to house
-			A[14][14] = M15 * cp15 / dtau + A15 / (Rval14 + 1 / HI14) + mSupReg * cp15 + mSupLeak * cp15 + mSupAHoff * cp15;
+			A[14][14] = M15 * cp15 / dtau + A15 * Uval14 + mSupReg * cp15 + mSupLeak * cp15 + mSupAHoff * cp15;
 			b[14] = M15 * cp15 * tempOld[14] / dtau - capacityc + capacityh + evapcap + mAH * cp12 * toldcur[11] + mSupAHoff * cp1 * toldcur[0];
 		} else {
 			// flow from house to attic
-			A[14][14] = M15 * cp15 / dtau + A15 / (Rval14 + 1 / HI14) + mSupReg * cp15 + mSupLeak * cp15 - mSupAHoff * cp15;
+			A[14][14] = M15 * cp15 / dtau + A15 * Uval14 + mSupReg * cp15 + mSupLeak * cp15 - mSupAHoff * cp15;
 			b[14] = M15 * cp15 * tempOld[14] / dtau - capacityc + capacityh + evapcap + mAH * cp12 * toldcur[11] - mSupAHoff * cp16 * toldcur[15];
 		}
 

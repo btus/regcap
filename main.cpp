@@ -185,8 +185,7 @@ int main(int argc, char *argv[], char* envp[])
 		double windowN;
 		double windowS;
 		double winShadingCoef;
-		double ceilRval_heat;
-		double ceilRval_cool;
+		double ceilRval;
 		double latentLoad;
 		double internalGains1;
 		double atticVolume;
@@ -198,7 +197,9 @@ int main(int argc, char *argv[], char* envp[])
 		bool roofPeakPerpendicular;
 		double roofPeakHeight;
 		int numAtticFans;
-		double roofRval;
+		double roofExtRval;
+		double roofIntRval;
+		double gableEndRval;
 		int roofType;
 		double ductLocation;			
 		double supThickness;
@@ -399,8 +400,7 @@ int main(int argc, char *argv[], char* envp[])
 		buildingFile >> windowN;
 		buildingFile >> windowS;
 		buildingFile >> winShadingCoef;
-		buildingFile >> ceilRval_heat;
-		buildingFile >> ceilRval_cool;
+		buildingFile >> ceilRval;
 		buildingFile >> latentLoad;
 		buildingFile >> internalGains1;
 
@@ -435,7 +435,9 @@ int main(int argc, char *argv[], char* envp[])
 			buildingFile >> atticFan[i].oper;
 		}
 
-		buildingFile >> roofRval;
+		buildingFile >> roofIntRval;
+		buildingFile >> roofExtRval;
+		buildingFile >> gableEndRval;
 		buildingFile >> roofType;
 
 		// =========================== Duct Inputs =================================
@@ -973,7 +975,6 @@ int main(int argc, char *argv[], char* envp[])
 		double qAH;						// Air flowrate of the Air Handler (m^3/s)
 		double uaSolAir;
 		double uaTOut;
-		double rceil;
 		double econodt = 0;			// Temperature difference between inside and outside at which the economizer operates
 		double supVelAH;			// Air velocity in the supply ducts
 		double retVelAH;			// Air velocity in the return ducts
@@ -1296,7 +1297,6 @@ int main(int argc, char *argv[], char* envp[])
 						qAH = qAH_heat;            // Heating Air Flow Rate [m3/s]
 						uaSolAir = uaWall;
 						uaTOut = uaFloor + uaWindow;
-						rceil = ceilRval_heat;
 
 						if(tempOld[15] > (heatThermostat[hour] + .5))
 							AHflag = 0;					// Heat off if building air temp above setpoint
@@ -1330,7 +1330,6 @@ int main(int argc, char *argv[], char* envp[])
 						qAH = qAH_cool;						// Cooling Air Flow Rate
 						uaSolAir = uaWall;
 						uaTOut = uaWindow;
-						rceil = ceilRval_cool;
 						endrunon = 0;
 
 						if(tempOld[15] < (coolThermostat[hour] - .5))
@@ -3041,7 +3040,7 @@ int main(int argc, char *argv[], char* envp[])
 							retDiameter, supArea, retArea, supThickness, retThickness, supVolume, retVolume, supCp, retCp, supVel, retVel, suprho,
 							retrho, weather.pressure, weather.humidityRatio, uaSolAir, uaTOut, matticenvin, matticenvout, mHouseIN, mHouseOUT, planArea, mSupAHoff,
 							mRetAHoff, solgain, tsolair, mFanCycler, roofPeakHeight, retLength, supLength,
-							roofType, roofRval, rceil, AHflag, mERV_AH, ERV_SRE, mHRV, HRV_ASE, mHRV_AH,
+							roofType, roofExtRval, roofIntRval, ceilRval, gableEndRval, AHflag, mERV_AH, ERV_SRE, mHRV, HRV_ASE, mHRV_AH,
 							capacityc, capacityh, evapcap, internalGains, airDensityIN, airDensityOUT, airDensityATTIC, airDensitySUP, airDensityRET, numStories, storyHeight,
 							dh.sensible, H2, H4, H6);
 
