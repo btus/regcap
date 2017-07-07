@@ -416,7 +416,7 @@ void sub_heat (
 	double HR11t2, HR11t4;
 	double HR14t2, HR14t4;
 	double EPS1, epsshingles;	
-	double hr7;
+	double HR7;
 	double HRG3, HRG5, HRS3, HRS5;
 	double FRS, FG;
 	double TSKY, PW;
@@ -600,13 +600,145 @@ void sub_heat (
 			characteristicVelocity = .1;
 	}
 
+	// convection heat transfer coefficients
+	H2 = heatTranCoef(tempOld[1], tempOld[0], characteristicVelocity);  // inner north sheathing
+	H3 = heatTranCoef(tempOld[2], tempOut, windSpeed);                  // outer north sheathing
+	H4 = heatTranCoef(tempOld[3], tempOld[0], characteristicVelocity);  // inner south sheathing
+	H5 = heatTranCoef(tempOld[4], tempOut, windSpeed);                  // outer north sheathing
+	H6 = heatTranCoef(tempOld[5], tempOld[0], characteristicVelocity);  // Wood (joists,truss,etc.)
+
+	// Underside of Ceiling. Modified to use fixed numbers from ASHRAE Fundamentals ch.3 on 05/18/2000
+	if(AHflag != 0)
+		H7 = 9;
+	else
+		H7 = 6;
+	// House Mass uses ceiling heat transfer coefficient as rest for house heat transfer coefficient	
+	H13 = H7;
+
+	H8 = heatTranCoef(tempOld[7], tempOld[0], characteristicVelocity);  // Attic Floor
+	H9 = heatTranCoef(tempOld[8], tempOld[0], characteristicVelocity);  // Inner side of gable endwalls (lumped together)
+	H10 = heatTranCoef(tempOld[9], tempOut, windSpeed);                 // Outer side of gable ends
+
+	if(ductLocation == 1) { //  Ducts in the house
+		// Outer Surface of Ducts
+		if(AHflag != 0) {
+			H11 = 9;
+			H14 = H11;
+		} else {
+			H11 = 6;
+			H14 = H11;
+		}
+	} else {
+		H11 = heatTranCoef(tempOld[10], tempOld[0], characteristicVelocity);			// Outer Surface of Return Ducts
+		H14 = heatTranCoef(tempOld[13], tempOld[0], characteristicVelocity);			// Outer Surface of Supply Ducts
+	}
+
+
+	// Radiation shape factors
+	/* Only 5 nodes (2,4,8,11,14) are involved in radiation transfer in the attic
+	The endwalls have a very small contribution to radiation exchange and are neglected.
+	The wood may or may not contribute to radiation exchange, but their geometry is
+	too complex to make any assumptions so it is excluded.
+	Assumes that the duct is suspended above the floor, completely out of the insulation
+	this will change in the future */
+
+	if(ductLocation == 1) { //  Ducts in the house
+		F8t2 = 1 / 2.0;
+		F8t4 = F8t2;
+		F2t8 = F8t2 * A8 / A2;
+		F4t8 = F2t8;
+		F2t4 = (1 - F2t8);
+		F4t2 = (1 - F4t8);
+		F4t11 = 0;
+		F4t14 = 0;
+		F2t11 = 0;
+		F2t14 = 0;
+		F14t2 = 0;
+		F14t4 = 0;
+		F11t4 = 0;
+		F11t2 = 0;
+	} else {			// ducts in the attic
+		// 33.3% of each duct sees each sheathing surface (top third of duct)
+		F14t2 = 1 / 2.0;
+		F11t2 = F14t2;
+		F14t4 = F14t2;
+		F11t4 = F14t2;
+
+		// Remaining 50% of each duct surface sees the floor
+		// changed, the ducts don't see the floor
+		// F11t8 = 0
+		// F14t8 = F11t8
+
+		// The ducts don't see each other
+		// F11t14 = 0
+		// F14t11 = 0
+
+		F8t14 = 0;											// F14t8 * (A14 / 3) / A8
+		F8t11 = 0;											// F11t8 * (A11 / 3) / A8
+		F2t14 = F14t2 * (A14 / 3) / A2;
+		F2t11 = F11t2 * (A11 / 3) / A2;
+		F4t14 = F14t4 * (A14 / 3) / A4;
+		F4t11 = F11t4 * (A11 / 3) / A4;
+		F8t2 = 1 / 2.0;										// (1 - F8t14 - F8t11) / 2
+		F8t4 = F8t2;
+		F2t8 = F8t2 * A8 / A2;
+		F4t8 = F2t8;
+		F2t4 = (1 - F2t8 - F2t11 - F2t14);
+		F4t2 = (1 - F4t8 - F4t11 - F4t14);
+
+		// North Sheathing
+		HR2t11 = radTranCoef(EPS1, tempOld[1], tempOld[10], F2t11, A2/(A11/3));
+		HR2t14 = radTranCoef(EPS1, tempOld[1], tempOld[13], F2t14, A2/(A14/3));
+
+		// South Sheathing
+		HR4t11 = radTranCoef(EPS1, tempOld[3], tempOld[10], F4t11, A4/(A11/3));
+		HR4t14 = radTranCoef(EPS1, tempOld[3], tempOld[13], F4t14, A4/(A14/3));
+
+		// Return Ducts (note, No radiative exchange w/ supply ducts)
+		HR11t4 = radTranCoef(EPS1, tempOld[10], tempOld[3], F11t4, A11/A4);
+		HR11t2 = radTranCoef(EPS1, tempOld[10], tempOld[1], F11t2, A11/A2);
+
+		// Supply Ducts (note, No radiative exchange w/ return ducts)
+		HR14t4 = radTranCoef(EPS1, tempOld[13], tempOld[3], F14t4, A14/A4);
+		HR14t2 = radTranCoef(EPS1, tempOld[13], tempOld[1], F14t2, A14/A2);
+	}
+
+	// North Sheathing
+	HR2t4 = radTranCoef(EPS1, tempOld[1], tempOld[3], F2t4, A2/A4);
+	HR2t8 = radTranCoef(EPS1, tempOld[1], tempOld[7], F2t8, A2/A8);
+
+	// South Sheathing
+	HR4t2 = radTranCoef(EPS1, tempOld[3], tempOld[1], F4t2, A4/A2);
+	HR4t8 = radTranCoef(EPS1, tempOld[3], tempOld[7], F4t8, A4/A8);
+
+	// Attic Floor
+	HR8t4 = radTranCoef(EPS1, tempOld[7], tempOld[3], F8t4, A8/A4);
+	HR8t2 = radTranCoef(EPS1, tempOld[7], tempOld[1], F8t2, A8/A2);
+
+	// underside of ceiling
+	HR7 = radTranCoef(EPS1, tempOld[6], tempOld[12], 1, A7/A13);
+
+	// Sky and ground radiation
+	FRS = (1 - skyCover) * (180 - roofPitch) / 180;      	// ROOF-SKY SHAPE FACTOR
+	FG = 1 - FRS;                            					// ROOF-GROUND SHAPE FACTOR
+	TGROUND = tempOut;                           			// ASSUMING GROUND AT AIR TEMP
+	if(skyCover < 1) {
+		HRS5 = radTranCoef(epsshingles, tempOld[4], TSKY, FRS, 0);
+		HRS3 = radTranCoef(epsshingles, tempOld[2], TSKY, FRS, 0);
+	} else {
+		HRS5 = 0;
+		HRS3 = 0;
+	}
+	HRG5 = radTranCoef(epsshingles, tempOld[4], TGROUND, FG, 0);
+	HRG3 = radTranCoef(epsshingles, tempOld[2], TGROUND, FG, 0);
+
+
 	// ITERATION OF TEMPERATURES WITHIN HEAT SUBROUTINE
 	// THIS ITERATES BETWEEN ALL TEMPERATURES BEFORE RETURNING TO MAIN PROGRAM
 	heatIterations = 0;
 	for(int i=0; i < ATTIC_NODES; i++) {
 		toldcur[i] = tempOld[i];
 	}
-
 	while(1) {
 
 		heatIterations++;
@@ -616,157 +748,6 @@ void sub_heat (
 			A.clear();
 			A.resize(ATTIC_NODES, vector<double>(ATTIC_NODES+1));
 		}
-
-		// convection heat transfer coefficients
-		// inner north sheathing
-		H2 = heatTranCoef(tempOld[1], tempOld[0], characteristicVelocity);
-
-		// outer north sheathing
-		H3 = heatTranCoef(tempOld[2], tempOut, windSpeed);
-
-		// inner south sheathing
-		H4 = heatTranCoef(tempOld[3], tempOld[0], characteristicVelocity);
-
-		// outer north sheathing
-		H5 = heatTranCoef(tempOld[4], tempOut, windSpeed);
-
-		// Wood (joists,truss,etc.)
-		H6 = heatTranCoef(tempOld[5], tempOld[0], characteristicVelocity);
-
-		// Underside of Ceiling
-		// modified to use fixed numbers from ASHRAE Fundamentals ch.3 on 05/18/2000
-		if(AHflag != 0)
-			H7 = 9;
-		else
-			H7 = 6;
-
-		// House Mass
-		// uses ceiling heat transfer coefficient as rest for house heat transfer coefficient	
-		H13 = H7;
-
-		// Attic Floor
-		H8 = heatTranCoef(tempOld[7], tempOld[0], characteristicVelocity);
-
-		// Inner side of gable endwalls (lumped together)
-		H9 = heatTranCoef(tempOld[8], tempOld[0], characteristicVelocity);
-
-		// Outer side of gable ends
-		//tfilm10 = (tempOld[9] + tempOut) / 2;
-		//H10 = (18.192 - .0378 * (tfilm10)) * pow(windSpeed, .8);
-		H10 = heatTranCoef(tempOld[9], tempOut, windSpeed);
-
-		if(ductLocation == 1) { //  Ducts in the house
-			// Outer Surface of Ducts
-			if(AHflag != 0) {
-				H11 = 9;
-				H14 = H11;
-			} else {
-				H11 = 6;
-				H14 = H11;
-			}
-		} else {
-			H11 = heatTranCoef(tempOld[10], tempOld[0], characteristicVelocity);			// Outer Surface of Return Ducts
-			H14 = heatTranCoef(tempOld[13], tempOld[0], characteristicVelocity);			// Outer Surface of Supply Ducts
-		}
-
-
-		// Radiation shape factors
-		/* Only 5 nodes (2,4,8,11,14) are involved in radiation transfer in the attic
-		The endwalls have a very small contribution to radiation exchange and are neglected.
-		The wood may or may not contribute to radiation exchange, but their geometry is
-		too complex to make any assumptions so it is excluded.
-		Assumes that the duct is suspended above the floor, completely out of the insulation
-		this will change in the future */
-
-		if(ductLocation == 1) { //  Ducts in the house
-			F8t2 = 1 / 2.0;
-			F8t4 = F8t2;
-			F2t8 = F8t2 * A8 / A2;
-			F4t8 = F2t8;
-			F2t4 = (1 - F2t8);
-			F4t2 = (1 - F4t8);
-			F4t11 = 0;
-			F4t14 = 0;
-			F2t11 = 0;
-			F2t14 = 0;
-			F14t2 = 0;
-			F14t4 = 0;
-			F11t4 = 0;
-			F11t2 = 0;
-		} else {			// ducts in the attic
-			// 33.3% of each duct sees each sheathing surface (top third of duct)
-			F14t2 = 1 / 2.0;
-			F11t2 = F14t2;
-			F14t4 = F14t2;
-			F11t4 = F14t2;
-
-			// Remaining 50% of each duct surface sees the floor
-			// changed, the ducts don't see the floor
-			// F11t8 = 0
-			// F14t8 = F11t8
-
-			// The ducts don't see each other
-			// F11t14 = 0
-			// F14t11 = 0
-
-			F8t14 = 0;											// F14t8 * (A14 / 3) / A8
-			F8t11 = 0;											// F11t8 * (A11 / 3) / A8
-			F2t14 = F14t2 * (A14 / 3) / A2;
-			F2t11 = F11t2 * (A11 / 3) / A2;
-			F4t14 = F14t4 * (A14 / 3) / A4;
-			F4t11 = F11t4 * (A11 / 3) / A4;
-			F8t2 = 1 / 2.0;										// (1 - F8t14 - F8t11) / 2
-			F8t4 = F8t2;
-			F2t8 = F8t2 * A8 / A2;
-			F4t8 = F2t8;
-			F2t4 = (1 - F2t8 - F2t11 - F2t14);
-			F4t2 = (1 - F4t8 - F4t11 - F4t14);
-
-			// North Sheathing
-			HR2t11 = radTranCoef(EPS1, tempOld[1], tempOld[10], F2t11, A2/(A11/3));
-			HR2t14 = radTranCoef(EPS1, tempOld[1], tempOld[13], F2t14, A2/(A14/3));
-
-			// South Sheathing
-			HR4t11 = radTranCoef(EPS1, tempOld[3], tempOld[10], F4t11, A4/(A11/3));
-			HR4t14 = radTranCoef(EPS1, tempOld[3], tempOld[13], F4t14, A4/(A14/3));
-
-			// Return Ducts (note, No radiative exchange w/ supply ducts)
-			HR11t4 = radTranCoef(EPS1, tempOld[10], tempOld[3], F11t4, A11/A4);
-			HR11t2 = radTranCoef(EPS1, tempOld[10], tempOld[1], F11t2, A11/A2);
-
-			// Supply Ducts (note, No radiative exchange w/ return ducts)
-			HR14t4 = radTranCoef(EPS1, tempOld[13], tempOld[3], F14t4, A14/A4);
-			HR14t2 = radTranCoef(EPS1, tempOld[13], tempOld[1], F14t2, A14/A2);
-		}
-
-		// North Sheathing
-		HR2t4 = radTranCoef(EPS1, tempOld[1], tempOld[3], F2t4, A2/A4);
-		HR2t8 = radTranCoef(EPS1, tempOld[1], tempOld[7], F2t8, A2/A8);
-
-		// South Sheathing
-		HR4t2 = radTranCoef(EPS1, tempOld[3], tempOld[1], F4t2, A4/A2);
-		HR4t8 = radTranCoef(EPS1, tempOld[3], tempOld[7], F4t8, A4/A8);
-
-		// Attic Floor
-		HR8t4 = radTranCoef(EPS1, tempOld[7], tempOld[3], F8t4, A8/A4);
-		HR8t2 = radTranCoef(EPS1, tempOld[7], tempOld[1], F8t2, A8/A2);
-
-		// underside of ceiling
-		hr7 = radTranCoef(EPS1, tempOld[6], tempOld[12], 1, A7/A13);
-
-      // Sky and ground radiation
-		FRS = (1 - skyCover) * (180 - roofPitch) / 180;      			// ROOF-SKY SHAPE FACTOR
-		FG = 1 - FRS;                            					// ROOF-GROUND SHAPE FACTOR
-		TGROUND = tempOut;                           			// ASSUMING GROUND AT AIR TEMP
-		if(skyCover < 1) {
-			HRS5 = radTranCoef(epsshingles, tempOld[4], TSKY, FRS, 0);
-			HRS3 = radTranCoef(epsshingles, tempOld[2], TSKY, FRS, 0);
-		} else {
-			HRS5 = 0;
-			HRS3 = 0;
-		}
-		HRG5 = radTranCoef(epsshingles, tempOld[4], TGROUND, FG, 0);
-		HRG3 = radTranCoef(epsshingles, tempOld[2], TGROUND, FG, 0);
 
 		// NODE 1 IS ATTIC AIR
 		if(mCeiling >= 0) {
@@ -833,15 +814,15 @@ void sub_heat (
 		b[5] = M6 * cp6 * tempOld[5] / dtau;
 
 		// NODE  7 ON INSIDE OF CEILING
-		A[6][6] = M7 * cp7 / dtau + H7 * A7 + hr7 * A7 + A7 * Uval7;
+		A[6][6] = M7 * cp7 / dtau + H7 * A7 + HR7 * A7 + A7 * Uval7;
 		b[6] = M7 * cp7 / dtau * tempOld[6];
 		A[6][7] = -A7 * Uval7;
 		A[6][15] = -H7 * A7;
-		A[6][12] = -hr7 * A7;
+		A[6][12] = -HR7 * A7;
 
 		//if(ductLocation == 1) {
 			// ducts in house
-		//	A[6][6] = M7 * cp7 / dtau + H7 * A7 + hr7 * A7 + A7 * Uval7;
+		//	A[6][6] = M7 * cp7 / dtau + H7 * A7 + HR7 * A7 + A7 * Uval7;
 		//}
 
 		// NODE 8 ON ATTIC FLOOR
@@ -895,9 +876,9 @@ void sub_heat (
 		// with the house air to increase its effective thermal mass
 		// 95% of solar gain goes to house mass, 5% to house air
 
-		A[12][12] = M13 * cp13 / dtau + H13 * A13 + hr7 * A7;
+		A[12][12] = M13 * cp13 / dtau + H13 * A13 + HR7 * A7;
 		A[12][15] = -H13 * A13;
-		A[12][6] = -hr7 * A7;
+		A[12][6] = -HR7 * A7;
 		b[12] = M13 * cp13 * tempOld[12] / dtau + .95 * solgain;
 
 		// NODE 14 Exterior Supply Duct Surface
