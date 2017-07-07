@@ -17,9 +17,8 @@ using namespace std;
  * @param retVolume - return register volume (m3)
  * @param houseVolume - house volume (m3)
  * @param floorArea - conditioned floor area (m2)
- * @param atticArea - attic area (m2)
- * @param roofPitch - roof pitch (degrees)
- * @param ERV_TRE - ERV total recovery efficiency (fraction)
+ * @param sheathArea - roof sheathing area (m2)
+ * @param bulkArea - bulk wood area (m2)
  * @param mcInit - initial wood moisture content (fraction - optional)
  *
  * The nodes are (0-5 wood, 6-10 air/mass):
@@ -36,11 +35,12 @@ using namespace std;
  * 10. house materials - corresponding thermal node is (13)
  */
 Moisture::Moisture(double atticVolume, double retVolume, double supVolume, double houseVolume, 
-						double floorArea, double atticArea, double roofPitch, double mcInit) {
+						double floorArea, double sheathArea, double bulkArea, double mcInit) {
    int pressure = 101325;		// 1 atmosphere
-   double sheathThick = 0.015;  // Roof sheathing thickness (m). match what is set in sub_heat for now
-   double bulkThick = 0.038;    // Bulk wood thickness (m). this is low, should be .038 for 2x4 construction
-   double surfaceThick = 0.005; // Surface wood layer thickness (m)
+   double sheathThick = 0.015;  // Roof sheathing thickness (m).
+   double bulkThick = 0.020;    // Bulk wood thickness (m).
+   double sheathSurfThick = 0.003; // Sheathing surface wood layer thickness (m)
+   double bulkSurfThick = 0.001; // Bulk surface wood layer thickness (m)
 	double tempInit = airTempRef; // node initialization temperature (deg K)
 	double RHInit = 50;	// initial air RH (%)
 
@@ -53,19 +53,19 @@ Moisture::Moisture(double atticVolume, double retVolume, double supVolume, doubl
 	deltaX[4] = deltaX[1];
 	deltaX[5] = deltaX[2];
 
-	area[0] = atticArea / 2 / cos(roofPitch * M_PI / 180);
-	area[1] = area[0];
-	area[2] = atticArea / 2;						// attic wood surface area. @TODO: sub_heat uses planArea * 1.5
+	area[0] = sheathArea;  // atticArea / 2 / cos(roofPitch * M_PI / 180);
+	area[1] = sheathArea;
+	area[2] = bulkArea;
 	area[3] = area[0];
 	area[4] = area[1];
 	area[5] = area[2];
 
-	volume[0] = area[0] * surfaceThick;
-	volume[1] = area[1] * surfaceThick;
-	volume[2] = area[2] * surfaceThick;  // was .001;
+	volume[0] = area[0] * sheathSurfThick;
+	volume[1] = area[1] * sheathSurfThick;
+	volume[2] = area[2] * bulkSurfThick;
 	volume[3] = area[0] * sheathThick - volume[0];
 	volume[4] = area[1] * sheathThick - volume[1];
-	volume[5] = area[2] * sheathThick - volume[2]; // was: 0.02 * area[2] - volume[2];	// this is close for 2x4 construction and may change a bit if 2x6 (I redid the calculations and for 2x4 this would be 0.017 but I dont think we can really justify that second significant digit!
+	volume[5] = area[2] * bulkThick - volume[2];
 	volume[6] = atticVolume;
 	volume[7] = retVolume;
 	volume[8] = supVolume;
@@ -73,8 +73,6 @@ Moisture::Moisture(double atticVolume, double retVolume, double supVolume, doubl
 
 	haHouse = 1 * 0.622 * .5 * floorArea / 186;	// moisture transport coefficient scales with floor area (kg/s) - 0.622 (dHR/dVP), 186 (area of std house in m2), 0.5 empirical coefficient (kg/s)
 	massWHouse = 1 * 0.622 * 60 * floorArea;					// active mass containing moisture in the house (kg) - empirical
-
-/*	volume[10] = 10; // @TODO@ need volume */
 
 	// initialize wood nodes
 	for(int i=0; i<6; i++) {

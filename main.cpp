@@ -568,6 +568,8 @@ int main(int argc, char *argv[], char* envp[])
 		double retArea = (retDiameter + 2 * retThickness) * M_PI * retLength;		// Surface area of return ducts [m2]
 		double supVolume = (pow(supDiameter, 2) * M_PI / 4) * supLength;			// Volume of supply ducts [m3]
 		double retVolume = (pow(retDiameter, 2) * M_PI / 4) * retLength;			// Volume of return ducts [m3]
+		double bulkArea = planArea * 1;  // Area of bulk wood in the attic (m2) - based on W trusses, 24oc, 60x36 house w/ 4/12 attic
+		double sheathArea = planArea / 2 / cos(roofPitch * M_PI / 180);         // Area of roof sheathing (m2)
 		hcapacity = hcapacity * .29307107 * 1000 * AFUE;			// Heating capacity of furnace converted from kBtu/hr to Watts and with AFUE adjustment
 					
 		// [START] Filter Loading ==================================================================================
@@ -1074,7 +1076,7 @@ int main(int argc, char *argv[], char* envp[])
 
 		// Call class constructors
 		Dehumidifier dh(dhCapacity, dhEnergyFactor, dhSetPoint, dhDeadBand);	// Initialize Dehumidifier 
-		Moisture moisture_nodes(atticVolume, retVolume, supVolume, houseVolume, floorArea, planArea, roofPitch, atticMCInit);   // initialize moisture model
+		Moisture moisture_nodes(atticVolume, retVolume, supVolume, houseVolume, floorArea, sheathArea, bulkArea, atticMCInit);   // initialize moisture model
 
 		cout << endl;
 		cout << "Simulation: " << simNum << endl;
@@ -3042,7 +3044,7 @@ int main(int argc, char *argv[], char* envp[])
 							mRetAHoff, solgain, tsolair, mFanCycler, roofPeakHeight, retLength, supLength,
 							roofType, roofExtRval, roofIntRval, ceilRval, gableEndRval, AHflag, mERV_AH, ERV_SRE, mHRV, HRV_ASE, mHRV_AH,
 							capacityc, capacityh, evapcap, internalGains, airDensityIN, airDensityOUT, airDensityATTIC, airDensitySUP, airDensityRET, numStories, storyHeight,
-							dh.sensible, H2, H4, H6);
+							dh.sensible, H2, H4, H6, bulkArea, sheathArea);
 
 						if((abs(b[0] - tempAttic) < .2) || (mainIterations > 10)) {	// Testing for convergence
 							tempAttic        = b[0];					

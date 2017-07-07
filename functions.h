@@ -206,7 +206,9 @@ void sub_heat (
 	double dhSensibleGain,
 	double& H2,
 	double& H4,
-	double& H6
+	double& H6,
+	double bulkArea,
+	double sheathArea
 );
 
 void sub_houseLeak ( 

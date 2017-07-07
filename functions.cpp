@@ -374,7 +374,9 @@ void sub_heat (
 	double dhSensibleGain,
 	double& H2,
 	double& H4,
-	double& H6
+	double& H6,
+	double bulkArea,
+	double sheathArea
 ) {
 	
 	int rhoSheathing;
@@ -481,7 +483,7 @@ void sub_heat (
 	TSKY = tempOut * pow((.55 + .33 * sqrt(PW)), .25);		// TSKY DEPENDS ON PW
 
 	// Surface Area of Nodes
-	A2 = planArea / 2 / cos(roofPitch * M_PI / 180);		// PITCHED SLOPE AREA
+	A2 = sheathArea;
 	A4 = A2;
 	
 	// the following are commented out for ConSOl becasue cement tile is flat and does not have increased surface area
@@ -491,8 +493,8 @@ void sub_heat (
 		A3 = A2;																
 	}
 
-    A5 = A3;
-	A6 = planArea * 1.5;							// Attic wood surface area
+   A5 = A3;
+	A6 = bulkArea;
 	A7 = planArea;									// Ceiling
 	A8 = A7;											// Attic floor
 	A9 = planArea / 2 * tan(roofPitch * M_PI / 180);	// Total endwall area
@@ -557,7 +559,7 @@ void sub_heat (
 	kAir = 1.5207e-11 * pow(tempOld[15],3) - 4.8574e-8 * pow(tempOld[15],2) + 1.0184e-4 * tempOld[15] - 0.00039333;
 	muAir = 0.000018462;										// Dynamic viscosity of air (mu) [kg/ms] Make temperature dependent  (this value at 300K)
 
-	// R-values
+	// U-values
 	Uval2 = 1 / ((woodThickness / kWood) + Rshingles + roofExtRval);
 	Uval3 = Uval2;
 	Uval4 = Uval2;
