@@ -104,6 +104,7 @@ Moisture::Moisture(double atticVolume, double retVolume, double supVolume, doubl
  * @param hU0 - surface heat transfer coefficient for node 0 (inner south) (J/sm2K) - was H4
  * @param hU1 - surface heat transfer coefficient for node 1 (inner north) (J/sm2K) - was H6
  * @param hU2 - surface heat transfer coefficient for node 2 (bulk wood) (J/sm2K) - was H10
+ * @param roofInsulRatio - ratio of exterior insulation U-val to sheathing U-val
  * @param mAtticIn - air mass flow into attic (kg/s)
  * @param mAtticOut - air mass flow out of attic (kg/s)
  * @param mCeiling - ceiling air mass flow (kg/s)
@@ -124,7 +125,7 @@ Moisture::Moisture(double atticVolume, double retVolume, double supVolume, doubl
  */
 void Moisture::mass_cond_bal(double* node_temps, double tempOut, double RHOut,
                   double airDensityOut, double airDensityAttic, double airDensityHouse, double airDensitySup, double airDensityRet,
-                  int pressure, double hU0, double hU1, double hU2,
+                  int pressure, double hU0, double hU1, double hU2, double roofInsulRatio,
                   double mAtticIn, double mAtticOut, double mCeiling, double mHouseIn, double mHouseOut,
                   double mAH, double mRetAHoff, double mRetLeak, double mRetReg, double mRetOut, double mErvHouse,
                   double mSupAHoff, double mSupLeak, double mSupReg, double latcap, double dhMoistRemv, double latload)
@@ -136,11 +137,11 @@ void Moisture::mass_cond_bal(double* node_temps, double tempOut, double RHOut,
 	double hw;							// mass transfer coefficient for water vapor (m/s)
 	
 	// set node temperatures 
-	temperature[0] = node_temps[3];	// inner south sheathing
-	temperature[1] = node_temps[1];	// inner north sheathing
-	temperature[2] = node_temps[5];	// bulk wood
-	temperature[3] = (node_temps[3] + node_temps[4]) / 2;	// average of south sheathing
-	temperature[4] = (node_temps[1] + node_temps[2]) / 2;	// average of north sheathing
+	temperature[0] = node_temps[3];	// surface of south sheathing
+	temperature[1] = node_temps[1];	// surface of north sheathing
+	temperature[2] = node_temps[5];	// surface of bulk wood
+	temperature[3] = calc_inter_temp(node_temps[3], node_temps[4], roofInsulRatio);	// interior of south sheathing
+	temperature[4] = calc_inter_temp(node_temps[1], node_temps[2], roofInsulRatio);	// interior of north sheathing
 	temperature[5] = node_temps[5];	// bulk wood
 	temperature[6] = node_temps[0];	// attic air
 	temperature[7] = node_temps[11];	// return air
@@ -649,3 +650,14 @@ double Moisture::calc_vapor_pressure(double mc, double temp, int pressure) {
 	double w = exp((temp - C_TO_K) / B3) * (B4 + B5 * mc + B6 * pow(mc, 2) + B7 * pow(mc, 3));
 	return (w * pressure / (0.622 * (1 + w / 0.622)));
 	}
+
+/*
+ * calc_inter_temp - calculates the interior temperature of the roof sheathing
+ * @param temp1		- roof sheathing interior surface temp
+ * @param temp2    	- roof exterior surface temp
+ * @param insRatio	- ratio of exterior insulation U-val to sheathing U-val
+ */
+double Moisture::calc_inter_temp(double temp1, double temp2, double insRatio) {
+   double tInter = temp1 * (1 - insRatio) + temp2 * insRatio;
+   return (temp1 + tInter) / 2;
+   }

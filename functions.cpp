@@ -376,7 +376,8 @@ void sub_heat (
 	double& H4,
 	double& H6,
 	double bulkArea,
-	double sheathArea
+	double sheathArea,
+	double& roofInsulRatio
 ) {
 	
 	int rhoSheathing;
@@ -560,6 +561,10 @@ void sub_heat (
 	muAir = 0.000018462;										// Dynamic viscosity of air (mu) [kg/ms] Make temperature dependent  (this value at 300K)
 
 	// U-values
+	if(roofExtRval > 0)
+	   roofInsulRatio = (1/roofExtRval)/(1/roofExtRval + 1/((woodThickness / kWood) + Rshingles));
+	else
+	   roofInsulRatio = 1;
 	Uval2 = 1 / ((woodThickness / kWood) + Rshingles + roofExtRval);
 	Uval3 = Uval2;
 	Uval4 = Uval2;
@@ -604,7 +609,7 @@ void sub_heat (
 	H2 = heatTranCoef(tempOld[1], tempOld[0], characteristicVelocity);  // inner north sheathing
 	H3 = heatTranCoef(tempOld[2], tempOut, windSpeed);                  // outer north sheathing
 	H4 = heatTranCoef(tempOld[3], tempOld[0], characteristicVelocity);  // inner south sheathing
-	H5 = heatTranCoef(tempOld[4], tempOut, windSpeed);                  // outer north sheathing
+	H5 = heatTranCoef(tempOld[4], tempOut, windSpeed);                  // outer south sheathing
 	H6 = heatTranCoef(tempOld[5], tempOld[0], characteristicVelocity);  // Wood (joists,truss,etc.)
 
 	// Underside of Ceiling. Modified to use fixed numbers from ASHRAE Fundamentals ch.3 on 05/18/2000

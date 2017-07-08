@@ -32,6 +32,7 @@ class Moisture {
 		double calc_kappa_2(double mc, double volume);
       double mc_cubic(double pw, int pressure, double temp);
       double calc_vapor_pressure(double mc, double temp, int pressure);
+		double calc_inter_temp(double temp1, double temp2, double insRatio);
 		
 	public:
 		double moistureContent[MOISTURE_NODES];			// Node moisture content (%)
@@ -42,7 +43,7 @@ class Moisture {
 					 double floorArea, double sheathArea, double bulkArea, double mcInit=0.15);
 		void mass_cond_bal(double* node_temps, double tempOut, double RHOut,
                double airDensityOut, double airDensityAttic, double airDensityHouse, double airDensitySup, double airDensityRet,
-               int pressure, double hU0, double hU1, double hU2,
+               int pressure, double hU0, double hU1, double hU2, double roofInsulRatio,
                double mAtticIn, double mAtticOut, double mCeiling, double mHouseIn, double mHouseOut,
                double mAH, double mRetAHoff, double mRetLeak, double mRetReg, double mRetOut, double mErvHouse,
                double mSupAHoff, double mSupLeak, double mSupReg, double latcap, double dhMoistRemv, double latload);
