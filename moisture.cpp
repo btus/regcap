@@ -38,7 +38,7 @@ Moisture::Moisture(double atticVolume, double retVolume, double supVolume, doubl
 						double floorArea, double sheathArea, double bulkArea, double mcInit) {
    int pressure = 101325;		// 1 atmosphere
    double sheathThick = 0.015;  // Roof sheathing thickness (m).
-   double bulkThick = 0.020;    // Bulk wood thickness (m).
+   double bulkThick = 0.013;    // Bulk wood thickness (m).
    double sheathSurfThick = 0.003; // Sheathing surface wood layer thickness (m)
    double bulkSurfThick = 0.001; // Bulk surface wood layer thickness (m)
 	double tempInit = airTempRef; // node initialization temperature (deg K)
@@ -512,12 +512,12 @@ void Moisture::cond_bal(int pressure) {
 				// if not converged, then the node moisture fluxes are recalculated to include the extra moisture from the attic air
 				for(int i=0; i < 3; i++) {
 					if(fluxTo[i] > 0) {
-						moistureContent[i] = moistureContent[i] + (fluxTo[i] / fluxTotal * massCondensed[6]) / rhoWood / volume[i];
+						moistureContent[i] = moistureContent[i] + (fluxTo[i] / fluxTotal * massCondensed[6]) / densityWood / volume[i];
 						PW[i] = calc_vapor_pressure(moistureContent[i], temperature[i], pressure);
 						if(PW[i] > PWSaturation[i]) {
 							PW[i] = PWSaturation[i];
 							double mcSat = mc_cubic(PW[i], pressure, temperature[i]);
-							mTotal[i] = mTotal[i] + (moistureContent[i] - mcSat) * volume[i] * rhoWood;
+							mTotal[i] = mTotal[i] + (moistureContent[i] - mcSat) * volume[i] * densityWood;
 							moistureContent[i] = mcSat;
 							}
 						}
@@ -561,7 +561,7 @@ void Moisture::cond_bal(int pressure) {
 				if(mTotal[i] < 0) {
 					// Need to estimate how much MC (and PW) change. A reduction in PW means mass condensed
 					// even more -ve so an iterative scheme is not needed
-					double moistureReduction = mTotal[i] / (volume[i] * rhoWood);
+					double moistureReduction = mTotal[i] / (volume[i] * densityWood);
 					moistureContent[i] = max(moistureContent[i] + moistureReduction, 0.032);
 					PW[i] = calc_vapor_pressure(moistureContent[i], temperature[i], pressure);
 					redoMassBalance = true;	// Redo mass balance with this PW because this node is no longer at saturation. 
@@ -599,7 +599,7 @@ static const double B7 =  0.233;		// was MCE
 double Moisture::calc_kappa_1(int pressure, double temp, double mc, double volume) {
 	double k1;
 	k1 = 1 / (pressure / 0.622 * exp((temp - C_TO_K) / B3) * (B5 + 2 * B6 * mc + 3 * B7 * pow(mc,2)));
-	k1 = volume * rhoWood * k1 / timeStep;
+	k1 = volume * densityWood * k1 / timeStep;
 //cout << "kappa1 in: p=" << pressure << " temp=" << temp << " mc=" << mc << " volume=" << volume << " out: " << k1 << endl;
 	return (k1);
 }
@@ -614,7 +614,7 @@ double Moisture::calc_kappa_1(int pressure, double temp, double mc, double volum
 double Moisture::calc_kappa_2(double mc, double volume) {
 	double k2;
 	k2 = (B4 + B5 * mc + B6 * pow(mc,2) + B7 * pow(mc,3)) / (-B3 * (B5 + 2 * B6 * mc + 3 * B7 * pow(mc,2)));
-	k2 = volume * rhoWood * k2 / timeStep;
+	k2 = volume * densityWood * k2 / timeStep;
 	return (k2);
 }
 

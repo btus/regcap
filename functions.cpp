@@ -380,8 +380,6 @@ void sub_heat (
 	double& roofInsulRatio
 ) {
 	
-	int rhoSheathing;
-	int rhoWood;
 	int heatIterations;
 	//int asize;
 	//int asize2;
@@ -512,20 +510,16 @@ void sub_heat (
 	A16 = 11 * pow(floorArea,0.5) + 2 * floorArea;	// Empirically derived relationship
 	A13 = 6 * A16;									//  Surface area of everything in the house
 	
-	// Material densities
-	rhoSheathing = 450;							// Sheathing
-	rhoWood = 500;									// Wood
-
 	// masses
 	M1 = atticVolume * airDensityATTIC;					// mass of attic air
-	M2 = .5 * A2 * rhoSheathing * woodThickness;		// 1/2 OF TOTAL
+	M2 = .5 * A2 * densitySheathing * woodThickness;		// 1/2 OF TOTAL
 	M3 = M2 + denShingles * A2;							// OTHER 1/2 OUTSIDE SHEATHING, WOOD TCOND W/MMC
 	M4 = M2;
 	M5 = M3;
 	M6 = 10 * planArea;										// Wild speculation
 	M7 = .5 * 4 * planArea;									// MASS OF JOISTS DRYWALL AND INSULATION
 	M8 = M7;
-	M9 = .5 * rhoWood * woodThickness * A9;
+	M9 = .5 * densityWood * woodThickness * A9;
 	M10 = M9;
 	M11 = retLength * M_PI * (retDiameter + retThickness) * retThickness * retrho;	// retArea * retrho * retThickness
 	M12 = retVolume * airDensityRET;
@@ -598,9 +592,9 @@ void sub_heat (
 	and it seemed to work for him*/
 
 	// Characteristic velocity
-	characteristicVelocity = (matticenvin - matticenvout) / airDensityATTIC / AL4 / 4.0;
+	characteristicVelocity = (matticenvin - matticenvout) / airDensityATTIC / AL4 / 2.0;
 	if(characteristicVelocity == 0) {
-		characteristicVelocity = abs(mCeiling) / 2 / airDensityATTIC / AL4 * 2 / 4.0;
+		characteristicVelocity = abs(mCeiling) / airDensityATTIC / AL4 / 2.0;
 		if(characteristicVelocity == 0)
 			characteristicVelocity = .1;
 	}
