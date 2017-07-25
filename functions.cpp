@@ -372,105 +372,84 @@ void sub_heat (
 	int& numStories,
 	double& storyHeight,
 	double dhSensibleGain,
-	double& H2,
-	double& H4,
-	double& H6,
+	double& innerNorthH,
+	double& innerSouthH,
+	double& bulkH,
 	double bulkArea,
 	double sheathArea,
 	double& roofInsulRatio
 ) {
 	
 	int heatIterations;
-	//int asize;
-	//int asize2;
 	int cpShingles;
 	
 	//double incsolar[4] = {0,0,0,0};
 	vector<double> b(ATTIC_NODES+1,0);
 	vector< vector<double> > A(ATTIC_NODES,b);
 	//double A[ATTIC_NODES][ATTIC_NODES] = {0};
-	double toldcur[ATTIC_NODES];
+	double toldcur[ATTIC_NODES], area[ATTIC_NODES], mass[ATTIC_NODES];
+	double heatCap[ATTIC_NODES], uVal[ATTIC_NODES], htCoef[ATTIC_NODES];
+	double viewFactor[ATTIC_NODES][ATTIC_NODES] = {};
+	double rtCoef[ATTIC_NODES][ATTIC_NODES];
 	double woodThickness;
 	//double pws;
-	double A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16;
 	double denShingles;
-	double M1, M2, M3, M4, M5, M6, M7, M8, M9, M10, M11, M12, M13, M14, M15, M16;
-	double cp1, cp2, cp3, cp4, cp5, cp6, cp7, cp8, cp9, cp10, cp11, cp12, cp13, cp14, cp15, cp16;
 	double kWood;
 	double kAir;
 	double muAir;
 	double Rshingles;
-	double Uval2, Uval3, Uval4, Uval5, Uval7, Uval8, Uval9, Uval10, Uval11, Uval14;
 	double characteristicVelocity;
-	double H3, H5, H7, H8, H9, H10, H11, H13, H14;
-	double HI11, HI14;
-	double F8t2, F8t4, F8t11, F8t14;
-	double F2t4, F2t8, F2t11, F2t14;
-	double F4t2, F4t8, F4t11, F4t14;
-	double F11t2, F11t4;
-	double F14t2, F14t4;
-	double HR2t4, HR2t8, HR2t11, HR2t14;
-	double HR4t2, HR4t8, HR4t11, HR4t14;
-	double HR8t4, HR8t2;
-	double HR11t2, HR11t4;
-	double HR14t2, HR14t4;
-	double EPS1, epsshingles;	
-	double HR7;
-	double HRG3, HRG5, HRS3, HRS5;
+	double HI;
+	double woodEmissivity, roofAbsorptivity, roofEmissivity;	
+	double gndCoef2, gndCoef4, skyCoef2, skyCoef4;
 	double FRS, FG;
 	double TSKY, PW;
 	double TGROUND;
-	double alpha3, alpha5;
 
-	// Node Identification (NOTE: The C++ array indices are one less than the node number e.g. node 1 = 0, node 2 = 1 etc.)
-	// Node 1 is the Attic Air
-	// Node 2 is the Inner North Sheathing
-	// Node 3 is the Outer North Sheathing
-	// Node 4 is the Inner South Sheathing
-	// Node 5 is the Outer South Sheathing
-	// Node 6 is all of the Wood (joists, trusses, etc.) lumped together
-	// Node 7 is the Ceiling of the House
-	// Node 8 is the Floor of the Attic
-	// Node 9 is the Inner Gable Wall (both lumped together)
-	// Node 10 is the Outer Gable Wall (both lumped together)
-	// Node 11 is the Return Duct Outer Surface
-	// Node 12 is the Return Duct Air
-	// Node 13 is The Mass of the House
-	// Node 14 is the Supply Duct Outer Surface
-	// Node 15 is the Supply Duct Air
-	// Node 16 is the House Air (all one zone)
+	// Node 0 is the Attic Air
+	// Node 1 is the Inner North Sheathing
+	// Node 2 is the Outer North Sheathing
+	// Node 3 is the Inner South Sheathing
+	// Node 4 is the Outer South Sheathing
+	// Node 5 is all of the Wood (joists, trusses, etc.) lumped together
+	// Node 6 is the Ceiling of the House
+	// Node 7 is the Floor of the Attic
+	// Node 8 is the Inner Gable Wall (both lumped together)
+	// Node 9 is the Outer Gable Wall (both lumped together)
+	// Node 10 is the Return Duct Outer Surface
+	// Node 11 is the Return Duct Air
+	// Node 12 is The Mass of the House
+	// Node 13 is the Supply Duct Outer Surface
+	// Node 14 is the Supply Duct Air
+	// Node 15 is the House Air (all one zone)
 
-	woodThickness = .015;		// thickness of sheathing material
-	EPS1 = .9;         			// Emissivity of building materials
+	woodThickness = .015;		// thickness of sheathing material (m)
+	woodEmissivity = .9;       // emissivity of building materials
 	switch(roofType) {
 		case 1:			// asphalt shingles
-			alpha5 = .92;
-			alpha3 = .92;
-			epsshingles = .91;
+			roofAbsorptivity = .92;
+			roofEmissivity = .91;
 			Rshingles = .078;										// ASHRAE Fundamentals 2011 pg 26.7
 			denShingles = 1100 * 2 * .005;					// asphalt shingles (factor of two because they overlap)
 			cpShingles = 1260;									// CP asphalt shingles
 			break;
 		case 2: 			// red clay tile - edited for ConSol to be light brown concrete
-			alpha5 = .58; 											// .67
-			alpha3 = .58; 											// .67
-			epsshingles = .9;
+			roofAbsorptivity = .58; 											// .67
+			roofEmissivity = .9;
 			Rshingles = .5;
 			denShingles = 50;										// kg/m2
 			cpShingles = 880;										// CP for tile roof
 			break;
 		case 3:			// low coating clay tile
-			alpha5 = .5;
-			alpha3 = .5;
-			epsshingles = .9;
+			roofAbsorptivity = .5;
+			roofEmissivity = .9;
 			Rshingles = .5;
 			denShingles = 50;
 			cpShingles = 880;										// CP for tile roof
 			break;
 		case 4:			// asphalt shingles  & white coating
-			alpha5 = .15;
-			alpha3 = .15;
-			epsshingles = .91;
+			roofAbsorptivity = .15;
+			roofEmissivity = .91;
 			Rshingles = .078;										// ASHRAE Fundamentals 2011 pg 26.7
 			denShingles = 1100 * 2 * .005;					// asphalt shingles (factor of two because they overlap)
 			cpShingles = 1260;									// CP asphalt shingles
@@ -482,71 +461,71 @@ void sub_heat (
 	TSKY = tempOut * pow((.55 + .33 * sqrt(PW)), .25);		// TSKY DEPENDS ON PW
 
 	// Surface Area of Nodes
-	A2 = sheathArea;
-	A4 = A2;
+	area[1] = sheathArea;
+	area[3] = area[1];
 	
 	// the following are commented out for ConSOl becasue cement tile is flat and does not have increased surface area
 	if(roofType == 2 || roofType == 3) {
-        A3 = 1.5 * A2;	   // tile roof has more surface area for convection heat transfer
+        area[2] = 1.5 * area[1];	   // tile roof has more surface area for convection heat transfer
 	} else {
-		A3 = A2;																
+		area[2] = area[1];																
 	}
 
-   A5 = A3;
-	A6 = bulkArea;
-	A7 = planArea;									// Ceiling
-	A8 = A7;											// Attic floor
-	A9 = planArea / 2 * tan(roofPitch * M_PI / 180);	// Total endwall area
-	A10 = A9;
-	A11 = retArea;
-	A12 = M_PI * retLength * retDiameter;
-	A14 = supArea;
-	A15 = M_PI * supLength * supDiameter;
+   area[4] = area[2];
+	area[5] = bulkArea;
+	area[6] = planArea;									// Ceiling
+	area[7] = area[6];											// Attic floor
+	area[8] = planArea / 2 * tan(roofPitch * M_PI / 180);	// Total endwall area
+	area[9] = area[8];
+	area[10] = retArea;
+	area[11] = M_PI * retLength * retDiameter;
+	area[13] = supArea;
+	area[14] = M_PI * supLength * supDiameter;
 	
 	// surface area of inside of house minus the end walls, roof and ceiling
 	// Currently assuming two stories with heights of 2.5m and 3.0m
-	//A16 = 3 * pow(floorArea, .5) * 2 + 2.5 * pow(floorArea, .5) * 2 + 2 * floorArea;
-	//A16 = numStories * storyHeight * pow(planArea, .5) * 2 + (2 * (numStories -1)) * planArea;
-	A16 = 11 * pow(floorArea,0.5) + 2 * floorArea;	// Empirically derived relationship
-	A13 = 6 * A16;									//  Surface area of everything in the house
+	//area[15] = 3 * pow(floorArea, .5) * 2 + 2.5 * pow(floorArea, .5) * 2 + 2 * floorArea;
+	//area[15] = numStories * storyHeight * pow(planArea, .5) * 2 + (2 * (numStories -1)) * planArea;
+	area[15] = 11 * pow(floorArea,0.5) + 2 * floorArea;	// Empirically derived relationship
+	area[12] = 6 * area[15];									//  Surface area of everything in the house
 	
 	// masses
-	M1 = atticVolume * airDensityATTIC;					// mass of attic air
-	M2 = .5 * A2 * densitySheathing * woodThickness;		// 1/2 OF TOTAL
-	M3 = M2 + denShingles * A2;							// OTHER 1/2 OUTSIDE SHEATHING, WOOD TCOND W/MMC
-	M4 = M2;
-	M5 = M3;
-	M6 = 10 * planArea;										// Wild speculation
-	M7 = .5 * 4 * planArea;									// MASS OF JOISTS DRYWALL AND INSULATION
-	M8 = M7;
-	M9 = .5 * densityWood * woodThickness * A9;
-	M10 = M9;
-	M11 = retLength * M_PI * (retDiameter + retThickness) * retThickness * retrho;	// retArea * retrho * retThickness
-	M12 = retVolume * airDensityRET;
+	mass[0] = atticVolume * airDensityATTIC;					// mass of attic air
+	mass[1] = .5 * area[1] * densitySheathing * woodThickness;		// 1/2 OF TOTAL
+	mass[2] = mass[1] + denShingles * area[1];							// OTHER 1/2 OUTSIDE SHEATHING, WOOD TCOND W/MMC
+	mass[3] = mass[1];
+	mass[4] = mass[2];
+	mass[5] = 10 * planArea;										// Wild speculation
+	mass[6] = .5 * 4 * planArea;									// MASS OF JOISTS DRYWALL AND INSULATION
+	mass[7] = mass[6];
+	mass[8] = .5 * densityWood * woodThickness * area[8];
+	mass[9] = mass[8];
+	mass[10] = retLength * M_PI * (retDiameter + retThickness) * retThickness * retrho;	// retArea * retrho * retThickness
+	mass[11] = retVolume * airDensityRET;
 
 	//  maybe not - 02/2004 need to increase house mass with furnishings and their area: say 5000kg furnishings
-	M13 = (storyHeight * pow(floorArea, .5) * 4 * 2000 * .01 + planArea * .05 * 2000);		// mass of walls (5 cm effctive thickness) + mass of slab (aso 5 cm thick)
-	M14 = supLength * M_PI * (supDiameter + supThickness) * supThickness * suprho;			// supArea * suprho * supThickness
-	M15 = supVolume * airDensitySUP;
-	M16 = houseVolume * airDensityIN;
+	mass[12] = (storyHeight * pow(floorArea, .5) * 4 * 2000 * .01 + planArea * .05 * 2000);		// mass of walls (5 cm effctive thickness) + mass of slab (aso 5 cm thick)
+	mass[13] = supLength * M_PI * (supDiameter + supThickness) * supThickness * suprho;			// supArea * suprho * supThickness
+	mass[14] = supVolume * airDensitySUP;
+	mass[15] = houseVolume * airDensityIN;
 
 	// Specific heat capacities
-	cp1 = CpAir;
-	cp2 = 1210;													// CP plywood
-	cp4 = cp2;
-	cp3 = cpShingles;
-	cp5 = cp3;
-	cp6 = 1630;													// CP wood
-	cp7 = 1150;
-	cp8 = cp7;
-	cp9 = cp2;
-	cp10 = cp9;
-	cp11 = retCp;												// input
-	cp12 = cp1;
-	cp13 = 1300;												// combination of wood and drywall
-	cp14 = supCp;
-	cp15 = cp1;
-	cp16 = cp1;
+	heatCap[0] = CpAir;
+	heatCap[1] = 1210;													// CP plywood
+	heatCap[3] = heatCap[1];
+	heatCap[2] = cpShingles;
+	heatCap[4] = heatCap[2];
+	heatCap[5] = 1630;													// CP wood
+	heatCap[6] = 1150;
+	heatCap[7] = heatCap[6];
+	heatCap[8] = heatCap[1];
+	heatCap[9] = heatCap[8];
+	heatCap[10] = retCp;												// input
+	heatCap[11] = CpAir;
+	heatCap[12] = 1300;												// combination of wood and drywall
+	heatCap[13] = supCp;
+	heatCap[14] = CpAir;
+	heatCap[15] = CpAir;
 
 	// Thermal conductivities (k) [W/mK]and R-values [m2K/W] and the like
 	kWood = 0.15;												// check with Iain about this
@@ -559,32 +538,27 @@ void sub_heat (
 	   roofInsulRatio = (1/roofExtRval)/(1/roofExtRval + 1/((woodThickness / kWood) + Rshingles));
 	else
 	   roofInsulRatio = 1;
-	Uval2 = 1 / ((woodThickness / kWood) + Rshingles + roofExtRval);
-	Uval3 = Uval2;
-	Uval4 = Uval2;
-	Uval5 = Uval2;
+	uVal[1] = 1 / ((woodThickness / kWood) + Rshingles + roofExtRval);
+	uVal[2] = uVal[1];
+	uVal[3] = uVal[1];
+	uVal[4] = uVal[1];
 	if(tempOld[15] > tempOld[0])
-		Uval7 = 1 / ceilRval + 0.015;
+		uVal[6] = 1 / ceilRval + 0.015;
 	else
-		Uval7 = 1 / ceilRval;
-	Uval8 = Uval7;
-	Uval9 = 1 / gableEndRval;
-	Uval10 = Uval9;
+		uVal[6] = 1 / ceilRval;
+	uVal[7] = uVal[6];
+	uVal[8] = 1 / gableEndRval;
+	uVal[9] = uVal[8];
 	// Inner Surface of Ducts
 	// from Holman   Nu(D) = 0.023*Re(D)^0.8*Pr(D)^0.4
 	// Note Use of HI notation
 	// I think that the following may be an imperical relationship
 	// Return Ducts
-	HI11 = .023 * kAir / retDiameter * pow((retDiameter * airDensityRET * abs(retVel) / muAir), .8) * pow((CpAir * muAir / kAir), .4);
-	//if(HI11 <= 0) ?? will never be negative
-	//	HI11 = H11;
-
+	HI = .023 * kAir / retDiameter * pow((retDiameter * airDensityRET * abs(retVel) / muAir), .8) * pow((CpAir * muAir / kAir), .4);
+	uVal[10] = 1 / (retRval + 1/HI);
 	// Supply Ducts
-	HI14 = .023 * kAir / supDiameter * pow((supDiameter * airDensitySUP * supVel / muAir), .8) * pow((CpAir * muAir / kAir), .4);
-	//if(HI14 <= 0) ?? will never be negative
-	//	HI14 = H14;
-	Uval11 = 1 / (retRval + 1/HI11);
-	Uval14 = 1 / (supRval + 1/HI14);
+	HI = .023 * kAir / supDiameter * pow((supDiameter * airDensitySUP * supVel / muAir), .8) * pow((CpAir * muAir / kAir), .4);
+	uVal[13] = 1 / (supRval + 1/HI);
 
 	/* most of the surfaces in the attic undergo both natural and forced convection
 	the overall convection is determined by the forced and natural convection coefficients
@@ -600,136 +574,117 @@ void sub_heat (
 	}
 
 	// convection heat transfer coefficients
-	H2 = heatTranCoef(tempOld[1], tempOld[0], characteristicVelocity);  // inner north sheathing
-	H3 = heatTranCoef(tempOld[2], tempOut, windSpeed);                  // outer north sheathing
-	H4 = heatTranCoef(tempOld[3], tempOld[0], characteristicVelocity);  // inner south sheathing
-	H5 = heatTranCoef(tempOld[4], tempOut, windSpeed);                  // outer south sheathing
-	H6 = heatTranCoef(tempOld[5], tempOld[0], characteristicVelocity);  // Wood (joists,truss,etc.)
-
+	htCoef[1] = heatTranCoef(tempOld[1], tempOld[0], characteristicVelocity);  // inner north sheathing
+	htCoef[2] = heatTranCoef(tempOld[2], tempOut, windSpeed);                  // outer north sheathing
+	htCoef[3] = heatTranCoef(tempOld[3], tempOld[0], characteristicVelocity);  // inner south sheathing
+	htCoef[4] = heatTranCoef(tempOld[4], tempOut, windSpeed);                  // outer south sheathing
+	htCoef[5] = heatTranCoef(tempOld[5], tempOld[0], characteristicVelocity);  // Wood (joists,truss,etc.)
+   
 	// Underside of Ceiling. Modified to use fixed numbers from ASHRAE Fundamentals ch.3 on 05/18/2000
 	if(AHflag != 0)
-		H7 = 9;
+		htCoef[6] = 9;
 	else
-		H7 = 6;
+		htCoef[6] = 6;
 	// House Mass uses ceiling heat transfer coefficient as rest for house heat transfer coefficient	
-	H13 = H7;
+	htCoef[12] = htCoef[6];
 
-	H8 = heatTranCoef(tempOld[7], tempOld[0], characteristicVelocity);  // Attic Floor
-	H9 = heatTranCoef(tempOld[8], tempOld[0], characteristicVelocity);  // Inner side of gable endwalls (lumped together)
-	H10 = heatTranCoef(tempOld[9], tempOut, windSpeed);                 // Outer side of gable ends
+	htCoef[7] = heatTranCoef(tempOld[7], tempOld[0], characteristicVelocity);  // Attic Floor
+	htCoef[8] = heatTranCoef(tempOld[8], tempOld[0], characteristicVelocity);  // Inner side of gable endwalls (lumped together)
+	htCoef[9] = heatTranCoef(tempOld[9], tempOut, windSpeed);                 // Outer side of gable ends
 
 	if(ductLocation == 1) { //  Ducts in the house
 		// Outer Surface of Ducts
 		if(AHflag != 0) {
-			H11 = 9;
-			H14 = H11;
+			htCoef[10] = 9;
+			htCoef[13] = htCoef[10];
 		} else {
-			H11 = 6;
-			H14 = H11;
+			htCoef[10] = 6;
+			htCoef[13] = htCoef[10];
 		}
 	} else {
-		H11 = heatTranCoef(tempOld[10], tempOld[0], characteristicVelocity);			// Outer Surface of Return Ducts
-		H14 = heatTranCoef(tempOld[13], tempOld[0], characteristicVelocity);			// Outer Surface of Supply Ducts
+		htCoef[10] = heatTranCoef(tempOld[10], tempOld[0], characteristicVelocity);			// Outer Surface of Return Ducts
+		htCoef[13] = heatTranCoef(tempOld[13], tempOld[0], characteristicVelocity);			// Outer Surface of Supply Ducts
 	}
+   // Pass back wood surface heat transfer coefficients for use by moisture routines
+   innerNorthH = htCoef[1];
+   innerSouthH = htCoef[3];
+   bulkH = htCoef[5];
 
 
-	// Radiation shape factors
-	/* Only 5 nodes (2,4,8,11,14) are involved in radiation transfer in the attic
+	// Radiation view factors
+	/* 
+	Only 5 nodes (2,4,8,11,14) are involved in radiation transfer in the attic
 	The endwalls have a very small contribution to radiation exchange and are neglected.
 	The wood may or may not contribute to radiation exchange, but their geometry is
 	too complex to make any assumptions so it is excluded.
-	Assumes that the duct is suspended above the floor, completely out of the insulation
-	this will change in the future */
-
+   */
+   
+   viewFactor[7][1] = 1 / 2.0;
+   viewFactor[7][3] = viewFactor[7][1];
+   viewFactor[1][7] = viewFactor[7][1] * area[7] / area[1];
+   viewFactor[3][7] = viewFactor[1][7];
 	if(ductLocation == 1) { //  Ducts in the house
-		F8t2 = 1 / 2.0;
-		F8t4 = F8t2;
-		F2t8 = F8t2 * A8 / A2;
-		F4t8 = F2t8;
-		F2t4 = (1 - F2t8);
-		F4t2 = (1 - F4t8);
-		F4t11 = 0;
-		F4t14 = 0;
-		F2t11 = 0;
-		F2t14 = 0;
-		F14t2 = 0;
-		F14t4 = 0;
-		F11t4 = 0;
-		F11t2 = 0;
+		viewFactor[1][3] = (1 - viewFactor[1][7]);
+		viewFactor[3][1] = (1 - viewFactor[3][7]);
 	} else {			// ducts in the attic
 		// 33.3% of each duct sees each sheathing surface (top third of duct)
-		F14t2 = 1 / 2.0;
-		F11t2 = F14t2;
-		F14t4 = F14t2;
-		F11t4 = F14t2;
+		viewFactor[13][1] = 1 / 2.0;
+		viewFactor[10][1] = viewFactor[13][1];
+		viewFactor[13][3] = viewFactor[13][1];
+		viewFactor[10][3] = viewFactor[13][1];
 
-		// Remaining 50% of each duct surface sees the floor
-		// changed, the ducts don't see the floor
-		// F11t8 = 0
-		// F14t8 = F11t8
-
-		// The ducts don't see each other
-		// F11t14 = 0
-		// F14t11 = 0
-
-		F8t14 = 0;											// F14t8 * (A14 / 3) / A8
-		F8t11 = 0;											// F11t8 * (A11 / 3) / A8
-		F2t14 = F14t2 * (A14 / 3) / A2;
-		F2t11 = F11t2 * (A11 / 3) / A2;
-		F4t14 = F14t4 * (A14 / 3) / A4;
-		F4t11 = F11t4 * (A11 / 3) / A4;
-		F8t2 = 1 / 2.0;										// (1 - F8t14 - F8t11) / 2
-		F8t4 = F8t2;
-		F2t8 = F8t2 * A8 / A2;
-		F4t8 = F2t8;
-		F2t4 = (1 - F2t8 - F2t11 - F2t14);
-		F4t2 = (1 - F4t8 - F4t11 - F4t14);
+		viewFactor[1][13] = viewFactor[13][1] * (area[13] / 3) / area[1];
+		viewFactor[1][10] = viewFactor[10][1] * (area[10] / 3) / area[1];
+		viewFactor[3][13] = viewFactor[13][3] * (area[13] / 3) / area[3];
+		viewFactor[3][10] = viewFactor[10][3] * (area[10] / 3) / area[3];
+		viewFactor[1][3] = (1 - viewFactor[1][7] - viewFactor[1][10] - viewFactor[1][13]);
+		viewFactor[3][1] = (1 - viewFactor[3][7] - viewFactor[3][10] - viewFactor[3][13]);
 
 		// North Sheathing
-		HR2t11 = radTranCoef(EPS1, tempOld[1], tempOld[10], F2t11, A2/(A11/3));
-		HR2t14 = radTranCoef(EPS1, tempOld[1], tempOld[13], F2t14, A2/(A14/3));
+		rtCoef[1][10] = radTranCoef(woodEmissivity, tempOld[1], tempOld[10], viewFactor[1][10], area[1]/(area[10]/3));
+		rtCoef[1][13] = radTranCoef(woodEmissivity, tempOld[1], tempOld[13], viewFactor[1][13], area[1]/(area[13]/3));
 
 		// South Sheathing
-		HR4t11 = radTranCoef(EPS1, tempOld[3], tempOld[10], F4t11, A4/(A11/3));
-		HR4t14 = radTranCoef(EPS1, tempOld[3], tempOld[13], F4t14, A4/(A14/3));
+		rtCoef[3][10] = radTranCoef(woodEmissivity, tempOld[3], tempOld[10], viewFactor[3][10], area[3]/(area[10]/3));
+		rtCoef[3][13] = radTranCoef(woodEmissivity, tempOld[3], tempOld[13], viewFactor[3][13], area[3]/(area[13]/3));
 
 		// Return Ducts (note, No radiative exchange w/ supply ducts)
-		HR11t4 = radTranCoef(EPS1, tempOld[10], tempOld[3], F11t4, A11/A4);
-		HR11t2 = radTranCoef(EPS1, tempOld[10], tempOld[1], F11t2, A11/A2);
+		rtCoef[10][3] = radTranCoef(woodEmissivity, tempOld[10], tempOld[3], viewFactor[10][3], area[10]/area[3]);
+		rtCoef[10][1] = radTranCoef(woodEmissivity, tempOld[10], tempOld[1], viewFactor[10][1], area[10]/area[1]);
 
 		// Supply Ducts (note, No radiative exchange w/ return ducts)
-		HR14t4 = radTranCoef(EPS1, tempOld[13], tempOld[3], F14t4, A14/A4);
-		HR14t2 = radTranCoef(EPS1, tempOld[13], tempOld[1], F14t2, A14/A2);
+		rtCoef[13][3] = radTranCoef(woodEmissivity, tempOld[13], tempOld[3], viewFactor[13][3], area[13]/area[3]);
+		rtCoef[13][1] = radTranCoef(woodEmissivity, tempOld[13], tempOld[1], viewFactor[13][1], area[13]/area[1]);
 	}
 
 	// North Sheathing
-	HR2t4 = radTranCoef(EPS1, tempOld[1], tempOld[3], F2t4, A2/A4);
-	HR2t8 = radTranCoef(EPS1, tempOld[1], tempOld[7], F2t8, A2/A8);
+	rtCoef[1][3] = radTranCoef(woodEmissivity, tempOld[1], tempOld[3], viewFactor[1][3], area[1]/area[3]);
+	rtCoef[1][7] = radTranCoef(woodEmissivity, tempOld[1], tempOld[7], viewFactor[1][7], area[1]/area[7]);
 
 	// South Sheathing
-	HR4t2 = radTranCoef(EPS1, tempOld[3], tempOld[1], F4t2, A4/A2);
-	HR4t8 = radTranCoef(EPS1, tempOld[3], tempOld[7], F4t8, A4/A8);
+	rtCoef[3][1] = radTranCoef(woodEmissivity, tempOld[3], tempOld[1], viewFactor[3][1], area[3]/area[1]);
+	rtCoef[3][7] = radTranCoef(woodEmissivity, tempOld[3], tempOld[7], viewFactor[3][7], area[3]/area[7]);
 
 	// Attic Floor
-	HR8t4 = radTranCoef(EPS1, tempOld[7], tempOld[3], F8t4, A8/A4);
-	HR8t2 = radTranCoef(EPS1, tempOld[7], tempOld[1], F8t2, A8/A2);
+	rtCoef[7][3] = radTranCoef(woodEmissivity, tempOld[7], tempOld[3], viewFactor[7][3], area[7]/area[3]);
+	rtCoef[7][1] = radTranCoef(woodEmissivity, tempOld[7], tempOld[1], viewFactor[7][1], area[7]/area[1]);
 
 	// underside of ceiling
-	HR7 = radTranCoef(EPS1, tempOld[6], tempOld[12], 1, A7/A13);
+	rtCoef[6][12] = radTranCoef(woodEmissivity, tempOld[6], tempOld[12], 1, area[6]/area[12]);
 
 	// Sky and ground radiation
 	FRS = (1 - skyCover) * (180 - roofPitch) / 180;      	// ROOF-SKY SHAPE FACTOR
 	FG = 1 - FRS;                            					// ROOF-GROUND SHAPE FACTOR
 	TGROUND = tempOut;                           			// ASSUMING GROUND AT AIR TEMP
 	if(skyCover < 1) {
-		HRS5 = radTranCoef(epsshingles, tempOld[4], TSKY, FRS, 0);
-		HRS3 = radTranCoef(epsshingles, tempOld[2], TSKY, FRS, 0);
+		skyCoef4 = radTranCoef(roofEmissivity, tempOld[4], TSKY, FRS, 0);
+		skyCoef2 = radTranCoef(roofEmissivity, tempOld[2], TSKY, FRS, 0);
 	} else {
-		HRS5 = 0;
-		HRS3 = 0;
+		skyCoef4 = 0;
+		skyCoef2 = 0;
 	}
-	HRG5 = radTranCoef(epsshingles, tempOld[4], TGROUND, FG, 0);
-	HRG3 = radTranCoef(epsshingles, tempOld[2], TGROUND, FG, 0);
+	gndCoef4 = radTranCoef(roofEmissivity, tempOld[4], TGROUND, FG, 0);
+	gndCoef2 = radTranCoef(roofEmissivity, tempOld[2], TGROUND, FG, 0);
 
 
 	// ITERATION OF TEMPERATURES WITHIN HEAT SUBROUTINE
@@ -748,188 +703,188 @@ void sub_heat (
 			A.resize(ATTIC_NODES, vector<double>(ATTIC_NODES+1));
 		}
 
-		// NODE 1 IS ATTIC AIR
+		// NODE 0 IS ATTIC AIR
 		if(mCeiling >= 0) {
 			// flow from attic to house
-			A[0][0] = M1 * cp1 / dtau + H8 * A8 + H6 * A6 + mCeiling * cp1 + mSupAHoff * cp15 + mRetAHoff * cp12 + H4 * A4 + H2 * A2 + A9 * H9 - matticenvout * cp1 - mRetLeak * cp1;
-			b[0] = M1 * cp1 * tempOld[0] / dtau + matticenvin * cp1 * tempOut + mSupLeak * cp1 * toldcur[14];
+			A[0][0] = mass[0] * heatCap[0] / dtau + htCoef[7] * area[7] + htCoef[5] * area[5] + mCeiling * heatCap[0] + mSupAHoff * heatCap[14] + mRetAHoff * heatCap[11] + htCoef[3] * area[3] + htCoef[1] * area[1] + area[8] * htCoef[8] - matticenvout * heatCap[0] - mRetLeak * heatCap[0];
+			b[0] = mass[0] * heatCap[0] * tempOld[0] / dtau + matticenvin * heatCap[0] * tempOut + mSupLeak * heatCap[0] * toldcur[14];
 		} else {
 			// flow from house to attic
-			A[0][0] = M1 * cp1 / dtau + H8 * A8 + H6 * A6 + H4 * A4 + H2 * A2 + A9 * H9 - matticenvout * cp1 - mRetLeak * cp1;
-			b[0] = M1 * cp1 * tempOld[0] / dtau - mCeiling * cp1 * toldcur[15] - mSupAHoff * cp15 * toldcur[14] - mRetAHoff * cp12 * toldcur[11] + matticenvin * cp1 * tempOut + mSupLeak * cp15 * toldcur[14];
+			A[0][0] = mass[0] * heatCap[0] / dtau + htCoef[7] * area[7] + htCoef[5] * area[5] + htCoef[3] * area[3] + htCoef[1] * area[1] + area[8] * htCoef[8] - matticenvout * heatCap[0] - mRetLeak * heatCap[0];
+			b[0] = mass[0] * heatCap[0] * tempOld[0] / dtau - mCeiling * heatCap[0] * toldcur[15] - mSupAHoff * heatCap[14] * toldcur[14] - mRetAHoff * heatCap[11] * toldcur[11] + matticenvin * heatCap[0] * tempOut + mSupLeak * heatCap[14] * toldcur[14];
 		}
-		A[0][1] = -H2 * A2;
-		A[0][3] = -H4 * A4;
-		A[0][5] = -H6 * A6;
-		A[0][7] = -H8 * A8;
-		A[0][8] = -H9 * A9;
+		A[0][1] = -htCoef[1] * area[1];
+		A[0][3] = -htCoef[3] * area[3];
+		A[0][5] = -htCoef[5] * area[5];
+		A[0][7] = -htCoef[7] * area[7];
+		A[0][8] = -htCoef[8] * area[8];
 		if(ductLocation == 0) {		// duct surface conduction loss to attic
-			A[0][0] +=  H14 * A14 / 2 + H11 * A11 / 2;
-			A[0][10] = -H11 * A11 / 2;
-			A[0][13] = -H14 * A14 / 2;
+			A[0][0] +=  htCoef[13] * area[13] / 2 + htCoef[10] * area[10] / 2;
+			A[0][10] = -htCoef[10] * area[10] / 2;
+			A[0][13] = -htCoef[13] * area[13] / 2;
 		}
 
-		// NODE 2 IS INSIDE NORTH SHEATHING
-		A[1][0] = -H2 * A2;
-		A[1][1] = M2 * cp2 / dtau + H2 * A2 + A2 * Uval2 + HR2t4 * A2 + HR2t8 * A2;
-		b[1] = M2 * cp2 * tempOld[1] / dtau;
-		A[1][2] = -A2 * Uval2;
-		A[1][3] = -HR2t4 * A2;
-		A[1][7] = -HR2t8 * A2;
+		// NODE 1 IS INSIDE NORTH SHEATHING
+		A[1][0] = -htCoef[1] * area[1];
+		A[1][1] = mass[1] * heatCap[1] / dtau + htCoef[1] * area[1] + area[1] * uVal[1] + rtCoef[1][3] * area[1] + rtCoef[1][7] * area[1];
+		b[1] = mass[1] * heatCap[1] * tempOld[1] / dtau;
+		A[1][2] = -area[1] * uVal[1];
+		A[1][3] = -rtCoef[1][3] * area[1];
+		A[1][7] = -rtCoef[1][7] * area[1];
 
 		if(ductLocation == 0) {			// duct surface radiation to sheathing
-			A[1][1] += HR2t11 * A2 + HR2t14 * A2;
-			A[1][10] = -HR2t11 * A2;
-			A[1][13] = -HR2t14 * A2;
+			A[1][1] += rtCoef[1][10] * area[1] + rtCoef[1][13] * area[1];
+			A[1][10] = -rtCoef[1][10] * area[1];
+			A[1][13] = -rtCoef[1][13] * area[1];
 		}
 
-		// NODE 3 IS OUTSIDE NORTH SHEATHING
-		A[2][1] = -A2 * Uval3;
-		A[2][2] = M3 * cp3 / dtau + H3 * A3 + A2 * Uval3 + HRS3 * A2 + HRG3 * A2;
-		b[2] = M3 * cp3 * tempOld[2] / dtau + H3 * A3 * tempOut + A2 * nsolrad * alpha3 + HRS3 * A2 * TSKY + HRG3 * A2 * TGROUND;
+		// NODE 2 IS OUTSIDE NORTH SHEATHING
+		A[2][1] = -area[1] * uVal[2];
+		A[2][2] = mass[2] * heatCap[2] / dtau + htCoef[2] * area[2] + area[1] * uVal[2] + skyCoef2 * area[1] + gndCoef2 * area[1];
+		b[2] = mass[2] * heatCap[2] * tempOld[2] / dtau + htCoef[2] * area[2] * tempOut + area[1] * nsolrad * roofAbsorptivity + skyCoef2 * area[1] * TSKY + gndCoef2 * area[1] * TGROUND;
 
-		// NODE 4 IS INSIDE SOUTH SHEATHING
-		A[3][0] = -H4 * A4;
-		A[3][1] = -HR4t2 * A4;
-		A[3][3] = M4 * cp4 / dtau + H4 * A4 + A4 * Uval4 + HR4t2 * A4 + HR4t8 * A4;
-		b[3] = M4 * cp4 * tempOld[3] / dtau;
-		A[3][4] = -A4 * Uval4;
-		A[3][7] = -HR4t8 * A4;
+		// NODE 3 IS INSIDE SOUTH SHEATHING
+		A[3][0] = -htCoef[3] * area[3];
+		A[3][1] = -rtCoef[3][1] * area[3];
+		A[3][3] = mass[3] * heatCap[3] / dtau + htCoef[3] * area[3] + area[3] * uVal[3] + rtCoef[3][1] * area[3] + rtCoef[3][7] * area[3];
+		b[3] = mass[3] * heatCap[3] * tempOld[3] / dtau;
+		A[3][4] = -area[3] * uVal[3];
+		A[3][7] = -rtCoef[3][7] * area[3];
 
 		if(ductLocation == 0) {			// duct surface radiation to sheathing
-			A[3][3] += HR4t11 * A4 + HR4t14 * A4;
-			A[3][10] = -HR4t11 * A4;
-			A[3][13] = -HR4t14 * A4;
+			A[3][3] += rtCoef[3][10] * area[3] + rtCoef[3][13] * area[3];
+			A[3][10] = -rtCoef[3][10] * area[3];
+			A[3][13] = -rtCoef[3][13] * area[3];
 		}
 
-		// NODE 5 IS OUTSIDE SOUTH SHEATHING
-		A[4][3] = -A4 * Uval5;
-		A[4][4] = M5 * cp5 / dtau + H5 * A5 + A4 * Uval5 + HRS5 * A4 + HRG5 * A4;
-		b[4] = M5 * cp5 * tempOld[4] / dtau + H5 * A5 * tempOut + A4 * ssolrad * alpha5 + HRS5 * A4 * TSKY + HRG5 * A4 * TGROUND;
+		// NODE 4 IS OUTSIDE SOUTH SHEATHING
+		A[4][3] = -area[3] * uVal[4];
+		A[4][4] = mass[4] * heatCap[4] / dtau + htCoef[4] * area[4] + area[3] * uVal[4] + skyCoef4 * area[3] + gndCoef4 * area[3];
+		b[4] = mass[4] * heatCap[4] * tempOld[4] / dtau + htCoef[4] * area[4] * tempOut + area[3] * ssolrad * roofAbsorptivity + skyCoef4 * area[3] * TSKY + gndCoef4 * area[3] * TGROUND;
 
-		// NODE 6 IS MASS OF WOOD IN ATTIC I.E. JOISTS AND TRUSSES
-		A[5][0] = -H6 * A6;
-		A[5][5] = M6 * cp6 / dtau + H6 * A6;
-		b[5] = M6 * cp6 * tempOld[5] / dtau;
+		// NODE 5 IS MASS OF WOOD IN ATTIC I.E. JOISTS AND TRUSSES
+		A[5][0] = -htCoef[5] * area[5];
+		A[5][5] = mass[5] * heatCap[5] / dtau + htCoef[5] * area[5];
+		b[5] = mass[5] * heatCap[5] * tempOld[5] / dtau;
 
-		// NODE  7 ON INSIDE OF CEILING
-		A[6][6] = M7 * cp7 / dtau + H7 * A7 + HR7 * A7 + A7 * Uval7;
-		b[6] = M7 * cp7 / dtau * tempOld[6];
-		A[6][7] = -A7 * Uval7;
-		A[6][15] = -H7 * A7;
-		A[6][12] = -HR7 * A7;
+		// NODE  6 ON INSIDE OF CEILING
+		A[6][6] = mass[6] * heatCap[6] / dtau + htCoef[6] * area[6] + rtCoef[6][12] * area[6] + area[6] * uVal[6];
+		b[6] = mass[6] * heatCap[6] / dtau * tempOld[6];
+		A[6][7] = -area[6] * uVal[6];
+		A[6][15] = -htCoef[6] * area[6];
+		A[6][12] = -rtCoef[6][12] * area[6];
 
 		//if(ductLocation == 1) {
 			// ducts in house
-		//	A[6][6] = M7 * cp7 / dtau + H7 * A7 + HR7 * A7 + A7 * Uval7;
+		//	A[6][6] = mass[6] * heatCap[6] / dtau + htCoef[6] * area[6] + rtCoef[6][12] * area[6] + area[6] * uVal[6];
 		//}
 
-		// NODE 8 ON ATTIC FLOOR
-		A[7][0] = -H8 * A8;
-		A[7][1] = -HR8t2 * A8;
-		A[7][3] = -HR8t4 * A8;
-		A[7][6] = -A8 * Uval8;
-		A[7][7] = M8 * cp8 / dtau + H8 * A8 + HR8t2 * A8 + HR8t4 * A8 + A8 * Uval8;				// + HR8t11 * A8 + HR8t14 * A8
-		b[7] = M8 * cp8 / dtau * tempOld[7];
+		// NODE 7 ON ATTIC FLOOR
+		A[7][0] = -htCoef[7] * area[7];
+		A[7][1] = -rtCoef[7][1] * area[7];
+		A[7][3] = -rtCoef[7][3] * area[7];
+		A[7][6] = -area[7] * uVal[7];
+		A[7][7] = mass[7] * heatCap[7] / dtau + htCoef[7] * area[7] + rtCoef[7][1] * area[7] + rtCoef[7][3] * area[7] + area[7] * uVal[7];				// + HR8t11 * area[7] + HR8t14 * area[7]
+		b[7] = mass[7] * heatCap[7] / dtau * tempOld[7];
 
-		// NODE 9 IS INSIDE ENDWALLS THAT ARE BOTH LUMPED TOGETHER
-		A[8][0] = -H9 * A9;
-		A[8][8] = M9 * cp9 / dtau + H9 * A9 + A9 * Uval9;
-		A[8][9] = -A9 * Uval9;
-		b[8] = M9 * cp9 * tempOld[8] / dtau;
+		// NODE 8 IS INSIDE ENDWALLS THAT ARE BOTH LUMPED TOGETHER
+		A[8][0] = -htCoef[8] * area[8];
+		A[8][8] = mass[8] * heatCap[8] / dtau + htCoef[8] * area[8] + area[8] * uVal[8];
+		A[8][9] = -area[8] * uVal[8];
+		b[8] = mass[8] * heatCap[8] * tempOld[8] / dtau;
 
-		// NODE 10 IS OUTSIDE ENDWALLS THAT ARE BOTH LUMPED TOGETHER
-		A[9][8] = -A10 * Uval10;
-		A[9][9] = M10 * cp10 / dtau + H10 * A10 + A10 * Uval10;
-		b[9] = M10 * cp10 * tempOld[9] / dtau + H10 * A10 * tempOut;
+		// NODE 9 IS OUTSIDE ENDWALLS THAT ARE BOTH LUMPED TOGETHER
+		A[9][8] = -area[9] * uVal[9];
+		A[9][9] = mass[9] * heatCap[9] / dtau + htCoef[9] * area[9] + area[9] * uVal[9];
+		b[9] = mass[9] * heatCap[9] * tempOld[9] / dtau + htCoef[9] * area[9] * tempOut;
 
-		// NODE 11 Exterior Return Duct Surface
+		// NODE 10 Exterior Return Duct Surface
 		// Remember that the fluid properties are evaluated at a constant temperature
 		// therefore, the convection on the inside of the ducts is
-		b[10] = M11 * cp11 * tempOld[10] / dtau;
-		A[10][11] = -A12 * Uval11;
+		b[10] = mass[10] * heatCap[10] * tempOld[10] / dtau;
+		A[10][11] = -area[11] * uVal[10];
 		if(ductLocation == 1) {			// ducts in house
-			A[10][10] = M11 * cp11 / dtau + H11 * A11 + A12 * Uval11;
-			A[10][15] = -A11 * H11;
+			A[10][10] = mass[10] * heatCap[10] / dtau + htCoef[10] * area[10] + area[11] * uVal[10];
+			A[10][15] = -area[10] * htCoef[10];
 		} else {
-			A[10][0] = -A11 * H11 / 2;
-			A[10][1] = -A11 * HR11t2 / 3;
-			A[10][3] = -A11 * HR11t4 / 3;
-			A[10][10] += M11 * cp11 / dtau + H11 * A11 / 2 + A12 * Uval11 + A11 / 3 * HR11t2 + A11 / 3 * HR11t4;
+			A[10][0] = -area[10] * htCoef[10] / 2;
+			A[10][1] = -area[10] * rtCoef[10][1] / 3;
+			A[10][3] = -area[10] * rtCoef[10][3] / 3;
+			A[10][10] += mass[10] * heatCap[10] / dtau + htCoef[10] * area[10] / 2 + area[11] * uVal[10] + area[10] / 3 * rtCoef[10][1] + area[10] / 3 * rtCoef[10][3];
 		}
 		
-		// NODE 12 Air in return duct
-		A[11][10] = -A12 * Uval11;
+		// NODE 11 Air in return duct
+		A[11][10] = -area[11] * uVal[10];
 		if(mCeiling >= 0) {
 			// flow from attic to house
-			A[11][11] = M12 * cp12 / dtau + A12 * Uval11 + mAH * cp12 + mRetAHoff * cp12;
-			b[11] = M12 * cp12 * tempOld[11] / dtau + mRetAHoff * cp1 * toldcur[0] - mRetLeak * cp1 * toldcur[0] - mRetReg * cp1 * toldcur[15] - mFanCycler * cp1 * tempOut - mHRV_AH * cp16 * ((1 - HRV_ASE) * tempOut + HRV_ASE * tempOld[15]) - mERV_AH * cp16 * ((1-ERV_SRE) * tempOut + ERV_SRE * tempOld[15]);
+			A[11][11] = mass[11] * heatCap[11] / dtau + area[11] * uVal[10] + mAH * heatCap[11] + mRetAHoff * heatCap[11];
+			b[11] = mass[11] * heatCap[11] * tempOld[11] / dtau + mRetAHoff * heatCap[0] * toldcur[0] - mRetLeak * heatCap[0] * toldcur[0] - mRetReg * heatCap[0] * toldcur[15] - mFanCycler * heatCap[0] * tempOut - mHRV_AH * heatCap[15] * ((1 - HRV_ASE) * tempOut + HRV_ASE * tempOld[15]) - mERV_AH * heatCap[15] * ((1-ERV_SRE) * tempOut + ERV_SRE * tempOld[15]);
 			
 		} else {
 			// flow from house to attic
-			A[11][11] = M12 * cp12 / dtau + A12 * Uval11 + mAH * cp12 - mRetAHoff * cp12;
-			b[11] = M12 * cp12 * tempOld[11] / dtau - mRetAHoff * cp16 * toldcur[15] - mRetLeak * cp1 * toldcur[0] - mRetReg * cp1 * toldcur[15] - mFanCycler * cp1 * tempOut - mHRV_AH * cp16 * ((1 - HRV_ASE) * tempOut + HRV_ASE * tempOld[15]) - mERV_AH * cp16 * ((1-ERV_SRE) * tempOut + ERV_SRE * tempOld[15]);
+			A[11][11] = mass[11] * heatCap[11] / dtau + area[11] * uVal[10] + mAH * heatCap[11] - mRetAHoff * heatCap[11];
+			b[11] = mass[11] * heatCap[11] * tempOld[11] / dtau - mRetAHoff * heatCap[15] * toldcur[15] - mRetLeak * heatCap[0] * toldcur[0] - mRetReg * heatCap[0] * toldcur[15] - mFanCycler * heatCap[0] * tempOut - mHRV_AH * heatCap[15] * ((1 - HRV_ASE) * tempOut + HRV_ASE * tempOld[15]) - mERV_AH * heatCap[15] * ((1-ERV_SRE) * tempOut + ERV_SRE * tempOld[15]);
 		}
 
-		// node 13 is the mass of the structure of the house that interacts
+		// node 12 is the mass of the structure of the house that interacts
 		// with the house air to increase its effective thermal mass
 		// 95% of solar gain goes to house mass, 5% to house air
 
-		A[12][12] = M13 * cp13 / dtau + H13 * A13 + HR7 * A7;
-		A[12][15] = -H13 * A13;
-		A[12][6] = -HR7 * A7;
-		b[12] = M13 * cp13 * tempOld[12] / dtau + .95 * solgain;
+		A[12][12] = mass[12] * heatCap[12] / dtau + htCoef[12] * area[12] + rtCoef[6][12] * area[6];
+		A[12][15] = -htCoef[12] * area[12];
+		A[12][6] = -rtCoef[6][12] * area[6];
+		b[12] = mass[12] * heatCap[12] * tempOld[12] / dtau + .95 * solgain;
 
-		// NODE 14 Exterior Supply Duct Surface
-		b[13] = M14 * cp14 * tempOld[13] / dtau;
-		A[13][14] = -A15 * Uval14;
+		// NODE 13 Exterior Supply Duct Surface
+		b[13] = mass[13] * heatCap[13] * tempOld[13] / dtau;
+		A[13][14] = -area[14] * uVal[13];
 		if(ductLocation == 1) {			// ducts in house
-			A[13][13] = M14 * cp14 / dtau + H14 * A14 + A15 * Uval14;
-			A[13][15] = -A14 * H14;
+			A[13][13] = mass[13] * heatCap[13] / dtau + htCoef[13] * area[13] + area[14] * uVal[13];
+			A[13][15] = -area[13] * htCoef[13];
 		} else {
-			A[13][0] = -A14 * H14 / 2;
-			A[13][1] = -A14 * HR14t2 / 3;
-			A[13][3] = -A14 * HR14t4 / 3;
-			A[13][13] = M14 * cp14 / dtau + H14 * A14 / 2 + A15 * Uval14 + A14 * HR14t2 / 3 + A14 / 3 * HR14t4;
+			A[13][0] = -area[13] * htCoef[13] / 2;
+			A[13][1] = -area[13] * rtCoef[13][1] / 3;
+			A[13][3] = -area[13] * rtCoef[13][3] / 3;
+			A[13][13] = mass[13] * heatCap[13] / dtau + htCoef[13] * area[13] / 2 + area[14] * uVal[13] + area[13] * rtCoef[13][1] / 3 + area[13] / 3 * rtCoef[13][3];
 		}
 
-		// NODE 15 Air in SUPPLY duct
+		// NODE 14 Air in SUPPLY duct
 		// capacity is AC unit capcity in Watts
 		// this is a sensible heat balance, the moisture is balanced in a separate routine.
-		A[14][13] = -A15 * Uval14;
+		A[14][13] = -area[14] * uVal[13];
 		if(mCeiling >= 0) {
 			// flow from attic to house
-			A[14][14] = M15 * cp15 / dtau + A15 * Uval14 + mSupReg * cp15 + mSupLeak * cp15 + mSupAHoff * cp15;
-			b[14] = M15 * cp15 * tempOld[14] / dtau - capacityc + capacityh + evapcap + mAH * cp12 * toldcur[11] + mSupAHoff * cp1 * toldcur[0];
+			A[14][14] = mass[14] * heatCap[14] / dtau + area[14] * uVal[13] + mSupReg * heatCap[14] + mSupLeak * heatCap[14] + mSupAHoff * heatCap[14];
+			b[14] = mass[14] * heatCap[14] * tempOld[14] / dtau - capacityc + capacityh + evapcap + mAH * heatCap[11] * toldcur[11] + mSupAHoff * heatCap[0] * toldcur[0];
 		} else {
 			// flow from house to attic
-			A[14][14] = M15 * cp15 / dtau + A15 * Uval14 + mSupReg * cp15 + mSupLeak * cp15 - mSupAHoff * cp15;
-			b[14] = M15 * cp15 * tempOld[14] / dtau - capacityc + capacityh + evapcap + mAH * cp12 * toldcur[11] - mSupAHoff * cp16 * toldcur[15];
+			A[14][14] = mass[14] * heatCap[14] / dtau + area[14] * uVal[13] + mSupReg * heatCap[14] + mSupLeak * heatCap[14] - mSupAHoff * heatCap[14];
+			b[14] = mass[14] * heatCap[14] * tempOld[14] / dtau - capacityc + capacityh + evapcap + mAH * heatCap[11] * toldcur[11] - mSupAHoff * heatCap[15] * toldcur[15];
 		}
 
-		// NODE 16 AIR IN HOUSE
+		// NODE 15 AIR IN HOUSE
 		// use solair tmeperature for house UA
 		if(mCeiling >= 0) {
 			// flow from attic to house
-			A[15][15] = M16 * cp16 / dtau + H7 * A7 - mRetReg * cp16 - mHouseOUT * cp16 + H13 * A13 + uaSolAir + uaTOut;
-			b[15] = M16 * cp16 * tempOld[15] / dtau + (mHouseIN - mHRV) * cp16 * tempOut + mHRV * cp16 * (( 1 - HRV_ASE) 
-				* tempOut + HRV_ASE * tempOld[15]) + uaSolAir * tsolair + uaTOut * tempOut + .05 * solgain + mSupReg * cp1 * toldcur[14] 
-				+ mCeiling * cp1 * toldcur[0] + mSupAHoff * cp15 * toldcur[14] + mRetAHoff * cp12 * toldcur[11] + internalGains + dhSensibleGain;
+			A[15][15] = mass[15] * heatCap[15] / dtau + htCoef[6] * area[6] - mRetReg * heatCap[15] - mHouseOUT * heatCap[15] + htCoef[12] * area[12] + uaSolAir + uaTOut;
+			b[15] = mass[15] * heatCap[15] * tempOld[15] / dtau + (mHouseIN - mHRV) * heatCap[15] * tempOut + mHRV * heatCap[15] * (( 1 - HRV_ASE) 
+				* tempOut + HRV_ASE * tempOld[15]) + uaSolAir * tsolair + uaTOut * tempOut + .05 * solgain + mSupReg * heatCap[0] * toldcur[14] 
+				+ mCeiling * heatCap[0] * toldcur[0] + mSupAHoff * heatCap[14] * toldcur[14] + mRetAHoff * heatCap[11] * toldcur[11] + internalGains + dhSensibleGain;
 		} else {
 			// flow from house to attic
-			A[15][15] = M16 * cp16 / dtau + H7 * A7 - mCeiling * cp16 - mSupAHoff * cp16 - mRetAHoff * cp16 - mRetReg * cp16 - mHouseOUT * cp16 + H13 * A13 + uaSolAir + uaTOut;
-			b[15] = M16 * cp16 * tempOld[15] / dtau + (mHouseIN - mHRV) * cp16 * tempOut + mHRV * cp16 * ((1 - HRV_ASE)
-				* tempOut + HRV_ASE * tempOld[15]) + uaSolAir * tsolair + uaTOut * tempOut + .05 * solgain + mSupReg * cp1 * toldcur[14] + internalGains + dhSensibleGain;
+			A[15][15] = mass[15] * heatCap[15] / dtau + htCoef[6] * area[6] - mCeiling * heatCap[15] - mSupAHoff * heatCap[15] - mRetAHoff * heatCap[15] - mRetReg * heatCap[15] - mHouseOUT * heatCap[15] + htCoef[12] * area[12] + uaSolAir + uaTOut;
+			b[15] = mass[15] * heatCap[15] * tempOld[15] / dtau + (mHouseIN - mHRV) * heatCap[15] * tempOut + mHRV * heatCap[15] * ((1 - HRV_ASE)
+				* tempOut + HRV_ASE * tempOld[15]) + uaSolAir * tsolair + uaTOut * tempOut + .05 * solgain + mSupReg * heatCap[0] * toldcur[14] + internalGains + dhSensibleGain;
 		}
 
-		A[15][6] = -H7 * A7;
-		A[15][12] = -H13 * A13;
+		A[15][6] = -htCoef[6] * area[6];
+		A[15][12] = -htCoef[12] * area[12];
 
 		if(ductLocation == 1) {
 			// ducts in house
-			A[15][15] += A11 * H11 + A14 * H14;
-			A[15][10] = -A11 * H11;
-			A[15][13] = -A14 * H14;
+			A[15][15] += area[10] * htCoef[10] + area[13] * htCoef[13];
+			A[15][10] = -area[10] * htCoef[10];
+			A[15][13] = -area[13] * htCoef[13];
 		}
 
 		for (int i=0; i<ATTIC_NODES; i++) {
@@ -2170,12 +2125,12 @@ double heatTranCoef(double tempi, double tempa, double velocity) {
 * @param emissivity - surface emissivity
 * @param tempi - surface temperature of first surface (deg K)
 * @param tempj - surface temperature of second surface (deg K)
-* @param shapeFactor - view factor between surfaces Fi-j
+* @param viewFactor - view factor between surfaces Fi-j
 * @param areaRatio - ratio of surface areas (Ai/Aj)
 * @return heat transfer coefficient (W/m2K)
 */
 
-double radTranCoef(double emissivity, double tempi, double tempj, double shapeFactor, double areaRatio) {
-	double rT = (1 - emissivity) / emissivity + 1 / shapeFactor + (1 - emissivity) / emissivity * areaRatio;
+double radTranCoef(double emissivity, double tempi, double tempj, double viewFactor, double areaRatio) {
+	double rT = (1 - emissivity) / emissivity + 1 / viewFactor + (1 - emissivity) / emissivity * areaRatio;
 	return SIGMA * (tempi + tempj) * (pow(tempi, 2) + pow(tempj, 2)) / rT;
 }
