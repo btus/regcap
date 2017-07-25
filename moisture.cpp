@@ -53,7 +53,7 @@ Moisture::Moisture(double atticVolume, double retVolume, double supVolume, doubl
 	deltaX[4] = deltaX[1];
 	deltaX[5] = deltaX[2];
 
-	area[0] = sheathArea;  // atticArea / 2 / cos(roofPitch * M_PI / 180);
+	area[0] = sheathArea;
 	area[1] = sheathArea;
 	area[2] = bulkArea;
 	area[3] = area[0];
@@ -70,6 +70,13 @@ Moisture::Moisture(double atticVolume, double retVolume, double supVolume, doubl
 	volume[7] = retVolume;
 	volume[8] = supVolume;
 	volume[9] = houseVolume;
+
+	density[0] = densitySheathing;
+	density[1] = densitySheathing;
+	density[2] = densityWood;
+	density[3] = densitySheathing;
+	density[4] = densitySheathing;
+	density[5] = densityWood;
 
 	haHouse = 1 * 0.622 * .5 * floorArea / 186;	// moisture transport coefficient scales with floor area (kg/s) - 0.622 (dHR/dVP), 186 (area of std house in m2), 0.5 empirical coefficient (kg/s)
 	massWHouse = 1 * 0.622 * 60 * floorArea;					// active mass containing moisture in the house (kg) - empirical
@@ -135,7 +142,7 @@ void Moisture::mass_cond_bal(double* node_temps, double tempOut, double RHOut,
 	const int RWATER = 462;			// gas constant for water vapor (J/KgK)
 	double PWOut;						// outdoor air vapor pressure (Pa)
 	double hw;							// mass transfer coefficient for water vapor (m/s)
-	
+
 	// set node temperatures 
 	temperature[0] = node_temps[3];	// surface of south sheathing
 	temperature[1] = node_temps[1];	// surface of north sheathing
@@ -153,8 +160,8 @@ void Moisture::mass_cond_bal(double* node_temps, double tempOut, double RHOut,
 
 	//NODE  0 ON INSIDE OF SOUTH SHEATHING
 	hw = hU0 / CpAir / LEWIS23 / airDensityAttic;
-	kappa1[0] = calc_kappa_1(pressure, tempOld[0], moistureContent[0], volume[0]);
-	kappa2[0] = calc_kappa_2(moistureContent[0], volume[0]);
+	kappa1[0] = calc_kappa_1(pressure, tempOld[0], moistureContent[0], volume[0] * density[0]);
+	kappa2[0] = calc_kappa_2(moistureContent[0], volume[0] * density[0]);
 	x1 = hw * area[0] / RWATER / temperature[0];
 	x2 = DIFFCOEF * area[0] / RWATER / temperature[0] / deltaX[0];
 	x3 = -hw * area[0] / RWATER / temperature[6];
@@ -168,8 +175,8 @@ void Moisture::mass_cond_bal(double* node_temps, double tempOut, double RHOut,
 
 	//NODE 1 INSIDE OF NORTH SHEATHING
 	hw = hU1 / CpAir / LEWIS23 / airDensityAttic;
-	kappa1[1] = calc_kappa_1(pressure, tempOld[1], moistureContent[1], volume[1]);
-	kappa2[1] = calc_kappa_2(moistureContent[1], volume[1]);
+	kappa1[1] = calc_kappa_1(pressure, tempOld[1], moistureContent[1], volume[1] * density[1]);
+	kappa2[1] = calc_kappa_2(moistureContent[1], volume[1] * density[1]);
 	x5 = hw * area[1] / RWATER / temperature[1];
 	x6 = DIFFCOEF * area[1] / RWATER / temperature[1] / deltaX[1];
 	x7 = -hw * area[1] / RWATER / temperature[6];
@@ -181,8 +188,8 @@ void Moisture::mass_cond_bal(double* node_temps, double tempOut, double RHOut,
 
 	//NODE 2 IS OUTSIDE mass OF WOOD IN ATTIC JOISTS AND TRUSSES
    hw = hU2 / CpAir / LEWIS23 / airDensityAttic;
-	kappa1[2] = calc_kappa_1(pressure, tempOld[2], moistureContent[2], volume[2]);
-	kappa2[2] = calc_kappa_2(moistureContent[2], volume[2]);
+	kappa1[2] = calc_kappa_1(pressure, tempOld[2], moistureContent[2], volume[2] * density[2]);
+	kappa2[2] = calc_kappa_2(moistureContent[2], volume[2] * density[2]);
 	x9 = hw * area[2] / RWATER / temperature[2];
 	x10 = DIFFCOEF * area[2] / RWATER / temperature[2] / deltaX[2];
 	x11 = -hw * area[2] / RWATER / temperature[6];
@@ -193,22 +200,22 @@ void Moisture::mass_cond_bal(double* node_temps, double tempOut, double RHOut,
 	PWInit[2] = kappa1[2] * PWOld[2] - kappa2[2] * (temperature[2] - tempOld[2]);
 
 	//NODE 3 IS  SOUTH SHEATHING
-	kappa1[3] = calc_kappa_1(pressure, tempOld[3], moistureContent[3], volume[3]);
-	kappa2[3] = calc_kappa_2(moistureContent[3], volume[3]);
+	kappa1[3] = calc_kappa_1(pressure, tempOld[3], moistureContent[3], volume[3] * density[3]);
+	kappa2[3] = calc_kappa_2(moistureContent[3], volume[3] * density[3]);
 	A[3][0] = -x2;
 	A[3][3] = kappa1[3] - x4;
 	PWInit[3] = kappa1[3] * PWOld[3] - kappa2[3] * (temperature[3] - tempOld[3]);
 
 	//NODE 4 IS NORTH SHEATHING
-	kappa1[4] = calc_kappa_1(pressure, tempOld[4], moistureContent[4], volume[4]);
-	kappa2[4] = calc_kappa_2(moistureContent[4], volume[4]);
+	kappa1[4] = calc_kappa_1(pressure, tempOld[4], moistureContent[4], volume[4] * density[4]);
+	kappa2[4] = calc_kappa_2(moistureContent[4], volume[4] * density[4]);
 	A[4][1] = -x6;
 	A[4][4] = kappa1[4] - x8;
 	PWInit[4] = kappa1[4] * PWOld[4] - kappa2[4] * (temperature[4] - tempOld[4]);
 
 	//NODE 5 IS INNER BULK WOOD
-	kappa1[5] = calc_kappa_1(pressure, tempOld[5], moistureContent[5], volume[5]);
-	kappa2[5] = calc_kappa_2(moistureContent[5], volume[5]);
+	kappa1[5] = calc_kappa_1(pressure, tempOld[5], moistureContent[5], volume[5] * density[5]);
+	kappa2[5] = calc_kappa_2(moistureContent[5], volume[5] * density[5]);
 	A[5][2] = -x10;
 	A[5][5] = kappa1[5] - x12;
 	PWInit[5] = kappa1[5] * PWOld[5] - kappa2[5] * (temperature[5] - tempOld[5]);
@@ -312,7 +319,7 @@ void Moisture::mass_cond_bal(double* node_temps, double tempOut, double RHOut,
        A[i][MOISTURE_NODES] = PWInit[i];
        }
    PW = gauss(A);
-	
+
 	// once the attic moisture nodes have been calculated assuming no condensation (as above)
 	// then we call cond_bal to check for condensation and redo the calculations if necessasry
 	// cond_bal performs an iterative scheme that tests for condensation
@@ -512,12 +519,12 @@ void Moisture::cond_bal(int pressure) {
 				// if not converged, then the node moisture fluxes are recalculated to include the extra moisture from the attic air
 				for(int i=0; i < 3; i++) {
 					if(fluxTo[i] > 0) {
-						moistureContent[i] = moistureContent[i] + (fluxTo[i] / fluxTotal * massCondensed[6]) / densityWood / volume[i];
+						moistureContent[i] = moistureContent[i] + (fluxTo[i] / fluxTotal * massCondensed[6]) / density[i] / volume[i];
 						PW[i] = calc_vapor_pressure(moistureContent[i], temperature[i], pressure);
 						if(PW[i] > PWSaturation[i]) {
 							PW[i] = PWSaturation[i];
 							double mcSat = mc_cubic(PW[i], pressure, temperature[i]);
-							mTotal[i] = mTotal[i] + (moistureContent[i] - mcSat) * volume[i] * densityWood;
+							mTotal[i] = mTotal[i] + (moistureContent[i] - mcSat) * volume[i] * density[i];
 							moistureContent[i] = mcSat;
 							}
 						}
@@ -561,7 +568,7 @@ void Moisture::cond_bal(int pressure) {
 				if(mTotal[i] < 0) {
 					// Need to estimate how much MC (and PW) change. A reduction in PW means mass condensed
 					// even more -ve so an iterative scheme is not needed
-					double moistureReduction = mTotal[i] / (volume[i] * densityWood);
+					double moistureReduction = mTotal[i] / (volume[i] * density[i]);
 					moistureContent[i] = max(moistureContent[i] + moistureReduction, 0.032);
 					PW[i] = calc_vapor_pressure(moistureContent[i], temperature[i], pressure);
 					redoMassBalance = true;	// Redo mass balance with this PW because this node is no longer at saturation. 
@@ -593,14 +600,13 @@ static const double B7 =  0.233;		// was MCE
  * @param pressure - atomospheric pressure (Pa)
  * @param temp     - temperature (deg K)
  * @param mc       - moisture content
- * @param volume   - wood volume (m3)
+ * @param mass     - wood mass (kg)
  * @return kappa1  - (dWmc/dP)(Mw/t)
  */
-double Moisture::calc_kappa_1(int pressure, double temp, double mc, double volume) {
+double Moisture::calc_kappa_1(int pressure, double temp, double mc, double mass) {
 	double k1;
 	k1 = 1 / (pressure / 0.622 * exp((temp - C_TO_K) / B3) * (B5 + 2 * B6 * mc + 3 * B7 * pow(mc,2)));
-	k1 = volume * densityWood * k1 / timeStep;
-//cout << "kappa1 in: p=" << pressure << " temp=" << temp << " mc=" << mc << " volume=" << volume << " out: " << k1 << endl;
+	k1 = mass * k1 / timeStep;
 	return (k1);
 }
 
@@ -608,13 +614,13 @@ double Moisture::calc_kappa_1(int pressure, double temp, double mc, double volum
  * calc_kappa_2 - calculates kappa2: the partial of wood moisture content with respect to
  *						temperature (equation 4-16) times wood mass divided by tau
  * @param mc		- moisture content
- * @param volume  - wood volume (m3)
+ * @param mass    - wood mass (kg)
  * @return kappa2 - (dWmc/dT)(Mw/t)
  */
-double Moisture::calc_kappa_2(double mc, double volume) {
+double Moisture::calc_kappa_2(double mc, double mass) {
 	double k2;
 	k2 = (B4 + B5 * mc + B6 * pow(mc,2) + B7 * pow(mc,3)) / (-B3 * (B5 + 2 * B6 * mc + 3 * B7 * pow(mc,2)));
-	k2 = volume * densityWood * k2 / timeStep;
+	k2 = mass * k2 / timeStep;
 	return (k2);
 }
 

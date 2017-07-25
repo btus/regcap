@@ -14,6 +14,7 @@ class Moisture {
 		double deltaX[MOISTURE_NODES];						// Node thickness
 		double area[MOISTURE_NODES];							// Node area
 		double volume[MOISTURE_NODES];						// Node volume
+		double density[6];										// Wood node density
 		double kappa1[MOISTURE_NODES], kappa2[MOISTURE_NODES];
 		double x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17;
 		double xn67, xn68, xn69, xn7t, xn7o, xn7c, xn76, xn79, xn8t, xn8o, xn8c, xn86, xn87, xn89;
@@ -27,8 +28,8 @@ class Moisture {
 		double massWHouse;										// active mass of moisture in the house (kg)
 
 		void cond_bal(int pressure);
-		double calc_kappa_1(int pressure, double temp, double mc, double volume);
-		double calc_kappa_2(double mc, double volume);
+		double calc_kappa_1(int pressure, double temp, double mc, double mass);
+		double calc_kappa_2(double mc, double mass);
       double mc_cubic(double pw, int pressure, double temp);
       double calc_vapor_pressure(double mc, double temp, int pressure);
 		double calc_inter_temp(double temp1, double temp2, double insRatio);

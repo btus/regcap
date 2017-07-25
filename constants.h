@@ -12,7 +12,7 @@ const double CpAir = 1005.7;				// specific heat of air [j/kg K]
 const double dtau = 60.;					// simulation timestep (in seconds)
 const double rivecdt = dtau / 3600.;	// Rivec timestep is in hours. Used in calculation of relative dose and exposure.
 const int ATTIC_NODES = 16;				// number of attic nodes
-const double densityWood = 530;        // Bulk wood density - douglas fir (kg/m3)
-const double densitySheathing = 650;   // Shething wood density - OSB (kg/m3)
+const double densityWood = 530.;       // Bulk wood density - douglas fir (kg/m3)
+const double densitySheathing = 650.;  // Shething wood density - OSB (kg/m3)
 
 #endif
