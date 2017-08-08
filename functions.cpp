@@ -379,27 +379,17 @@ void sub_heat (
 	double sheathArea,
 	double& roofInsulRatio
 ) {
-	
-	int heatIterations;
-	int cpShingles;
-	
-	//double incsolar[4] = {0,0,0,0};
-	//vector<double> b(ATTIC_NODES+1,0);
-	//vector< vector<double> > A(ATTIC_NODES,b);
 	vector<double> b;
 	vector< vector<double> > A;
-	//double A[ATTIC_NODES][ATTIC_NODES] = {0};
 	double toldcur[ATTIC_NODES], area[ATTIC_NODES], mass[ATTIC_NODES];
 	double heatCap[ATTIC_NODES], uVal[ATTIC_NODES], htCoef[ATTIC_NODES];
 	double viewFactor[ATTIC_NODES][ATTIC_NODES] = {};
 	double rtCoef[ATTIC_NODES][ATTIC_NODES];
 	double woodThickness;
-	//double pws;
-	double denShingles;
+	double denShingles, cpShingles, Rshingles;
 	double kWood;
 	double kAir;
 	double muAir;
-	double Rshingles;
 	double characteristicVelocity;
 	double HI;
 	double woodEmissivity, roofAbsorptivity, roofEmissivity;	
@@ -407,6 +397,7 @@ void sub_heat (
 	double FRS, FG;
 	double TSKY, PW;
 	double TGROUND;
+	int heatIterations;
 	int roofInNorth, roofInSouth, attic_nodes;
 
 	// Node 0 is the Attic Air
@@ -428,17 +419,18 @@ void sub_heat (
 	// Node 16 is the Inner North Roof Insulation
 	// Node 17 is the Inner South Roof Insulation
 
-	if(roofIntRval > 0) {
+	if(roofIntRval > 0) {   // If there is interior insulation at the roof add nodes 16&17
       roofInNorth = 16;
       roofInSouth = 17;
       attic_nodes = 18;
       }
-   else {
+   else {                  // No insulation so interior nodes are the sheathing surface (1&3)
       roofInNorth = 1;
       roofInSouth = 3;
       attic_nodes = 16;
    }
-   A.resize(attic_nodes, vector<double>(attic_nodes+1, 0));		// set size of equation vectors to number of nodes (A contains both)
+   // set size of equation vectors to number of nodes (A contains both)
+   A.resize(attic_nodes, vector<double>(attic_nodes+1, 0));
    b.resize(attic_nodes, 0);
 
 	woodThickness = .015;		// thickness of sheathing material (m)
@@ -482,7 +474,7 @@ void sub_heat (
 	area[1] = sheathArea;
 	area[3] = area[1];
 	
-	// the following are commented out for ConSOl becasue cement tile is flat and does not have increased surface area
+	// the following are commented out for ConSOl because cement tile is flat and does not have increased surface area
 	if(roofType == 2 || roofType == 3) {
         area[2] = 1.5 * area[1];	   // tile roof has more surface area for convection heat transfer
 	} else {
@@ -551,7 +543,7 @@ void sub_heat (
 	heatCap[14] = CpAir;
 	heatCap[15] = CpAir;
 	heatCap[16] = 1030;  // fiberglass: http://www.greenspec.co.uk/building-design/insulation-materials-thermal-properties/
-	heatCap[17] = 1030;
+	heatCap[17] = heatCap[16];
 
 	// Thermal conductivities (k) [W/mK]and R-values [m2K/W] and the like
 	kWood = 0.15;												// check with Iain about this
@@ -645,7 +637,7 @@ void sub_heat (
 	// Radiation view factors
 	/* 
 	Only 5 nodes are involved in radiation transfer in the attic:
-	North roof, South roof, Ceiling, Supply duct, and Return duct
+	North roof(1), South roof(3), Ceiling(7), Return duct(10), and Supply duct(13)
 	The endwalls have a very small contribution to radiation exchange and are neglected.
 	The wood may or may not contribute to radiation exchange, but their geometry is
 	too complex to make any assumptions so it is excluded.
@@ -857,10 +849,10 @@ void sub_heat (
 			A[10][15] = -area[10] * htCoef[10];
 		} else {
 			A[10][0] = -area[10] * htCoef[10] / 2;
-			A[10][1] = -area[10] * rtCoef[10][1] / 3;
-			A[10][3] = -area[10] * rtCoef[10][3] / 3;
+			A[10][roofInNorth] = -area[10] * rtCoef[10][roofInNorth] / 3;
+			A[10][roofInSouth] = -area[10] * rtCoef[10][roofInSouth] / 3;
 			A[10][10] += mass[10] * heatCap[10] / dtau + htCoef[10] * area[10] / 2 + area[11] * uVal[10]
-			          + area[10] / 3 * rtCoef[10][1] + area[10] / 3 * rtCoef[10][3];
+			          + area[10] * rtCoef[10][roofInNorth] / 3 + area[10] * rtCoef[10][roofInSouth] / 3;
 		}
 		
 		// NODE 11 Air in return duct
@@ -898,10 +890,10 @@ void sub_heat (
 			A[13][15] = -area[13] * htCoef[13];
 		} else {
 			A[13][0] = -area[13] * htCoef[13] / 2;
-			A[13][1] = -area[13] * rtCoef[13][1] / 3;
-			A[13][3] = -area[13] * rtCoef[13][3] / 3;
+			A[13][roofInNorth] = -area[13] * rtCoef[13][roofInNorth] / 3;
+			A[13][roofInSouth] = -area[13] * rtCoef[13][roofInSouth] / 3;
 			A[13][13] = mass[13] * heatCap[13] / dtau + htCoef[13] * area[13] / 2 + area[14] * uVal[13]
-			          + area[13] * rtCoef[13][1] / 3 + area[13] / 3 * rtCoef[13][3];
+			          + area[13] * rtCoef[13][roofInNorth] / 3 + area[13] * rtCoef[13][roofInSouth] / 3;
 		}
 
 		// NODE 14 Air in SUPPLY duct
@@ -954,9 +946,9 @@ void sub_heat (
    	if(roofIntRval > 0) {
          // NODE 16 IS INSIDE NORTH Insulation
          A[16][0] = -htCoef[16] * area[16];
+         A[16][1] = -area[16] * uVal[16];
          A[16][16] = mass[16] * heatCap[16] / dtau + htCoef[16] * area[16] + area[16] * uVal[16] + rtCoef[16][17] * area[16] + rtCoef[16][7] * area[16];
          b[16] = mass[16] * heatCap[16] * tempOld[16] / dtau;
-         A[16][1] = -area[16] * uVal[16];
          A[16][17] = -rtCoef[16][17] * area[16];
          A[16][7] = -rtCoef[16][7] * area[16];
 
@@ -968,10 +960,10 @@ void sub_heat (
 
          // NODE 17 IS INSIDE SOUTH Insulation
          A[17][0] = -htCoef[17] * area[17];
-         A[17][1] = -rtCoef[17][1] * area[17];
+         A[17][3] = -area[17] * uVal[17];
          A[17][17] = mass[17] * heatCap[17] / dtau + htCoef[17] * area[17] + area[17] * uVal[17] + rtCoef[17][16] * area[17] + rtCoef[17][7] * area[17];
          b[17] = mass[17] * heatCap[17] * tempOld[17] / dtau;
-         A[17][3] = -area[17] * uVal[17];
+         A[17][16] = -rtCoef[17][16] * area[17];
          A[17][7] = -rtCoef[17][7] * area[17];
 
          if(ductLocation == 0) {			// duct surface radiation to insulation
