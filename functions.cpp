@@ -384,8 +384,10 @@ void sub_heat (
 	int cpShingles;
 	
 	//double incsolar[4] = {0,0,0,0};
-	vector<double> b(ATTIC_NODES+1,0);
-	vector< vector<double> > A(ATTIC_NODES,b);
+	//vector<double> b(ATTIC_NODES+1,0);
+	//vector< vector<double> > A(ATTIC_NODES,b);
+	vector<double> b;
+	vector< vector<double> > A;
 	//double A[ATTIC_NODES][ATTIC_NODES] = {0};
 	double toldcur[ATTIC_NODES], area[ATTIC_NODES], mass[ATTIC_NODES];
 	double heatCap[ATTIC_NODES], uVal[ATTIC_NODES], htCoef[ATTIC_NODES];
@@ -405,6 +407,7 @@ void sub_heat (
 	double FRS, FG;
 	double TSKY, PW;
 	double TGROUND;
+	int roofInNorth, roofInSouth, attic_nodes;
 
 	// Node 0 is the Attic Air
 	// Node 1 is the Inner North Sheathing
@@ -422,6 +425,21 @@ void sub_heat (
 	// Node 13 is the Supply Duct Outer Surface
 	// Node 14 is the Supply Duct Air
 	// Node 15 is the House Air (all one zone)
+	// Node 16 is the Inner North Roof Insulation
+	// Node 17 is the Inner South Roof Insulation
+
+	if(roofIntRval > 0) {
+      roofInNorth = 16;
+      roofInSouth = 17;
+      attic_nodes = 18;
+      }
+   else {
+      roofInNorth = 1;
+      roofInSouth = 3;
+      attic_nodes = 16;
+   }
+   A.resize(attic_nodes, vector<double>(attic_nodes+1, 0));		// set size of equation vectors to number of nodes (A contains both)
+   b.resize(attic_nodes, 0);
 
 	woodThickness = .015;		// thickness of sheathing material (m)
 	woodEmissivity = .9;       // emissivity of building materials
@@ -488,6 +506,8 @@ void sub_heat (
 	//area[15] = numStories * storyHeight * pow(planArea, .5) * 2 + (2 * (numStories -1)) * planArea;
 	area[15] = 11 * pow(floorArea,0.5) + 2 * floorArea;	// Empirically derived relationship
 	area[12] = 6 * area[15];									//  Surface area of everything in the house
+	area[16] = area[1];
+	area[17] = area[3];
 	
 	// masses
 	mass[0] = atticVolume * airDensityATTIC;					     // mass of attic air
@@ -508,6 +528,10 @@ void sub_heat (
 	mass[13] = supLength * M_PI * (supDiameter + supThickness) * supThickness * suprho;			// supArea * suprho * supThickness
 	mass[14] = supVolume * airDensitySUP;
 	mass[15] = houseVolume * airDensityIN;
+	if(roofIntRval > 0) {
+	   mass[16] = area[16] * roofIntRval * 0.7;   // 0.7kg/m2/R-val = 20kg/m3 * 0.035W/mK for fiberglass
+	   mass[17] = area[17] * roofIntRval * 0.7;
+	   }
 
 	// Specific heat capacities
 	heatCap[0] = CpAir;
@@ -526,6 +550,8 @@ void sub_heat (
 	heatCap[13] = supCp;
 	heatCap[14] = CpAir;
 	heatCap[15] = CpAir;
+	heatCap[16] = 1030;  // fiberglass: http://www.greenspec.co.uk/building-design/insulation-materials-thermal-properties/
+	heatCap[17] = 1030;
 
 	// Thermal conductivities (k) [W/mK]and R-values [m2K/W] and the like
 	kWood = 0.15;												// check with Iain about this
@@ -559,6 +585,10 @@ void sub_heat (
 	// Supply Ducts
 	HI = .023 * kAir / supDiameter * pow((supDiameter * airDensitySUP * supVel / muAir), .8) * pow((CpAir * muAir / kAir), .4);
 	uVal[13] = 1 / (supRval + 1/HI);
+	if(roofIntRval > 0) {
+      uVal[16] = 1 / roofIntRval;
+      uVal[17] = 1 / roofIntRval;
+      }
 
 	/* most of the surfaces in the attic undergo both natural and forced convection
 	the overall convection is determined by the forced and natural convection coefficients
@@ -574,9 +604,9 @@ void sub_heat (
 	}
 
 	// convection heat transfer coefficients
-	htCoef[1] = heatTranCoef(tempOld[1], tempOld[0], characteristicVelocity);  // inner north sheathing
+   htCoef[roofInNorth] = heatTranCoef(tempOld[roofInNorth], tempOld[0], characteristicVelocity);  // inner north sheathing
+   htCoef[roofInSouth] = heatTranCoef(tempOld[roofInSouth], tempOld[0], characteristicVelocity);  // inner south sheathing
 	htCoef[2] = heatTranCoef(tempOld[2], tempOut, windSpeed);                  // outer north sheathing
-	htCoef[3] = heatTranCoef(tempOld[3], tempOld[0], characteristicVelocity);  // inner south sheathing
 	htCoef[4] = heatTranCoef(tempOld[4], tempOut, windSpeed);                  // outer south sheathing
 	htCoef[5] = heatTranCoef(tempOld[5], tempOld[0], characteristicVelocity);  // Wood (joists,truss,etc.)
    
@@ -605,6 +635,7 @@ void sub_heat (
 		htCoef[10] = heatTranCoef(tempOld[10], tempOld[0], characteristicVelocity);			// Outer Surface of Return Ducts
 		htCoef[13] = heatTranCoef(tempOld[13], tempOld[0], characteristicVelocity);			// Outer Surface of Supply Ducts
 	}
+
    // Pass back wood surface heat transfer coefficients for use by moisture routines
    innerNorthH = htCoef[1];
    innerSouthH = htCoef[3];
@@ -613,7 +644,8 @@ void sub_heat (
 
 	// Radiation view factors
 	/* 
-	Only 5 nodes (2,4,8,11,14) are involved in radiation transfer in the attic
+	Only 5 nodes are involved in radiation transfer in the attic:
+	North roof, South roof, Ceiling, Supply duct, and Return duct
 	The endwalls have a very small contribution to radiation exchange and are neglected.
 	The wood may or may not contribute to radiation exchange, but their geometry is
 	too complex to make any assumptions so it is excluded.
@@ -641,33 +673,33 @@ void sub_heat (
 		viewFactor[3][1] = (1 - viewFactor[3][7] - viewFactor[3][10] - viewFactor[3][13]);
 
 		// North Sheathing
-		rtCoef[1][10] = radTranCoef(woodEmissivity, tempOld[1], tempOld[10], viewFactor[1][10], area[1]/(area[10]/3));
-		rtCoef[1][13] = radTranCoef(woodEmissivity, tempOld[1], tempOld[13], viewFactor[1][13], area[1]/(area[13]/3));
+		rtCoef[roofInNorth][10] = radTranCoef(woodEmissivity, tempOld[roofInNorth], tempOld[10], viewFactor[1][10], area[1]/(area[10]/3));
+		rtCoef[roofInNorth][13] = radTranCoef(woodEmissivity, tempOld[roofInNorth], tempOld[13], viewFactor[1][13], area[1]/(area[13]/3));
 
 		// South Sheathing
-		rtCoef[3][10] = radTranCoef(woodEmissivity, tempOld[3], tempOld[10], viewFactor[3][10], area[3]/(area[10]/3));
-		rtCoef[3][13] = radTranCoef(woodEmissivity, tempOld[3], tempOld[13], viewFactor[3][13], area[3]/(area[13]/3));
+		rtCoef[roofInSouth][10] = radTranCoef(woodEmissivity, tempOld[roofInSouth], tempOld[10], viewFactor[3][10], area[3]/(area[10]/3));
+		rtCoef[roofInSouth][13] = radTranCoef(woodEmissivity, tempOld[roofInSouth], tempOld[13], viewFactor[3][13], area[3]/(area[13]/3));
 
 		// Return Ducts (note, No radiative exchange w/ supply ducts)
-		rtCoef[10][3] = radTranCoef(woodEmissivity, tempOld[10], tempOld[3], viewFactor[10][3], area[10]/area[3]);
-		rtCoef[10][1] = radTranCoef(woodEmissivity, tempOld[10], tempOld[1], viewFactor[10][1], area[10]/area[1]);
+		rtCoef[10][roofInSouth] = radTranCoef(woodEmissivity, tempOld[10], tempOld[roofInSouth], viewFactor[10][3], area[10]/area[3]);
+		rtCoef[10][roofInNorth] = radTranCoef(woodEmissivity, tempOld[10], tempOld[roofInNorth], viewFactor[10][1], area[10]/area[1]);
 
 		// Supply Ducts (note, No radiative exchange w/ return ducts)
-		rtCoef[13][3] = radTranCoef(woodEmissivity, tempOld[13], tempOld[3], viewFactor[13][3], area[13]/area[3]);
-		rtCoef[13][1] = radTranCoef(woodEmissivity, tempOld[13], tempOld[1], viewFactor[13][1], area[13]/area[1]);
+		rtCoef[13][roofInSouth] = radTranCoef(woodEmissivity, tempOld[13], tempOld[roofInSouth], viewFactor[13][3], area[13]/area[3]);
+		rtCoef[13][roofInNorth] = radTranCoef(woodEmissivity, tempOld[13], tempOld[roofInNorth], viewFactor[13][1], area[13]/area[1]);
 	}
 
 	// North Sheathing
-	rtCoef[1][3] = radTranCoef(woodEmissivity, tempOld[1], tempOld[3], viewFactor[1][3], area[1]/area[3]);
-	rtCoef[1][7] = radTranCoef(woodEmissivity, tempOld[1], tempOld[7], viewFactor[1][7], area[1]/area[7]);
+	rtCoef[roofInNorth][roofInSouth] = radTranCoef(woodEmissivity, tempOld[roofInNorth], tempOld[roofInSouth], viewFactor[1][3], area[1]/area[3]);
+	rtCoef[roofInNorth][7] = radTranCoef(woodEmissivity, tempOld[roofInNorth], tempOld[7], viewFactor[1][7], area[1]/area[7]);
 
 	// South Sheathing
-	rtCoef[3][1] = radTranCoef(woodEmissivity, tempOld[3], tempOld[1], viewFactor[3][1], area[3]/area[1]);
-	rtCoef[3][7] = radTranCoef(woodEmissivity, tempOld[3], tempOld[7], viewFactor[3][7], area[3]/area[7]);
+	rtCoef[roofInSouth][roofInNorth] = radTranCoef(woodEmissivity, tempOld[roofInSouth], tempOld[roofInNorth], viewFactor[3][1], area[3]/area[1]);
+	rtCoef[roofInSouth][7] = radTranCoef(woodEmissivity, tempOld[roofInSouth], tempOld[7], viewFactor[3][7], area[3]/area[7]);
 
 	// Attic Floor
-	rtCoef[7][3] = radTranCoef(woodEmissivity, tempOld[7], tempOld[3], viewFactor[7][3], area[7]/area[3]);
-	rtCoef[7][1] = radTranCoef(woodEmissivity, tempOld[7], tempOld[1], viewFactor[7][1], area[7]/area[1]);
+	rtCoef[7][roofInSouth] = radTranCoef(woodEmissivity, tempOld[7], tempOld[roofInSouth], viewFactor[7][3], area[7]/area[3]);
+	rtCoef[7][roofInNorth] = radTranCoef(woodEmissivity, tempOld[7], tempOld[roofInNorth], viewFactor[7][1], area[7]/area[1]);
 
 	// underside of ceiling
 	rtCoef[6][12] = radTranCoef(woodEmissivity, tempOld[6], tempOld[12], 1, area[6]/area[12]);
@@ -690,7 +722,7 @@ void sub_heat (
 	// ITERATION OF TEMPERATURES WITHIN HEAT SUBROUTINE
 	// THIS ITERATES BETWEEN ALL TEMPERATURES BEFORE RETURNING TO MAIN PROGRAM
 	heatIterations = 0;
-	for(int i=0; i < ATTIC_NODES; i++) {
+	for(int i=0; i < attic_nodes; i++) {
 		toldcur[i] = tempOld[i];
 	}
 	while(1) {
@@ -698,10 +730,10 @@ void sub_heat (
 		heatIterations++;
 		
 		// reset array A to 0
-		if(heatIterations > 1) {
-			A.clear();
-			A.resize(ATTIC_NODES, vector<double>(ATTIC_NODES+1));
-		}
+		//if(heatIterations > 1) {
+		//	A.clear();
+		//	A.resize(ATTIC_NODES, vector<double>(ATTIC_NODES+1));
+		//}
 
 		// NODE 0 IS ATTIC AIR
 		if(mCeiling >= 0) {
@@ -729,18 +761,26 @@ void sub_heat (
 		}
 
 		// NODE 1 IS INSIDE NORTH SHEATHING
-		A[1][0] = -htCoef[1] * area[1];
-		A[1][1] = mass[1] * heatCap[1] / dtau + htCoef[1] * area[1] + area[1] * uVal[1] + rtCoef[1][3] * area[1] + rtCoef[1][7] * area[1];
-		b[1] = mass[1] * heatCap[1] * tempOld[1] / dtau;
-		A[1][2] = -area[1] * uVal[1];
-		A[1][3] = -rtCoef[1][3] * area[1];
-		A[1][7] = -rtCoef[1][7] * area[1];
+   	if(roofIntRval > 0) {
+         A[1][1] = mass[1] * heatCap[1] / dtau + uVal[16] * area[1] + area[1] * uVal[1];
+         b[1] = mass[1] * heatCap[1] * tempOld[1] / dtau;
+         A[1][2] = -area[1] * uVal[1];
+         A[1][16] = -area[1] * uVal[16];
+      }
+      else {
+         A[1][0] = -htCoef[1] * area[1];
+         A[1][1] = mass[1] * heatCap[1] / dtau + htCoef[1] * area[1] + area[1] * uVal[1] + rtCoef[1][3] * area[1] + rtCoef[1][7] * area[1];
+         b[1] = mass[1] * heatCap[1] * tempOld[1] / dtau;
+         A[1][2] = -area[1] * uVal[1];
+         A[1][3] = -rtCoef[1][3] * area[1];
+         A[1][7] = -rtCoef[1][7] * area[1];
 
-		if(ductLocation == 0) {			// duct surface radiation to sheathing
-			A[1][1] += rtCoef[1][10] * area[1] + rtCoef[1][13] * area[1];
-			A[1][10] = -rtCoef[1][10] * area[1];
-			A[1][13] = -rtCoef[1][13] * area[1];
-		}
+         if(ductLocation == 0) {			// duct surface radiation to sheathing
+            A[1][1] += rtCoef[1][10] * area[1] + rtCoef[1][13] * area[1];
+            A[1][10] = -rtCoef[1][10] * area[1];
+            A[1][13] = -rtCoef[1][13] * area[1];
+         }
+      }
 
 		// NODE 2 IS OUTSIDE NORTH SHEATHING
 		A[2][1] = -area[1] * uVal[2];
@@ -749,18 +789,26 @@ void sub_heat (
 		     + skyCoef2 * area[1] * TSKY + gndCoef2 * area[1] * TGROUND;
 
 		// NODE 3 IS INSIDE SOUTH SHEATHING
-		A[3][0] = -htCoef[3] * area[3];
-		A[3][1] = -rtCoef[3][1] * area[3];
-		A[3][3] = mass[3] * heatCap[3] / dtau + htCoef[3] * area[3] + area[3] * uVal[3] + rtCoef[3][1] * area[3] + rtCoef[3][7] * area[3];
-		b[3] = mass[3] * heatCap[3] * tempOld[3] / dtau;
-		A[3][4] = -area[3] * uVal[3];
-		A[3][7] = -rtCoef[3][7] * area[3];
+   	if(roofIntRval > 0) {
+         A[3][3] = mass[3] * heatCap[3] / dtau + uVal[17] * area[3] + area[3] * uVal[3];
+         b[3] = mass[3] * heatCap[3] * tempOld[3] / dtau;
+         A[3][4] = -area[3] * uVal[3];
+         A[3][17] = -area[3] * uVal[17];
+      }
+      else {
+         A[3][0] = -htCoef[3] * area[3];
+         A[3][1] = -rtCoef[3][1] * area[3];
+         A[3][3] = mass[3] * heatCap[3] / dtau + htCoef[3] * area[3] + area[3] * uVal[3] + rtCoef[3][1] * area[3] + rtCoef[3][7] * area[3];
+         b[3] = mass[3] * heatCap[3] * tempOld[3] / dtau;
+         A[3][4] = -area[3] * uVal[3];
+         A[3][7] = -rtCoef[3][7] * area[3];
 
-		if(ductLocation == 0) {			// duct surface radiation to sheathing
-			A[3][3] += rtCoef[3][10] * area[3] + rtCoef[3][13] * area[3];
-			A[3][10] = -rtCoef[3][10] * area[3];
-			A[3][13] = -rtCoef[3][13] * area[3];
-		}
+         if(ductLocation == 0) {			// duct surface radiation to sheathing
+            A[3][3] += rtCoef[3][10] * area[3] + rtCoef[3][13] * area[3];
+            A[3][10] = -rtCoef[3][10] * area[3];
+            A[3][13] = -rtCoef[3][13] * area[3];
+         }
+      }
 
 		// NODE 4 IS OUTSIDE SOUTH SHEATHING
 		A[4][3] = -area[3] * uVal[4];
@@ -782,10 +830,10 @@ void sub_heat (
 
 		// NODE 7 ON ATTIC FLOOR
 		A[7][0] = -htCoef[7] * area[7];
-		A[7][1] = -rtCoef[7][1] * area[7];
-		A[7][3] = -rtCoef[7][3] * area[7];
+		A[7][roofInNorth] = -rtCoef[7][roofInNorth] * area[7];
+		A[7][roofInSouth] = -rtCoef[7][roofInSouth] * area[7];
 		A[7][6] = -area[7] * uVal[7];
-		A[7][7] = mass[7] * heatCap[7] / dtau + htCoef[7] * area[7] + rtCoef[7][1] * area[7] + rtCoef[7][3] * area[7] + area[7] * uVal[7];				// + HR8t11 * area[7] + HR8t14 * area[7]
+		A[7][7] = mass[7] * heatCap[7] / dtau + htCoef[7] * area[7] + rtCoef[7][roofInNorth] * area[7] + rtCoef[7][roofInSouth] * area[7] + area[7] * uVal[7];				// + HR8t11 * area[7] + HR8t14 * area[7]
 		b[7] = mass[7] * heatCap[7] / dtau * tempOld[7];
 
 		// NODE 8 IS INSIDE ENDWALLS THAT ARE BOTH LUMPED TOGETHER
@@ -903,20 +951,50 @@ void sub_heat (
 			A[15][13] = -area[13] * htCoef[13];
 		}
 
-		for (int i=0; i<ATTIC_NODES; i++) {
-			A[i][ATTIC_NODES] = b[i];
+   	if(roofIntRval > 0) {
+         // NODE 16 IS INSIDE NORTH Insulation
+         A[16][0] = -htCoef[16] * area[16];
+         A[16][16] = mass[16] * heatCap[16] / dtau + htCoef[16] * area[16] + area[16] * uVal[16] + rtCoef[16][17] * area[16] + rtCoef[16][7] * area[16];
+         b[16] = mass[16] * heatCap[16] * tempOld[16] / dtau;
+         A[16][1] = -area[16] * uVal[16];
+         A[16][17] = -rtCoef[16][17] * area[16];
+         A[16][7] = -rtCoef[16][7] * area[16];
+
+         if(ductLocation == 0) {			// duct surface radiation to insulation
+            A[16][16] += rtCoef[16][10] * area[16] + rtCoef[16][13] * area[16];
+            A[16][10] = -rtCoef[16][10] * area[16];
+            A[16][13] = -rtCoef[16][13] * area[16];
+         }
+
+         // NODE 17 IS INSIDE SOUTH Insulation
+         A[17][0] = -htCoef[17] * area[17];
+         A[17][1] = -rtCoef[17][1] * area[17];
+         A[17][17] = mass[17] * heatCap[17] / dtau + htCoef[17] * area[17] + area[17] * uVal[17] + rtCoef[17][16] * area[17] + rtCoef[17][7] * area[17];
+         b[17] = mass[17] * heatCap[17] * tempOld[17] / dtau;
+         A[17][3] = -area[17] * uVal[17];
+         A[17][7] = -rtCoef[17][7] * area[17];
+
+         if(ductLocation == 0) {			// duct surface radiation to insulation
+            A[17][17] += rtCoef[17][10] * area[17] + rtCoef[17][13] * area[17];
+            A[17][10] = -rtCoef[17][10] * area[17];
+            A[17][13] = -rtCoef[17][13] * area[17];
+         }
+      }
+
+		for (int i=0; i<attic_nodes; i++) {
+			A[i][attic_nodes] = b[i];
 		}
 		b = gauss(A);
 
 		if(abs(b[0] - toldcur[0]) < .1) {
 			break;
 		} else {
-			for(int i=0; i < ATTIC_NODES; i++) {
+			for(int i=0; i < attic_nodes; i++) {
 				toldcur[i] = b[i];
 			}
 		}
 	} // END of DO LOOP
-	for (int i=0; i<ATTIC_NODES; i++) {
+	for (int i=0; i<attic_nodes; i++) {
 		x[i] = b[i];
 		}
 }
