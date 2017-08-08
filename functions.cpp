@@ -730,10 +730,10 @@ void sub_heat (
 		heatIterations++;
 		
 		// reset array A to 0
-		//if(heatIterations > 1) {
-		//	A.clear();
-		//	A.resize(ATTIC_NODES, vector<double>(ATTIC_NODES+1));
-		//}
+		if(heatIterations > 1) {
+			A.clear();
+			A.resize(attic_nodes, vector<double>(attic_nodes+1));
+		}
 
 		// NODE 0 IS ATTIC AIR
 		if(mCeiling >= 0) {
