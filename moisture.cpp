@@ -162,14 +162,14 @@ void Moisture::mass_cond_bal(double* node_temps, double tempOut, double RHOut,
 	hw = hU0 / CpAir / LEWIS23 / airDensityAttic;
 	kappa1[0] = calc_kappa_1(pressure, tempOld[0], moistureContent[0], volume[0] * density[0]);
 	kappa2[0] = calc_kappa_2(moistureContent[0], volume[0] * density[0]);
-	x1 = hw * area[0] / RWATER / temperature[0];
-	x2 = DIFFCOEF * area[0] / RWATER / temperature[0] / deltaX[0];
-	x3 = -hw * area[0] / RWATER / temperature[6];
-	x4 = -DIFFCOEF * area[0] / RWATER / temperature[3] / deltaX[0];
+	x60 = hw * area[0] / RWATER / temperature[0];
+	x30 = DIFFCOEF * area[0] / RWATER / temperature[0] / deltaX[0];
+	x06 = -hw * area[0] / RWATER / temperature[6];
+	x03 = -DIFFCOEF * area[0] / RWATER / temperature[3] / deltaX[0];
 
-	A[0][0] = kappa1[0] + x1 + x2;
-	A[0][6] = x3;
-	A[0][3] = x4;
+	A[0][0] = kappa1[0] + x60 + x30;
+	A[0][6] = x06;
+	A[0][3] = x03;
 	PWInit[0] = kappa1[0] * PWOld[0] - kappa2[0] * (temperature[0] - tempOld[0]);
 
 
@@ -177,143 +177,122 @@ void Moisture::mass_cond_bal(double* node_temps, double tempOut, double RHOut,
 	hw = hU1 / CpAir / LEWIS23 / airDensityAttic;
 	kappa1[1] = calc_kappa_1(pressure, tempOld[1], moistureContent[1], volume[1] * density[1]);
 	kappa2[1] = calc_kappa_2(moistureContent[1], volume[1] * density[1]);
-	x5 = hw * area[1] / RWATER / temperature[1];
-	x6 = DIFFCOEF * area[1] / RWATER / temperature[1] / deltaX[1];
-	x7 = -hw * area[1] / RWATER / temperature[6];
-	x8 = -DIFFCOEF * area[1] / RWATER / temperature[4] / deltaX[1];
-	A[1][1] = kappa1[1] + x5 + x6;
-	A[1][6] = x7;
-	A[1][4] = x8;
+	x61 = hw * area[1] / RWATER / temperature[1];
+	x41 = DIFFCOEF * area[1] / RWATER / temperature[1] / deltaX[1];
+	x16 = -hw * area[1] / RWATER / temperature[6];
+	x14 = -DIFFCOEF * area[1] / RWATER / temperature[4] / deltaX[1];
+	A[1][1] = kappa1[1] + x61 + x41;
+	A[1][6] = x16;
+	A[1][4] = x14;
 	PWInit[1] = kappa1[1] * PWOld[1] - kappa2[1] * (temperature[1] - tempOld[1]);
 
 	//NODE 2 IS OUTSIDE mass OF WOOD IN ATTIC JOISTS AND TRUSSES
    hw = hU2 / CpAir / LEWIS23 / airDensityAttic;
 	kappa1[2] = calc_kappa_1(pressure, tempOld[2], moistureContent[2], volume[2] * density[2]);
 	kappa2[2] = calc_kappa_2(moistureContent[2], volume[2] * density[2]);
-	x9 = hw * area[2] / RWATER / temperature[2];
-	x10 = DIFFCOEF * area[2] / RWATER / temperature[2] / deltaX[2];
-	x11 = -hw * area[2] / RWATER / temperature[6];
-	x12 = -DIFFCOEF * area[2] / RWATER / temperature[5] / deltaX[2];
-	A[2][2] = kappa1[2] + x9 + x10;
-	A[2][6] = x11;
-	A[2][5] = x12;
+	x62 = hw * area[2] / RWATER / temperature[2];
+	x52 = DIFFCOEF * area[2] / RWATER / temperature[2] / deltaX[2];
+	x26 = -hw * area[2] / RWATER / temperature[6];
+	x25 = -DIFFCOEF * area[2] / RWATER / temperature[5] / deltaX[2];
+	A[2][2] = kappa1[2] + x62 + x52;
+	A[2][6] = x26;
+	A[2][5] = x25;
 	PWInit[2] = kappa1[2] * PWOld[2] - kappa2[2] * (temperature[2] - tempOld[2]);
 
 	//NODE 3 IS  SOUTH SHEATHING
 	kappa1[3] = calc_kappa_1(pressure, tempOld[3], moistureContent[3], volume[3] * density[3]);
 	kappa2[3] = calc_kappa_2(moistureContent[3], volume[3] * density[3]);
-	A[3][0] = -x2;
-	A[3][3] = kappa1[3] - x4;
+	A[3][0] = -x30;
+	A[3][3] = kappa1[3] - x03;
 	PWInit[3] = kappa1[3] * PWOld[3] - kappa2[3] * (temperature[3] - tempOld[3]);
 
 	//NODE 4 IS NORTH SHEATHING
 	kappa1[4] = calc_kappa_1(pressure, tempOld[4], moistureContent[4], volume[4] * density[4]);
 	kappa2[4] = calc_kappa_2(moistureContent[4], volume[4] * density[4]);
-	A[4][1] = -x6;
-	A[4][4] = kappa1[4] - x8;
+	A[4][1] = -x41;
+	A[4][4] = kappa1[4] - x14;
 	PWInit[4] = kappa1[4] * PWOld[4] - kappa2[4] * (temperature[4] - tempOld[4]);
 
 	//NODE 5 IS INNER BULK WOOD
 	kappa1[5] = calc_kappa_1(pressure, tempOld[5], moistureContent[5], volume[5] * density[5]);
 	kappa2[5] = calc_kappa_2(moistureContent[5], volume[5] * density[5]);
-	A[5][2] = -x10;
-	A[5][5] = kappa1[5] - x12;
+	A[5][2] = -x52;
+	A[5][5] = kappa1[5] - x25;
 	PWInit[5] = kappa1[5] * PWOld[5] - kappa2[5] * (temperature[5] - tempOld[5]);
 
 	//NODE 6 IS ATTIC AIR
-	x13 = volume[6] / RWATER / temperature[6] / timeStep;
-	x14 = -mAtticOut / airDensityAttic / RWATER / temperature[6];
-	x15 = volume[6] * PWOld[6] / RWATER / temperature[6] / timeStep;
-   x17 = mAtticIn * PWOut / airDensityOut / RWATER / tempOut;
+	x66 = volume[6] / RWATER / temperature[6] / timeStep;
+	x6out = -mAtticOut / airDensityAttic / RWATER / temperature[6];
 	if(mCeiling < 0) {
-		xn67 = (mRetAHoff + mRetLeak) / RWATER / temperature[7] / airDensityRet;
-		xn68 = (mSupAHoff + mSupLeak) / RWATER / temperature[8] / airDensitySup;
-		xn69 = mCeiling / RWATER / temperature[9] / airDensityHouse;
-		x16 = 0;
+		x67 = (mRetAHoff + mRetLeak) / RWATER / temperature[7] / airDensityRet;
+		x68 = (mSupAHoff + mSupLeak) / RWATER / temperature[8] / airDensitySup;
+		x69 = mCeiling / RWATER / temperature[9] / airDensityHouse;
 		}
 	else {
-		xn67 = mRetLeak / RWATER / temperature[7] / airDensityRet;
-		xn68 = mSupLeak / RWATER / temperature[8] / airDensitySup;
-		xn69 = 0;
-		x16 = (mCeiling + mSupAHoff + mRetAHoff) / RWATER / temperature[6] / airDensityAttic;
+		x67 = mRetLeak / RWATER / temperature[7] / airDensityRet;
+		x68 = mSupLeak / RWATER / temperature[8] / airDensitySup;
+		x69 = 0;
+		x66 += (mCeiling + mSupAHoff + mRetAHoff) / RWATER / temperature[6] / airDensityAttic;
 		}
-	A[6][0] = -x1;
-	A[6][1] = -x5;
-	A[6][2] = -x9;
-	A[6][6] = x13 - x3 - x7 - x11 + x14 + x16;
-	A[6][7] = xn67;
-	A[6][8] = xn68;
-	A[6][9] = xn69;
-	PWInit[6] = x15 + x17;
+	A[6][0] = -x60;
+	A[6][1] = -x61;
+	A[6][2] = -x62;
+	A[6][6] = x66 - x06 - x16 - x26 + x6out;
+	A[6][7] = x67;
+	A[6][8] = x68;
+	A[6][9] = x69;
+	PWInit[6] = volume[6] * PWOld[6] / RWATER / temperature[6] / timeStep + mAtticIn * PWOut / airDensityOut / RWATER / tempOut;
 
 	//NODE 7 IS RETURN DUCT AIR
-	xn7t = volume[7] / RWATER / temperature[7] / timeStep;
-	xn7o = volume[7] * PWOld[7] / RWATER / temperature[7] / timeStep - mRetOut * PWOut / RWATER / tempOut / airDensityOut;
+	A[7][7] = volume[7] / RWATER / temperature[7] / timeStep;
 	if(mCeiling < 0) {
-		xn7c = (mAH - mRetAHoff) / RWATER / temperature[7] / airDensityRet;
-		xn76 = mRetLeak / RWATER / temperature[6] / airDensityAttic;
-		xn79 = (mRetReg + mRetAHoff + mErvHouse) / RWATER / temperature[9] / airDensityHouse;
+		A[7][7] += (mAH - mRetAHoff) / RWATER / temperature[7] / airDensityRet;
+		A[7][6] = mRetLeak / RWATER / temperature[6] / airDensityAttic;
+		A[7][9] = (mRetReg + mRetAHoff + mErvHouse) / RWATER / temperature[9] / airDensityHouse;
 		}
 	else {
-		xn7c = (mAH + mRetAHoff) / RWATER / temperature[7] / airDensityRet;
-		xn76 = (mRetLeak - mRetAHoff) / RWATER / temperature[6] / airDensityAttic;
-		xn79 = (mRetReg + mErvHouse) / RWATER / temperature[9] / airDensityHouse;
+		A[7][7] += (mAH + mRetAHoff) / RWATER / temperature[7] / airDensityRet;
+		A[7][6] = (mRetLeak - mRetAHoff) / RWATER / temperature[6] / airDensityAttic;
+		A[7][9] = (mRetReg + mErvHouse) / RWATER / temperature[9] / airDensityHouse;
 		}
-	A[7][6] = xn76;
-	A[7][7] = xn7t + xn7c;
-	A[7][9] = xn79;
-	PWInit[7] = xn7o;
+	PWInit[7] = volume[7] * PWOld[7] / RWATER / temperature[7] / timeStep - mRetOut * PWOut / RWATER / tempOut / airDensityOut;
 
 	//NODE 8 IS SUPPLY DUCT AIR
-	xn8t = volume[8] / RWATER / temperature[8] / timeStep;
-	xn8o = volume[8] * PWOld[8] / RWATER / temperature[8] / timeStep - latcap / 2501000;
-	xn87 = -mAH / RWATER / temperature[7] / airDensityRet;
+	A[8][8] = volume[8] / RWATER / temperature[8] / timeStep;
+	A[8][7] = -mAH / RWATER / temperature[7] / airDensityRet;
 	if(mCeiling < 0) {
-		xn8c = (mSupReg + mSupLeak - mSupAHoff) / RWATER / temperature[8] / airDensitySup;
-		xn86 = 0;
-		xn89 = mSupAHoff / RWATER / temperature[9] / airDensityHouse;
+		A[8][8] += (mSupReg + mSupLeak - mSupAHoff) / RWATER / temperature[8] / airDensitySup;
+		A[8][6] = 0;
+		A[8][9] = mSupAHoff / RWATER / temperature[9] / airDensityHouse;
 		}
 	else {
-		xn8c = (mSupReg + mSupLeak + mSupAHoff) / RWATER / temperature[8] / airDensitySup;
-		xn86 = - mSupAHoff / RWATER / temperature[6] / airDensityAttic;
-		xn89 = 0;
+		A[8][8] += (mSupReg + mSupLeak + mSupAHoff) / RWATER / temperature[8] / airDensitySup;
+		A[8][6] = - mSupAHoff / RWATER / temperature[6] / airDensityAttic;
+		A[8][9] = 0;
 		}
-	A[8][6] = xn86;
-	A[8][7] = xn87;
-	A[8][8] = xn8t + xn8c;
-	A[8][9] = xn89;
-	PWInit[8] = xn8o;
+	PWInit[8] = volume[8] * PWOld[8] / RWATER / temperature[8] / timeStep - latcap / 2501000;
 
 	//NODE 9 IS HOUSE AIR
-	xn9t = volume[9] / RWATER / temperature[9] / timeStep + haHouse / pressure;
-	xn9o = volume[9] * PWOld[9] / RWATER / temperature[9] / timeStep + mHouseIn * PWOut / RWATER / tempOut / airDensityOut - dhMoistRemv + latload;
-	xn910 = -haHouse / pressure;
+	A[9][9] = volume[9] / RWATER / temperature[9] / timeStep + haHouse / pressure;
+	A[9][10] = -haHouse / pressure;
 	if(mCeiling < 0) {
-		xn9c = (-mHouseOut - mRetReg - mCeiling - mRetAHoff - mSupAHoff) / RWATER / temperature[9] / airDensityHouse;
-		xn96 = 0;
-		xn97 = 0;
-		xn98 = -mSupReg / RWATER / temperature[8] / airDensitySup;
+		A[9][9] += (-mHouseOut - mRetReg - mCeiling - mRetAHoff - mSupAHoff) / RWATER / temperature[9] / airDensityHouse;
+		A[9][6] = 0;
+		A[9][7] = 0;
+		A[9][8] = -mSupReg / RWATER / temperature[8] / airDensitySup;
 		}
 	else {
-		xn9c = (-mHouseOut - mRetReg) / RWATER / temperature[9] / airDensityHouse;
-		xn96 = -mCeiling / RWATER / temperature[6] / airDensityAttic;
-		xn97 = -mRetAHoff / RWATER / temperature[7] / airDensityRet;
-		xn98 = (-mSupReg - mSupAHoff) / RWATER / temperature[8] / airDensitySup;
+		A[9][9] += (-mHouseOut - mRetReg) / RWATER / temperature[9] / airDensityHouse;
+		A[9][6] = -mCeiling / RWATER / temperature[6] / airDensityAttic;
+		A[9][7] = -mRetAHoff / RWATER / temperature[7] / airDensityRet;
+		A[9][8] = (-mSupReg - mSupAHoff) / RWATER / temperature[8] / airDensitySup;
 		}
-	A[9][6] = xn96;
-	A[9][7] = xn97;
-	A[9][8] = xn98;
-	A[9][9] = xn9t + xn9c;
-	A[9][10] = xn910;
-	PWInit[9] = xn9o;
+	PWInit[9] = volume[9] * PWOld[9] / RWATER / temperature[9] / timeStep + mHouseIn * PWOut / RWATER / tempOut / airDensityOut - dhMoistRemv + latload;
 
 	//NODE 10 IS HOUSE MASS
-	xn10t = massWHouse / pressure / timeStep + haHouse / pressure;
-	xn10o = massWHouse * PWOld[10] / pressure / timeStep;
-	xn109 = -haHouse / pressure;
-	A[10][9] = xn109;
-	A[10][10] = xn10t;
-	PWInit[10] = xn10o;
+	A[10][9] = -haHouse / pressure;
+	A[10][10] = massWHouse / pressure / timeStep + haHouse / pressure;
+	PWInit[10] = massWHouse * PWOld[10] / pressure / timeStep;
 
    for (int i=0; i<MOISTURE_NODES; i++) {
        A[i][MOISTURE_NODES] = PWInit[i];
@@ -387,8 +366,8 @@ void Moisture::cond_bal(int pressure) {
 				// There may still be mass condensed at a node even when PW<PWS 
 				mTotal[0] = 0;
 				massCondensed[0] = 0;
-				double a00 = kappa1[0] + x1 + x2;
-				PW[0] = -1 / a00 * (x3 * PW[6] + x4 * PW[3]) + PWInit[0] / a00;
+				double a00 = kappa1[0] + x60 + x30;
+				PW[0] = -1 / a00 * (x06 * PW[6] + x03 * PW[3]) + PWInit[0] / a00;
 				hasCondensedMass[0] = false;
 				}
 			else {
@@ -403,8 +382,8 @@ void Moisture::cond_bal(int pressure) {
 			if(PW[1] < PWSaturation[1] && mTotal[1] <= 0) {
 				mTotal[1] = 0;
 				massCondensed[1] = 0;
-				double a11 = kappa1[1] + x5 + x6;
-				PW[1] = -1 / a11 * (x7 * PW[6] + x8 * PW[4]) + PWInit[1] / a11;
+				double a11 = kappa1[1] + x61 + x41;
+				PW[1] = -1 / a11 * (x16 * PW[6] + x14 * PW[4]) + PWInit[1] / a11;
 				hasCondensedMass[1] = false;
 				}
 			else {
@@ -416,8 +395,8 @@ void Moisture::cond_bal(int pressure) {
 			if(PW[2] < PWSaturation[2] && mTotal[2] <= 0) {
 				mTotal[2] = 0;
 				massCondensed[2] = 0;
-				double a22 = kappa1[2] + x9 + x10;
-				PW[2] = -1 / a22 * (x11 * PW[6] + x12 * PW[5]) + PWInit[2] / a22;
+				double a22 = kappa1[2] + x62 + x52;
+				PW[2] = -1 / a22 * (x26 * PW[6] + x25 * PW[5]) + PWInit[2] / a22;
 				hasCondensedMass[2] = false;
 				}
 			else {
@@ -429,8 +408,8 @@ void Moisture::cond_bal(int pressure) {
 			if(PW[3] < PWSaturation[3] && mTotal[3] <= 0) {
 				mTotal[3] = 0;
 				massCondensed[3] = 0;
-				double a44 = kappa1[3] - x4;
-				PW[3] = -1 / a44 * (-x2 * PW[0]) + PWInit[3] / a44;
+				double a44 = kappa1[3] - x03;
+				PW[3] = -1 / a44 * (-x30 * PW[0]) + PWInit[3] / a44;
 				hasCondensedMass[3] = false;
 				}
 			else {
@@ -442,8 +421,8 @@ void Moisture::cond_bal(int pressure) {
 			if(PW[4] < PWSaturation[4] && mTotal[4] <= 0) {
 				mTotal[4] = 0;
 				massCondensed[4] = 0;
-				double a55 = kappa1[4] - x8;
-				PW[4] = -1 / a55 * (-x6 * PW[1]) + PWInit[4] / a55;
+				double a55 = kappa1[4] - x14;
+				PW[4] = -1 / a55 * (-x41 * PW[1]) + PWInit[4] / a55;
 				hasCondensedMass[4] = false;
 				}
 			else {
@@ -455,8 +434,8 @@ void Moisture::cond_bal(int pressure) {
 			if(PW[5] < PWSaturation[5] && mTotal[5] <= 0) {
 				mTotal[5] = 0;
 				massCondensed[5] = 0;
-				double a66 = kappa1[5] - x12;
-				PW[5] = -1 / a66 * (-x10 * PW[2]) + PWInit[5] / a66;
+				double a66 = kappa1[5] - x25;
+				PW[5] = -1 / a66 * (-x52 * PW[2]) + PWInit[5] / a66;
 				hasCondensedMass[5] = false;
 				}
 			else {
@@ -468,8 +447,8 @@ void Moisture::cond_bal(int pressure) {
 			//         i.e., there is no mTotal
 			if(PW[6] < PWSaturation[6]) {
 				massCondensed[6] = 0;
-				double a33 = x13 - x3 - x7 - x11 + x14 + x16;
-				PW[6] = -1 / a33 * (-x1 * PW[0] - x5 * PW[1] - x9 * PW[2] + xn67 * PW[7] + xn68 * PW[8] + xn69 * PW[9]) + PWInit[6] / a33;
+				double a33 = x66 - x06 - x16 - x26 + x6out;
+				PW[6] = -1 / a33 * (-x60 * PW[0] - x61 * PW[1] - x62 * PW[2] + x67 * PW[7] + x68 * PW[8] + x69 * PW[9]) + PWInit[6] / a33;
 				hasCondensedMass[6] = false;
 				}
 			else {
@@ -500,16 +479,16 @@ void Moisture::cond_bal(int pressure) {
 		if(hasCondensedMass[6]) {
 			double fluxTotal = 0;
 			double fluxTo[4];
-			massCondensed[6] = timeStep * (-A[6][6] * PW[6] + x1 * PW[0] + x5 * PW[1] + x9 * PW[2] + PWInit[6]);
+			massCondensed[6] = timeStep * (-A[6][6] * PW[6] + x60 * PW[0] + x61 * PW[1] + x62 * PW[2] + PWInit[6]);
 			// This mass must be distributed over the other attic surfaces
 			// this may push them over pws so the iterative process must be repeated
 			// by calculating a new pw for each of the surface nodes based on their
 			// moisture content including this transferred from the attic air
 			// here the fluxes of water from the air to the other surface nodes in contact with attic air is determined
-			fluxTo[0] = -(x1 * PW[0] + x3 * PW[6]);
-			fluxTo[1] = -(x5 * PW[1] + x7 * PW[6]);
-			fluxTo[2] = -(x9 * PW[2] + x11 * PW[6]);
-			fluxTo[3] = x14 * PW[6];		// this is the moisture in attic air going to and from outside/house
+			fluxTo[0] = -(x60 * PW[0] + x06 * PW[6]);
+			fluxTo[1] = -(x61 * PW[1] + x16 * PW[6]);
+			fluxTo[2] = -(x62 * PW[2] + x26 * PW[6]);
+			fluxTo[3] = x6out * PW[6];		// this is the moisture in attic air going to and from outside/house
 			for(int i=0; i < 4; i++) {
 				if(fluxTo[i] > 0)
 					fluxTotal = fluxTotal + fluxTo[i];
@@ -546,22 +525,22 @@ void Moisture::cond_bal(int pressure) {
 			if(hasCondensedMass[i]) {
 				switch (i) {
 				case 0:
-					massCondensed[0] = timeStep * (-kappa1[0] * (PW[0] - PWOld[0]) - kappa2[0] * (temperature[0] - tempOld[0]) - x1 * PW[0] - x3 * PW[6] - x2 * PW[0] - x4 * PW[3]);
+					massCondensed[0] = timeStep * (-kappa1[0] * (PW[0] - PWOld[0]) - kappa2[0] * (temperature[0] - tempOld[0]) - x60 * PW[0] - x06 * PW[6] - x30 * PW[0] - x03 * PW[3]);
 					break;
 				case 1:
-					massCondensed[1] = timeStep * (-kappa1[1] * (PW[1] - PWOld[1]) - kappa2[1] * (temperature[1] - tempOld[1]) - x5 * PW[1] - x7 * PW[6] - x6 * PW[1] - x8 * PW[4]);
+					massCondensed[1] = timeStep * (-kappa1[1] * (PW[1] - PWOld[1]) - kappa2[1] * (temperature[1] - tempOld[1]) - x61 * PW[1] - x16 * PW[6] - x41 * PW[1] - x14 * PW[4]);
 					break;
 				case 2:
-					massCondensed[2] = timeStep * (-kappa1[2] * (PW[2] - PWOld[2]) - kappa2[2] * (temperature[2] - tempOld[2]) - x9 * PW[2] - x11 * PW[6] - x10 * PW[2] - x12 * PW[5]);
+					massCondensed[2] = timeStep * (-kappa1[2] * (PW[2] - PWOld[2]) - kappa2[2] * (temperature[2] - tempOld[2]) - x62 * PW[2] - x26 * PW[6] - x52 * PW[2] - x25 * PW[5]);
 					break;
 				case 3:
-					massCondensed[3] = timeStep * (-kappa1[3] * (PW[3] - PWOld[3]) - kappa2[3] * (temperature[3] - tempOld[3]) + x2 * PW[0] + x4 * PW[3]);
+					massCondensed[3] = timeStep * (-kappa1[3] * (PW[3] - PWOld[3]) - kappa2[3] * (temperature[3] - tempOld[3]) + x30 * PW[0] + x03 * PW[3]);
 					break;
 				case 4:
-					massCondensed[4] = timeStep * (-kappa1[4] * (PW[4] - PWOld[4]) - kappa2[4] * (temperature[4] - tempOld[4]) + x6 * PW[1] + x8 * PW[4]);
+					massCondensed[4] = timeStep * (-kappa1[4] * (PW[4] - PWOld[4]) - kappa2[4] * (temperature[4] - tempOld[4]) + x41 * PW[1] + x14 * PW[4]);
 					break;
 				case 5:
-					massCondensed[5] = timeStep * (-kappa1[5] * (PW[5] - PWOld[5]) - kappa2[5] * (temperature[5] - tempOld[5]) + x10 * PW[2] + x12 * PW[5]);
+					massCondensed[5] = timeStep * (-kappa1[5] * (PW[5] - PWOld[5]) - kappa2[5] * (temperature[5] - tempOld[5]) + x52 * PW[2] + x25 * PW[5]);
 					break;
 				}
 				mTotal[i] = mTotal[i] + massCondensed[i];
