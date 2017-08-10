@@ -629,8 +629,8 @@ void sub_heat (
 	}
 
    // Pass back wood surface heat transfer coefficients for use by moisture routines
-   innerNorthH = htCoef[1];
-   innerSouthH = htCoef[3];
+   innerNorthH = htCoef[roofInNorth];
+   innerSouthH = htCoef[roofInSouth];
    bulkH = htCoef[5];
 
 

@@ -6,18 +6,19 @@
 using namespace std;
 
 const double timeStep = 60.;		// Timestep (1 minute)
-const int MOISTURE_NODES = 11;   // Currently 11 nodes
+const int MOISTURE_NODES = 13;   // Max number of nodes
 
 class Moisture {
 	private:
 		
+		int moisture_nodes;										// Number of moisture nodes
 		double deltaX[MOISTURE_NODES];						// Node thickness
 		double area[MOISTURE_NODES];							// Node area
 		double volume[MOISTURE_NODES];						// Node volume
 		double density[6];										// Wood node density
 		double kappa1[MOISTURE_NODES], kappa2[MOISTURE_NODES];
 		double x60, x30, x06, x03, x61, x41, x16, x14, x62, x52, x26, x25, x66, x6out;
-		double x67, x68, x69;
+		double x67, x68, x69, x011, x110, x112, x121, x611, x116, x612, x126;
 		vector< vector<double> > A;
 		double PWOld[MOISTURE_NODES];							// previous time step vapor pressure (Pa)
       double PWInit[MOISTURE_NODES];						// initial vapor pressure (was B() in BASIC code) (Pa)
@@ -39,7 +40,7 @@ class Moisture {
 		double mTotal[MOISTURE_NODES];						// Node mass of condensed water (kg)
 
 		Moisture(double atticVolume, double retVolume, double supVolume, double houseVolume,
-					 double floorArea, double sheathArea, double bulkArea, double mcInit=0.15);
+					 double floorArea, double sheathArea, double bulkArea, double roofInsThick, double mcInit=0.15);
 		void mass_cond_bal(double* node_temps, double tempOut, double RHOut,
                double airDensityOut, double airDensityAttic, double airDensityHouse, double airDensitySup, double airDensityRet,
                int pressure, double hU0, double hU1, double hU2, double roofInsulRatio,

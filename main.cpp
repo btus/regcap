@@ -1076,7 +1076,7 @@ int main(int argc, char *argv[], char* envp[])
 
 		// Call class constructors
 		Dehumidifier dh(dhCapacity, dhEnergyFactor, dhSetPoint, dhDeadBand);	// Initialize Dehumidifier 
-		Moisture moisture_nodes(atticVolume, retVolume, supVolume, houseVolume, floorArea, sheathArea, bulkArea, atticMCInit);   // initialize moisture model
+		Moisture moisture_nodes(atticVolume, retVolume, supVolume, houseVolume, floorArea, sheathArea, bulkArea, 0.1, atticMCInit);   // initialize moisture model
 
 		cout << endl;
 		cout << "Simulation: " << simNum << endl;
