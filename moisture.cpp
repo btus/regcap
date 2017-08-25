@@ -38,7 +38,7 @@ using namespace std;
  * 11. interior north roof insulation ((1+16)/2)
  */
 Moisture::Moisture(double atticVolume, double retVolume, double supVolume, double houseVolume, 
-						double floorArea, double sheathArea, double bulkArea, double roofInsThick, double mcInit) {
+						double floorArea, double sheathArea, double bulkArea, double roofInsThick, double roofExtRval, double mcInit) {
    int pressure = 101325;		// 1 atmosphere
    double sheathThick = 0.015;  // Roof sheathing thickness (m).
    double bulkThick = 0.013;    // Bulk wood thickness (m).
@@ -59,6 +59,12 @@ Moisture::Moisture(double atticVolume, double retVolume, double supVolume, doubl
 	else {
 		moisture_nodes = 11;
 		}
+	if(roofExtRval > 0) {
+	   roofInsulRatio = (1/roofExtRval)/(1/roofExtRval + 1/((thickSheathing / kWood) + 0.06));
+	   }
+	else {
+	   roofInsulRatio = 1;
+	   }
    A.resize(moisture_nodes, vector<double>(moisture_nodes+1, 0));		// set size of equation vectors to number of nodes (A contains both)
    PW.resize(moisture_nodes, 0);
 
@@ -127,7 +133,6 @@ Moisture::Moisture(double atticVolume, double retVolume, double supVolume, doubl
  * @param hU0 - surface heat transfer coefficient for node 0 (inner south) (J/sm2K) - was H4
  * @param hU1 - surface heat transfer coefficient for node 1 (inner north) (J/sm2K) - was H6
  * @param hU2 - surface heat transfer coefficient for node 2 (bulk wood) (J/sm2K) - was H10
- * @param roofInsulRatio - ratio of exterior insulation U-val to sheathing U-val
  * @param mAtticIn - air mass flow into attic (kg/s)
  * @param mAtticOut - air mass flow out of attic (kg/s)
  * @param mCeiling - ceiling air mass flow (kg/s)
@@ -148,7 +153,7 @@ Moisture::Moisture(double atticVolume, double retVolume, double supVolume, doubl
  */
 void Moisture::mass_cond_bal(double* node_temps, double tempOut, double RHOut,
                   double airDensityOut, double airDensityAttic, double airDensityHouse, double airDensitySup, double airDensityRet,
-                  int pressure, double hU0, double hU1, double hU2, double roofInsulRatio,
+                  int pressure, double hU0, double hU1, double hU2,
                   double mAtticIn, double mAtticOut, double mCeiling, double mHouseIn, double mHouseOut,
                   double mAH, double mRetAHoff, double mRetLeak, double mRetReg, double mRetOut, double mErvHouse,
                   double mSupAHoff, double mSupLeak, double mSupReg, double latcap, double dhMoistRemv, double latload)

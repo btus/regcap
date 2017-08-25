@@ -208,8 +208,7 @@ void sub_heat (
 	double& H4,
 	double& H6,
 	double bulkArea,
-	double sheathArea,
-	double& roofInsulRatio
+	double sheathArea
 );
 
 void sub_houseLeak ( 

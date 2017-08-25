@@ -198,7 +198,7 @@ int main(int argc, char *argv[], char* envp[])
 		double roofPeakHeight;
 		int numAtticFans;
 		double roofExtRval;
-		double roofIntRval;
+		double roofIntRval, roofIntThick;
 		double gableEndRval;
 		int roofType;
 		double ductLocation;			
@@ -436,6 +436,7 @@ int main(int argc, char *argv[], char* envp[])
 		}
 
 		buildingFile >> roofIntRval;
+		buildingFile >> roofIntThick;
 		buildingFile >> roofExtRval;
 		buildingFile >> gableEndRval;
 		buildingFile >> roofType;
@@ -1076,7 +1077,7 @@ int main(int argc, char *argv[], char* envp[])
 
 		// Call class constructors
 		Dehumidifier dh(dhCapacity, dhEnergyFactor, dhSetPoint, dhDeadBand);	// Initialize Dehumidifier 
-		Moisture moisture_nodes(atticVolume, retVolume, supVolume, houseVolume, floorArea, sheathArea, bulkArea, 0.1, atticMCInit);   // initialize moisture model
+		Moisture moisture_nodes(atticVolume, retVolume, supVolume, houseVolume, floorArea, sheathArea, bulkArea, roofIntThick, roofExtRval, atticMCInit);   // initialize moisture model
 
 		cout << endl;
 		cout << "Simulation: " << simNum << endl;
@@ -1177,7 +1178,6 @@ int main(int argc, char *argv[], char* envp[])
 					double tsolair;
 					double H2, H4, H6;
 					double airDensityOUT,airDensityIN,airDensityATTIC,airDensitySUP,airDensityRET;
-					double roofInsulRatio;
 
 					target = minute - 39;			// Target is used for fan cycler operation currently set for 20 minutes operation, in the last 20 minutes of the hour.
 					if(target < 0)
@@ -3045,7 +3045,7 @@ int main(int argc, char *argv[], char* envp[])
 							mRetAHoff, solgain, tsolair, mFanCycler, roofPeakHeight, retLength, supLength,
 							roofType, roofExtRval, roofIntRval, ceilRval, gableEndRval, AHflag, mERV_AH, ERV_SRE, mHRV, HRV_ASE, mHRV_AH,
 							capacityc, capacityh, evapcap, internalGains, airDensityIN, airDensityOUT, airDensityATTIC, airDensitySUP, airDensityRET, numStories, storyHeight,
-							dh.sensible, H2, H4, H6, bulkArea, sheathArea, roofInsulRatio);
+							dh.sensible, H2, H4, H6, bulkArea, sheathArea);
 
 						if((abs(b[0] - tempAttic) < .2) || (mainIterations > 10)) {	// Testing for convergence
 							tempAttic        = b[0];					
@@ -3066,7 +3066,7 @@ int main(int argc, char *argv[], char* envp[])
 					double mRetOut = mFanCycler + mHRV_AH + mERV_AH * (1 - ERV_TRE);
 					moisture_nodes.mass_cond_bal(b, weather.dryBulb, weather.relativeHumidity,
 						airDensityOUT, airDensityATTIC, airDensityIN, airDensitySUP, airDensityRET,
-						weather.pressure, H4, H2, H6, roofInsulRatio, matticenvin, matticenvout, mCeiling, mHouseIN, mHouseOUT,
+						weather.pressure, H4, H2, H6, matticenvin, matticenvout, mCeiling, mHouseIN, mHouseOUT,
 						mAH, mRetAHoff, mRetLeak, mRetReg, mRetOut, mERV_AH * ERV_TRE, mSupAHoff, mSupLeak, mSupReg,
 						latcap, dh.condensate, latentLoad);
 

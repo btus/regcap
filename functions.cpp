@@ -376,8 +376,7 @@ void sub_heat (
 	double& innerSouthH,
 	double& bulkH,
 	double bulkArea,
-	double sheathArea,
-	double& roofInsulRatio
+	double sheathArea
 ) {
 	vector<double> b;
 	vector< vector<double> > A;
@@ -385,14 +384,12 @@ void sub_heat (
 	double heatCap[ATTIC_NODES], uVal[ATTIC_NODES], htCoef[ATTIC_NODES];
 	double viewFactor[ATTIC_NODES][ATTIC_NODES] = {};
 	double rtCoef[ATTIC_NODES][ATTIC_NODES];
-	double woodThickness;
 	double denShingles, cpShingles, Rshingles;
-	double kWood;
 	double kAir;
 	double muAir;
 	double characteristicVelocity;
 	double HI;
-	double woodEmissivity, roofAbsorptivity, roofEmissivity;	
+	double absorptivityRoof, emissivityRoof;	
 	double gndCoef2, gndCoef4, skyCoef2, skyCoef4;
 	double FRS, FG;
 	double TSKY, PW;
@@ -433,33 +430,31 @@ void sub_heat (
    A.resize(attic_nodes, vector<double>(attic_nodes+1, 0));
    b.resize(attic_nodes, 0);
 
-	woodThickness = .015;		// thickness of sheathing material (m)
-	woodEmissivity = .9;       // emissivity of building materials
 	switch(roofType) {
 		case 1:			// asphalt shingles
-			roofAbsorptivity = .92;
-			roofEmissivity = .91;
+			absorptivityRoof = .92;
+			emissivityRoof = .91;
 			Rshingles = .078;										// ASHRAE Fundamentals 2011 pg 26.7
 			denShingles = 1100 * 2 * .005;					// asphalt shingles (factor of two because they overlap)
 			cpShingles = 1260;									// CP asphalt shingles
 			break;
 		case 2: 			// red clay tile - edited for ConSol to be light brown concrete
-			roofAbsorptivity = .58; 											// .67
-			roofEmissivity = .9;
-			Rshingles = .5;
+			absorptivityRoof = .58; 											// .67
+			emissivityRoof = .9;
+			Rshingles = 0.04;                            // 30mm / 0.84W/mK (was 0.5!)
 			denShingles = 50;										// kg/m2
 			cpShingles = 880;										// CP for tile roof
 			break;
 		case 3:			// low coating clay tile
-			roofAbsorptivity = .5;
-			roofEmissivity = .9;
-			Rshingles = .5;
+			absorptivityRoof = .5;
+			emissivityRoof = .9;
+			Rshingles = 0.04;                            // 30mm / 0.84W/mK (was 0.5!)
 			denShingles = 50;
 			cpShingles = 880;										// CP for tile roof
 			break;
 		case 4:			// asphalt shingles  & white coating
-			roofAbsorptivity = .15;
-			roofEmissivity = .91;
+			absorptivityRoof = .15;
+			emissivityRoof = .91;
 			Rshingles = .078;										// ASHRAE Fundamentals 2011 pg 26.7
 			denShingles = 1100 * 2 * .005;					// asphalt shingles (factor of two because they overlap)
 			cpShingles = 1260;									// CP asphalt shingles
@@ -503,14 +498,14 @@ void sub_heat (
 	
 	// masses
 	mass[0] = atticVolume * airDensityATTIC;					     // mass of attic air
-	mass[1] = .5 * area[1] * densitySheathing * woodThickness; // 1/2 OF TOTAL
+	mass[1] = .5 * area[1] * densitySheathing * thickSheathing; // 1/2 OF TOTAL
 	mass[2] = mass[1] + denShingles * area[1];					  // OTHER 1/2 OUTSIDE SHEATHING, WOOD TCOND W/MMC
 	mass[3] = mass[1];
 	mass[4] = mass[2];
 	mass[5] = area[5] * 0.013 * densityWood;                   // 13mm equivalent thickness for 2x4 trusses
 	mass[6] = .5 * 4 * area[6];									     // MASS OF JOISTS DRYWALL AND INSULATION
 	mass[7] = mass[6];
-	mass[8] = .5 * densityWood * woodThickness * area[8];
+	mass[8] = .5 * densityWood * thickSheathing * area[8];
 	mass[9] = mass[8];
 	mass[10] = retLength * M_PI * (retDiameter + retThickness) * retThickness * retrho;	// retArea * retrho * retThickness
 	mass[11] = retVolume * airDensityRET;
@@ -545,18 +540,8 @@ void sub_heat (
 	heatCap[16] = 1030;  // fiberglass: http://www.greenspec.co.uk/building-design/insulation-materials-thermal-properties/
 	heatCap[17] = heatCap[16];
 
-	// Thermal conductivities (k) [W/mK]and R-values [m2K/W] and the like
-	kWood = 0.15;												// check with Iain about this
-	//kAir = 0.02624;											// Thermal conductivity of air, now as function of air temperature
-	kAir = 1.5207e-11 * pow(tempOld[15],3) - 4.8574e-8 * pow(tempOld[15],2) + 1.0184e-4 * tempOld[15] - 0.00039333;
-	muAir = 0.000018462;										// Dynamic viscosity of air (mu) [kg/ms] Make temperature dependent  (this value at 300K)
-
 	// U-values
-	if(roofExtRval > 0)
-	   roofInsulRatio = (1/roofExtRval)/(1/roofExtRval + 1/((woodThickness / kWood) + Rshingles));
-	else
-	   roofInsulRatio = 1;
-	uVal[1] = 1 / ((woodThickness / kWood) + Rshingles + roofExtRval);
+	uVal[1] = 1 / ((thickSheathing / kWood) + Rshingles + roofExtRval);
 	uVal[2] = uVal[1];
 	uVal[3] = uVal[1];
 	uVal[4] = uVal[1];
@@ -567,11 +552,15 @@ void sub_heat (
 	uVal[7] = uVal[6];
 	uVal[8] = 1 / gableEndRval;
 	uVal[9] = uVal[8];
+
 	// Inner Surface of Ducts
 	// from Holman   Nu(D) = 0.023*Re(D)^0.8*Pr(D)^0.4
 	// Note Use of HI notation
 	// I think that the following may be an imperical relationship
 	// Return Ducts
+	//kAir = 0.02624;											// Thermal conductivity of air, now as function of air temperature
+	kAir = 1.5207e-11 * pow(tempOld[15],3) - 4.8574e-8 * pow(tempOld[15],2) + 1.0184e-4 * tempOld[15] - 0.00039333;
+	muAir = 0.000018462;										// Dynamic viscosity of air (mu) [kg/ms] Make temperature dependent  (this value at 300K)
 	HI = .023 * kAir / retDiameter * pow((retDiameter * airDensityRET * abs(retVel) / muAir), .8) * pow((CpAir * muAir / kAir), .4);
 	uVal[10] = 1 / (retRval + 1/HI);
 	// Supply Ducts
@@ -665,50 +654,50 @@ void sub_heat (
 		viewFactor[3][1] = (1 - viewFactor[3][7] - viewFactor[3][10] - viewFactor[3][13]);
 
 		// North Sheathing
-		rtCoef[roofInNorth][10] = radTranCoef(woodEmissivity, tempOld[roofInNorth], tempOld[10], viewFactor[1][10], area[1]/(area[10]/3));
-		rtCoef[roofInNorth][13] = radTranCoef(woodEmissivity, tempOld[roofInNorth], tempOld[13], viewFactor[1][13], area[1]/(area[13]/3));
+		rtCoef[roofInNorth][10] = radTranCoef(emissivityWood, tempOld[roofInNorth], tempOld[10], viewFactor[1][10], area[1]/(area[10]/3));
+		rtCoef[roofInNorth][13] = radTranCoef(emissivityWood, tempOld[roofInNorth], tempOld[13], viewFactor[1][13], area[1]/(area[13]/3));
 
 		// South Sheathing
-		rtCoef[roofInSouth][10] = radTranCoef(woodEmissivity, tempOld[roofInSouth], tempOld[10], viewFactor[3][10], area[3]/(area[10]/3));
-		rtCoef[roofInSouth][13] = radTranCoef(woodEmissivity, tempOld[roofInSouth], tempOld[13], viewFactor[3][13], area[3]/(area[13]/3));
+		rtCoef[roofInSouth][10] = radTranCoef(emissivityWood, tempOld[roofInSouth], tempOld[10], viewFactor[3][10], area[3]/(area[10]/3));
+		rtCoef[roofInSouth][13] = radTranCoef(emissivityWood, tempOld[roofInSouth], tempOld[13], viewFactor[3][13], area[3]/(area[13]/3));
 
 		// Return Ducts (note, No radiative exchange w/ supply ducts)
-		rtCoef[10][roofInSouth] = radTranCoef(woodEmissivity, tempOld[10], tempOld[roofInSouth], viewFactor[10][3], area[10]/area[3]);
-		rtCoef[10][roofInNorth] = radTranCoef(woodEmissivity, tempOld[10], tempOld[roofInNorth], viewFactor[10][1], area[10]/area[1]);
+		rtCoef[10][roofInSouth] = radTranCoef(emissivityWood, tempOld[10], tempOld[roofInSouth], viewFactor[10][3], area[10]/area[3]);
+		rtCoef[10][roofInNorth] = radTranCoef(emissivityWood, tempOld[10], tempOld[roofInNorth], viewFactor[10][1], area[10]/area[1]);
 
 		// Supply Ducts (note, No radiative exchange w/ return ducts)
-		rtCoef[13][roofInSouth] = radTranCoef(woodEmissivity, tempOld[13], tempOld[roofInSouth], viewFactor[13][3], area[13]/area[3]);
-		rtCoef[13][roofInNorth] = radTranCoef(woodEmissivity, tempOld[13], tempOld[roofInNorth], viewFactor[13][1], area[13]/area[1]);
+		rtCoef[13][roofInSouth] = radTranCoef(emissivityWood, tempOld[13], tempOld[roofInSouth], viewFactor[13][3], area[13]/area[3]);
+		rtCoef[13][roofInNorth] = radTranCoef(emissivityWood, tempOld[13], tempOld[roofInNorth], viewFactor[13][1], area[13]/area[1]);
 	}
 
 	// North Sheathing
-	rtCoef[roofInNorth][roofInSouth] = radTranCoef(woodEmissivity, tempOld[roofInNorth], tempOld[roofInSouth], viewFactor[1][3], area[1]/area[3]);
-	rtCoef[roofInNorth][7] = radTranCoef(woodEmissivity, tempOld[roofInNorth], tempOld[7], viewFactor[1][7], area[1]/area[7]);
+	rtCoef[roofInNorth][roofInSouth] = radTranCoef(emissivityWood, tempOld[roofInNorth], tempOld[roofInSouth], viewFactor[1][3], area[1]/area[3]);
+	rtCoef[roofInNorth][7] = radTranCoef(emissivityWood, tempOld[roofInNorth], tempOld[7], viewFactor[1][7], area[1]/area[7]);
 
 	// South Sheathing
-	rtCoef[roofInSouth][roofInNorth] = radTranCoef(woodEmissivity, tempOld[roofInSouth], tempOld[roofInNorth], viewFactor[3][1], area[3]/area[1]);
-	rtCoef[roofInSouth][7] = radTranCoef(woodEmissivity, tempOld[roofInSouth], tempOld[7], viewFactor[3][7], area[3]/area[7]);
+	rtCoef[roofInSouth][roofInNorth] = radTranCoef(emissivityWood, tempOld[roofInSouth], tempOld[roofInNorth], viewFactor[3][1], area[3]/area[1]);
+	rtCoef[roofInSouth][7] = radTranCoef(emissivityWood, tempOld[roofInSouth], tempOld[7], viewFactor[3][7], area[3]/area[7]);
 
 	// Attic Floor
-	rtCoef[7][roofInSouth] = radTranCoef(woodEmissivity, tempOld[7], tempOld[roofInSouth], viewFactor[7][3], area[7]/area[3]);
-	rtCoef[7][roofInNorth] = radTranCoef(woodEmissivity, tempOld[7], tempOld[roofInNorth], viewFactor[7][1], area[7]/area[1]);
+	rtCoef[7][roofInSouth] = radTranCoef(emissivityWood, tempOld[7], tempOld[roofInSouth], viewFactor[7][3], area[7]/area[3]);
+	rtCoef[7][roofInNorth] = radTranCoef(emissivityWood, tempOld[7], tempOld[roofInNorth], viewFactor[7][1], area[7]/area[1]);
 
 	// underside of ceiling
-	rtCoef[6][12] = radTranCoef(woodEmissivity, tempOld[6], tempOld[12], 1, area[6]/area[12]);
+	rtCoef[6][12] = radTranCoef(emissivityWood, tempOld[6], tempOld[12], 1, area[6]/area[12]);
 
 	// Sky and ground radiation
 	FRS = (1 - skyCover) * (180 - roofPitch) / 180;      	// ROOF-SKY SHAPE FACTOR
 	FG = 1 - FRS;                            					// ROOF-GROUND SHAPE FACTOR
 	TGROUND = tempOut;                           			// ASSUMING GROUND AT AIR TEMP
 	if(skyCover < 1) {
-		skyCoef4 = radTranCoef(roofEmissivity, tempOld[4], TSKY, FRS, 0);
-		skyCoef2 = radTranCoef(roofEmissivity, tempOld[2], TSKY, FRS, 0);
+		skyCoef4 = radTranCoef(emissivityRoof, tempOld[4], TSKY, FRS, 0);
+		skyCoef2 = radTranCoef(emissivityRoof, tempOld[2], TSKY, FRS, 0);
 	} else {
 		skyCoef4 = 0;
 		skyCoef2 = 0;
 	}
-	gndCoef4 = radTranCoef(roofEmissivity, tempOld[4], TGROUND, FG, 0);
-	gndCoef2 = radTranCoef(roofEmissivity, tempOld[2], TGROUND, FG, 0);
+	gndCoef4 = radTranCoef(emissivityRoof, tempOld[4], TGROUND, FG, 0);
+	gndCoef2 = radTranCoef(emissivityRoof, tempOld[2], TGROUND, FG, 0);
 
 
 	// ITERATION OF TEMPERATURES WITHIN HEAT SUBROUTINE
@@ -777,7 +766,7 @@ void sub_heat (
 		// NODE 2 IS OUTSIDE NORTH SHEATHING
 		A[2][1] = -area[1] * uVal[2];
 		A[2][2] = mass[2] * heatCap[2] / dtau + htCoef[2] * area[2] + area[1] * uVal[2] + skyCoef2 * area[1] + gndCoef2 * area[1];
-		b[2] = mass[2] * heatCap[2] * tempOld[2] / dtau + htCoef[2] * area[2] * tempOut + area[1] * nsolrad * roofAbsorptivity
+		b[2] = mass[2] * heatCap[2] * tempOld[2] / dtau + htCoef[2] * area[2] * tempOut + area[1] * nsolrad * absorptivityRoof
 		     + skyCoef2 * area[1] * TSKY + gndCoef2 * area[1] * TGROUND;
 
 		// NODE 3 IS INSIDE SOUTH SHEATHING
@@ -805,7 +794,7 @@ void sub_heat (
 		// NODE 4 IS OUTSIDE SOUTH SHEATHING
 		A[4][3] = -area[3] * uVal[4];
 		A[4][4] = mass[4] * heatCap[4] / dtau + htCoef[4] * area[4] + area[3] * uVal[4] + skyCoef4 * area[3] + gndCoef4 * area[3];
-		b[4] = mass[4] * heatCap[4] * tempOld[4] / dtau + htCoef[4] * area[4] * tempOut + area[3] * ssolrad * roofAbsorptivity
+		b[4] = mass[4] * heatCap[4] * tempOld[4] / dtau + htCoef[4] * area[4] * tempOut + area[3] * ssolrad * absorptivityRoof
 		     + skyCoef4 * area[3] * TSKY + gndCoef4 * area[3] * TGROUND;
 
 		// NODE 5 IS MASS OF WOOD IN ATTIC I.E. JOISTS AND TRUSSES

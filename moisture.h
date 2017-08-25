@@ -26,7 +26,8 @@ class Moisture {
 		double tempOld[MOISTURE_NODES];						// previous time step temperature (deg K)
 		double haHouse;											// haHouse is the moisture transport coefficient of the house mass (kg/s)
 		double massWHouse;										// active mass of moisture in the house (kg)
-
+		double roofInsulRatio;									// ratio of exterior insulation U-val to sheathing U-val
+		
 		void cond_bal(int pressure);
 		double calc_kappa_1(int pressure, double temp, double mc, double mass);
 		double calc_kappa_2(double mc, double mass);
@@ -40,10 +41,10 @@ class Moisture {
 		double mTotal[MOISTURE_NODES];						// Node mass of condensed water (kg)
 
 		Moisture(double atticVolume, double retVolume, double supVolume, double houseVolume,
-					 double floorArea, double sheathArea, double bulkArea, double roofInsThick, double mcInit=0.15);
+					 double floorArea, double sheathArea, double bulkArea, double roofInsThick, double roofExtRval, double mcInit=0.15);
 		void mass_cond_bal(double* node_temps, double tempOut, double RHOut,
                double airDensityOut, double airDensityAttic, double airDensityHouse, double airDensitySup, double airDensityRet,
-               int pressure, double hU0, double hU1, double hU2, double roofInsulRatio,
+               int pressure, double hU0, double hU1, double hU2,
                double mAtticIn, double mAtticOut, double mCeiling, double mHouseIn, double mHouseOut,
                double mAH, double mRetAHoff, double mRetLeak, double mRetReg, double mRetOut, double mErvHouse,
                double mSupAHoff, double mSupLeak, double mSupReg, double latcap, double dhMoistRemv, double latload);
