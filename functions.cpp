@@ -441,14 +441,14 @@ void sub_heat (
 		case 2: 			// red clay tile - edited for ConSol to be light brown concrete
 			absorptivityRoof = .58; 											// .67
 			emissivityRoof = .9;
-			Rshingles = 0.04;                            // 30mm / 0.84W/mK (was 0.5!)
+			Rshingles = 0.5;                             // Assume this includes air space but no documentation. Seems high
 			denShingles = 50;										// kg/m2
 			cpShingles = 880;										// CP for tile roof
 			break;
 		case 3:			// low coating clay tile
 			absorptivityRoof = .5;
 			emissivityRoof = .9;
-			Rshingles = 0.04;                            // 30mm / 0.84W/mK (was 0.5!)
+			Rshingles = 0.5;                             // Assume this includes air space but no documentation. Seems high
 			denShingles = 50;
 			cpShingles = 880;										// CP for tile roof
 			break;
