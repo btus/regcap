@@ -20,6 +20,7 @@ using namespace std;
  * @param sheathArea - roof sheathing area (m2)
  * @param bulkArea - bulk wood area (m2)
  * @param roofInsThick - thickness of interior roof insulation (m)
+ * @param roofExtRval - R-value of exterior roof insulation (m2k/W)
  * @param mcInit - initial wood moisture content (fraction - optional)
  *
  * The nodes are (0-5 wood, 6-10 air/mass):
@@ -381,13 +382,13 @@ void Moisture::mass_cond_bal(double* node_temps, double tempOut, double RHOut,
 
 	if(moisture_nodes > 11) {
 		//NODE 11  - inside of south roof insulation
-		A[11][11] = -x611 - x011;
+		A[11][11] = volume[11] / RWATER / temperature[11] / timeStep - x611 - x011;
 		A[11][6] = -x116;
 		A[11][0] = -x110;
 		PWInit[11] = volume[11] * PWOld[11] / RWATER / temperature[11] / timeStep;
 
 		//NODE 12  - inside of north roof insulation
-		A[12][12] = -x612 - x112;
+		A[12][12] = volume[12] / RWATER / temperature[12] / timeStep - x612 - x112;
 		A[12][6] = -x126;
 		A[12][1] = -x121;
 		PWInit[12] = volume[12] * PWOld[12] / RWATER / temperature[12] / timeStep;

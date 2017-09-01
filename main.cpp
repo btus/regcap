@@ -302,11 +302,16 @@ int main(int argc, char *argv[], char* envp[])
 				return 1; 
 			}
 
+			moistureFile << "RHOut\tTempOut";
 			for(int i=0; i<6; i++) {
-				moistureFile << "MC" << i << "\tmTotal" << i << "\t";
+				moistureFile << "\t" << "MC" << i << "\tTemp" << i;
 				}
-			moistureFile << "HROut\tHRHouse\tHRAttic\tHRSupply\tHRReturn\t";
-			moistureFile << "RHHouse\tRHAttic\tTempHouse\ttempAttic" << endl;
+			for(int i=6; i<MOISTURE_NODES; i++) {
+				moistureFile << "\t" << "RH" << i << "\tTemp" << i;
+				}
+			moistureFile << endl;
+			//moistureFile << "HROut\tHRHouse\tHRAttic\tHRSupply\tHRReturn\t";
+			//moistureFile << "RHHouse\tRHAttic\tTempHouse\ttempAttic" << endl;
 		}
 
 		// [START] Read in Building Inputs =========================================================================================================================
@@ -3317,14 +3322,17 @@ int main(int argc, char *argv[], char* envp[])
 					}
 
 					// ================================= WRITING MOISTURE DATA FILE =================================
-					//File column names, for reference.
-					//moistureFile << "HROUT\tHRattic\tHRreturn\tHRsupply\tHRhouse\tHRmaterials\tRH%house\tRHind60\tRHind70" << endl;
 					if(printMoistureFile) {
-						for(int i=0; i<6; i++) {   // new humidity model wood nodes
-							moistureFile << moisture_nodes.moistureContent[i] << "\t" << moisture_nodes.mTotal[i] << "\t";
+						moistureFile << weather.relativeHumidity << "\t" << weather.dryBulb - C_TO_K;
+						for(int i=0; i<6; i++) {   // humidity model wood nodes
+							moistureFile << "\t" << moisture_nodes.moistureContent[i] << "\t" << moisture_nodes.temperature[i] - C_TO_K;
 							}
-						moistureFile << weather.humidityRatio << "\t" << HRHouse << "\t" << HRAttic << "\t" << HRSupply << "\t" << HRReturn << "\t";
-						moistureFile << RHHouse << "\t" << RHAttic << "\t" << tempHouse - C_TO_K << "\t" << tempAttic - C_TO_K << endl;
+						for(int i=6; i<MOISTURE_NODES; i++) {   // humidity model air nodes
+							moistureFile << "\t" << moisture_nodes.moistureContent[i] << "\t" << moisture_nodes.temperature[i] - C_TO_K;
+							}
+						moistureFile << endl;
+						//moistureFile << weather.humidityRatio << "\t" << HRHouse << "\t" << HRAttic << "\t" << HRSupply << "\t" << HRReturn << "\t";
+						//moistureFile << RHHouse << "\t" << RHAttic << "\t" << tempHouse - C_TO_K << "\t" << tempAttic - C_TO_K << endl;
 					}
 			
 					// ================================= WRITING Filter Loading DATA FILE =================================

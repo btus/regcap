@@ -10,7 +10,6 @@ const int MOISTURE_NODES = 13;   // Max number of nodes
 
 class Moisture {
 	private:
-		
 		int moisture_nodes;										// Number of moisture nodes
 		double deltaX[MOISTURE_NODES];						// Node thickness
 		double area[MOISTURE_NODES];							// Node area
@@ -22,7 +21,6 @@ class Moisture {
 		vector< vector<double> > A;
 		double PWOld[MOISTURE_NODES];							// previous time step vapor pressure (Pa)
       double PWInit[MOISTURE_NODES];						// initial vapor pressure (was B() in BASIC code) (Pa)
-		double temperature[MOISTURE_NODES];					// Node temperature (deg K)
 		double tempOld[MOISTURE_NODES];						// previous time step temperature (deg K)
 		double haHouse;											// haHouse is the moisture transport coefficient of the house mass (kg/s)
 		double massWHouse;										// active mass of moisture in the house (kg)
@@ -36,6 +34,7 @@ class Moisture {
 		double calc_inter_temp(double temp1, double temp2, double insRatio);
 		
 	public:
+		double temperature[MOISTURE_NODES];					// Node temperature (deg K)
 		double moistureContent[MOISTURE_NODES];			// Node moisture content (%)
 		vector <double> PW;										// Node vapor pressure (Pa). vector so it can be passed to gauss()
 		double mTotal[MOISTURE_NODES];						// Node mass of condensed water (kg)
