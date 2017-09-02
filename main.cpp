@@ -566,14 +566,6 @@ int main(int argc, char *argv[], char* envp[])
 		rowHouse = (rowOrIsolated.compare("R") == 0);
 		roofPeakPerpendicular = (roofPeakOrient.compare("D") == 0);
 
-		double supCp = 753.624;										// Specific heat capacity of steel [j/kg/K]
-		double suprho = 16.018 * 2;									// Supply duct density. The factor of two represents the plastic and sprical [kg/m^3]
-		double retCp = 753.624;										// Specific heat capacity of steel [j/kg/K]
-		double retrho = 16.018 * 2;									// Return duct density [kg/m^3]
-		double supArea = (supDiameter + 2 * supThickness) * M_PI * supLength;		// Surface area of supply ducts [m2]
-		double retArea = (retDiameter + 2 * retThickness) * M_PI * retLength;		// Surface area of return ducts [m2]
-		double supVolume = (pow(supDiameter, 2) * M_PI / 4) * supLength;			// Volume of supply ducts [m3]
-		double retVolume = (pow(retDiameter, 2) * M_PI / 4) * retLength;			// Volume of return ducts [m3]
 		double bulkArea = planArea * 1;  // Area of bulk wood in the attic (m2) - based on W trusses, 24oc, 60x36 house w/ 4/12 attic
 		double sheathArea = planArea / 2 / cos(roofPitch * M_PI / 180);         // Area of roof sheathing (m2)
 		hcapacity = hcapacity * .29307107 * 1000 * AFUE;			// Heating capacity of furnace converted from kBtu/hr to Watts and with AFUE adjustment
@@ -1082,7 +1074,8 @@ int main(int argc, char *argv[], char* envp[])
 
 		// Call class constructors
 		Dehumidifier dh(dhCapacity, dhEnergyFactor, dhSetPoint, dhDeadBand);	// Initialize Dehumidifier 
-		Moisture moisture_nodes(atticVolume, retVolume, supVolume, houseVolume, floorArea, sheathArea, bulkArea, roofIntThick, roofExtRval, atticMCInit);   // initialize moisture model
+		Moisture moisture_nodes(atticVolume, retDiameter, retLength, supDiameter, supLength,
+			 houseVolume, floorArea, sheathArea, bulkArea, roofIntThick, roofExtRval, atticMCInit);   // initialize moisture model
 
 		cout << endl;
 		cout << "Simulation: " << simNum << endl;
@@ -3045,8 +3038,8 @@ int main(int argc, char *argv[], char* envp[])
 						// Call heat subroutine to calculate heat exchange
 						sub_heat(weather.dryBulb, mCeiling, AL4, weather.windSpeed, ssolrad, nsolrad, tempOld, atticVolume, houseVolume, weather.skyCover, b,
 							floorArea, roofPitch, ductLocation, mSupReg, mRetReg, mRetLeak, mSupLeak, mAH, supRval, retRval, supDiameter,
-							retDiameter, supArea, retArea, supThickness, retThickness, supVolume, retVolume, supCp, retCp, supVel, retVel, suprho,
-							retrho, weather.pressure, weather.humidityRatio, uaSolAir, uaTOut, matticenvin, matticenvout, mHouseIN, mHouseOUT, planArea, mSupAHoff,
+							retDiameter, supThickness, retThickness, supVel, retVel, 
+							weather.pressure, weather.humidityRatio, uaSolAir, uaTOut, matticenvin, matticenvout, mHouseIN, mHouseOUT, planArea, mSupAHoff,
 							mRetAHoff, solgain, tsolair, mFanCycler, roofPeakHeight, retLength, supLength,
 							roofType, roofExtRval, roofIntRval, ceilRval, gableEndRval, AHflag, mERV_AH, ERV_SRE, mHRV, HRV_ASE, mHRV_AH,
 							capacityc, capacityh, evapcap, internalGains, airDensityIN, airDensityOUT, airDensityATTIC, airDensitySUP, airDensityRET, numStories, storyHeight,

@@ -39,7 +39,7 @@ class Moisture {
 		vector <double> PW;										// Node vapor pressure (Pa). vector so it can be passed to gauss()
 		double mTotal[MOISTURE_NODES];						// Node mass of condensed water (kg)
 
-		Moisture(double atticVolume, double retVolume, double supVolume, double houseVolume,
+		Moisture(double atticVolume, double retDiameter, double retLength, double supDiameter, double supLength, double houseVolume,
 					 double floorArea, double sheathArea, double bulkArea, double roofInsThick, double roofExtRval, double mcInit=0.15);
 		void mass_cond_bal(double* node_temps, double tempOut, double RHOut,
                double airDensityOut, double airDensityAttic, double airDensityHouse, double airDensitySup, double airDensityRet,

@@ -319,18 +319,10 @@ void sub_heat (
 	double& retRval, 
 	double& supDiameter, 
 	double& retDiameter, 
-	double& supArea, 
-	double& retArea, 
 	double& supThickness, 
 	double& retThickness, 
-	double& supVolume, 
-	double& retVolume, 
-	double& supCp, 
-	double& retCp, 
 	double& supVel, 
 	double& retVel, 
-	double& suprho, 
-	double& retrho, 
 	int& pRef, 
 	double& HROUT, 
 	double& uaSolAir,
@@ -461,6 +453,12 @@ void sub_heat (
 			break;
 	}
 
+	// Ducts
+	double supCp = 753.624;											// Specific heat capacity of steel [j/kg/K]
+	double suprho = 16.018 * 2;									// Supply duct density. The factor of two represents the plastic and sprical [kg/m^3]
+	double retCp = 753.624;											// Specific heat capacity of steel [j/kg/K]
+	double retrho = 16.018 * 2;									// Return duct density [kg/m^3]
+
 	PW = HROUT * pRef / (.621945 + HROUT);						// water vapor partial pressure pg 1.9 ASHRAE fundamentals 2009
 	PW = PW / 1000 / 3.38;											// CONVERT TO INCHES OF HG
 	TSKY = tempOut * pow((.55 + .33 * sqrt(PW)), .25);		// TSKY DEPENDS ON PW
@@ -482,9 +480,9 @@ void sub_heat (
 	area[7] = area[6];											   // Attic floor
 	area[8] = planArea / 2 * tan(roofPitch * M_PI / 180);	// Total endwall area (assumes 2:1 aspect ratio)
 	area[9] = area[8];
-	area[10] = retArea;
+	area[10] = (retDiameter + 2 * retThickness) * M_PI * retLength;
 	area[11] = M_PI * retLength * retDiameter;
-	area[13] = supArea;
+	area[13] = (supDiameter + 2 * supThickness) * M_PI * supLength;
 	area[14] = M_PI * supLength * supDiameter;
 	
 	// surface area of inside of house minus the end walls, roof and ceiling
@@ -503,17 +501,17 @@ void sub_heat (
 	heatCap[3] = heatCap[1];
 	heatCap[4] = heatCap[2];
 	heatCap[5] = area[5] * 0.013 * densityWood * 1630;								// 13mm equivalent thickness for 2x4 trusses
-	heatCap[6] = .5 * 4 * area[6] * 1150;												// half of joists, drywall, and insulation
-	heatCap[7] = heatCap[6];
+	heatCap[6] = 0.5 * area[6] * 10 * 1150;											// half of drywall
+	heatCap[7] = heatCap[6] + area[7] * ceilRval * 0.7 * 840;					// half of drywall + all of insulation
 	heatCap[8] = .5 * area[8] * densityWood * thickSheathing * 1210;
 	heatCap[9] = heatCap[8];
 	heatCap[10] = retLength * M_PI * (retDiameter + retThickness) * retThickness * retrho * retCp;
-	heatCap[11] = retVolume * airDensityRET * CpAir;
+	heatCap[11] = (pow(retDiameter, 2) * M_PI / 4) * retLength * airDensityRET * CpAir;
 	//  maybe not - 02/2004 need to increase house mass with furnishings and their area: say 5000kg furnishings
 	// mass of walls (5 cm effctive thickness) + mass of slab (aso 5 cm thick)
 	heatCap[12] = (storyHeight * pow(floorArea, .5) * 4 * 2000 * .01 + planArea * .05 * 2000) * 1300;
 	heatCap[13] = supLength * M_PI * (supDiameter + supThickness) * supThickness * suprho * supCp;
-	heatCap[14] = supVolume * airDensitySUP * CpAir;
+	heatCap[14] = (pow(supDiameter, 2) * M_PI / 4) * supLength * airDensitySUP * CpAir;
 	heatCap[15] = houseVolume * airDensityIN * CpAir;
 	heatCap[16] = area[16] * roofIntRval * 0.7 * 840; // 0.7kg/m2/R-val = 20kg/m3 * 0.035W/mK for fiberglass, 840 from 2009 ASHRAE fund, ch26, tbl 4 
 	heatCap[17] = heatCap[16];

@@ -13,8 +13,10 @@ using namespace std;
 /*
  * Moisture - Moisture class constructor
  * @param atticVolume - attic volume (m3)
- * @param supVolume - supply register volume (m3)
- * @param retVolume - return register volume (m3)
+ * @param retDiameter - return register diameter (m)
+ * @param retLength - return register length (m)
+ * @param supDiameter - supply register diameter (m)
+ * @param supLength - supply register length (m)
  * @param houseVolume - house volume (m3)
  * @param floorArea - conditioned floor area (m2)
  * @param sheathArea - roof sheathing area (m2)
@@ -38,7 +40,7 @@ using namespace std;
  * 11. interior south roof insulation ((3+17)/2)
  * 11. interior north roof insulation ((1+16)/2)
  */
-Moisture::Moisture(double atticVolume, double retVolume, double supVolume, double houseVolume, 
+Moisture::Moisture(double atticVolume, double retDiameter, double retLength, double supDiameter, double supLength, double houseVolume, 
 						double floorArea, double sheathArea, double bulkArea, double roofInsThick, double roofExtRval, double mcInit) {
    int pressure = 101325;		// 1 atmosphere
    double sheathThick = 0.015;  // Roof sheathing thickness (m).
@@ -90,8 +92,8 @@ Moisture::Moisture(double atticVolume, double retVolume, double supVolume, doubl
 	volume[4] = area[1] * sheathThick - volume[1];
 	volume[5] = area[2] * bulkThick - volume[2];
 	volume[6] = atticVolume;
-	volume[7] = retVolume;
-	volume[8] = supVolume;
+	volume[7] = (pow(retDiameter, 2) * M_PI / 4) * retLength;
+	volume[8] = (pow(supDiameter, 2) * M_PI / 4) * supLength;
 	volume[9] = houseVolume;
 
 	density[0] = densitySheathing;
