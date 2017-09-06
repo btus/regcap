@@ -185,8 +185,7 @@ int main(int argc, char *argv[], char* envp[])
 		double windowN;
 		double windowS;
 		double winShadingCoef;
-		double ceilRval_heat;
-		double ceilRval_cool;
+		double ceilRval;
 		double latentLoad;
 		double internalGains1;
 		double atticVolume;
@@ -198,7 +197,9 @@ int main(int argc, char *argv[], char* envp[])
 		bool roofPeakPerpendicular;
 		double roofPeakHeight;
 		int numAtticFans;
-		double roofRval;
+		double roofExtRval;
+		double roofIntRval, roofIntThick;
+		double gableEndRval;
 		int roofType;
 		double ductLocation;			
 		double supThickness;
@@ -301,11 +302,16 @@ int main(int argc, char *argv[], char* envp[])
 				return 1; 
 			}
 
+			moistureFile << "RHOut\tTempOut";
 			for(int i=0; i<6; i++) {
-				moistureFile << "MC" << i << "\tmTotal" << i << "\t";
+				moistureFile << "\t" << "MC" << i << "\tTemp" << i;
 				}
-			moistureFile << "HROut\tHRHouse\tHRAttic\tHRSupply\tHRReturn\t";
-			moistureFile << "RHHouse\tRHAttic\tTempHouse\ttempAttic" << endl;
+			for(int i=6; i<MOISTURE_NODES; i++) {
+				moistureFile << "\t" << "RH" << i << "\tTemp" << i;
+				}
+			moistureFile << endl;
+			//moistureFile << "HROut\tHRHouse\tHRAttic\tHRSupply\tHRReturn\t";
+			//moistureFile << "RHHouse\tRHAttic\tTempHouse\ttempAttic" << endl;
 		}
 
 		// [START] Read in Building Inputs =========================================================================================================================
@@ -399,8 +405,7 @@ int main(int argc, char *argv[], char* envp[])
 		buildingFile >> windowN;
 		buildingFile >> windowS;
 		buildingFile >> winShadingCoef;
-		buildingFile >> ceilRval_heat;
-		buildingFile >> ceilRval_cool;
+		buildingFile >> ceilRval;
 		buildingFile >> latentLoad;
 		buildingFile >> internalGains1;
 
@@ -435,7 +440,10 @@ int main(int argc, char *argv[], char* envp[])
 			buildingFile >> atticFan[i].oper;
 		}
 
-		buildingFile >> roofRval;
+		buildingFile >> roofIntRval;
+		buildingFile >> roofIntThick;
+		buildingFile >> roofExtRval;
+		buildingFile >> gableEndRval;
 		buildingFile >> roofType;
 
 		// =========================== Duct Inputs =================================
@@ -558,14 +566,8 @@ int main(int argc, char *argv[], char* envp[])
 		rowHouse = (rowOrIsolated.compare("R") == 0);
 		roofPeakPerpendicular = (roofPeakOrient.compare("D") == 0);
 
-		double supCp = 753.624;										// Specific heat capacity of steel [j/kg/K]
-		double suprho = 16.018 * 2;									// Supply duct density. The factor of two represents the plastic and sprical [kg/m^3]
-		double retCp = 753.624;										// Specific heat capacity of steel [j/kg/K]
-		double retrho = 16.018 * 2;									// Return duct density [kg/m^3]
-		double supArea = (supDiameter + 2 * supThickness) * M_PI * supLength;		// Surface area of supply ducts [m2]
-		double retArea = (retDiameter + 2 * retThickness) * M_PI * retLength;		// Surface area of return ducts [m2]
-		double supVolume = (pow(supDiameter, 2) * M_PI / 4) * supLength;			// Volume of supply ducts [m3]
-		double retVolume = (pow(retDiameter, 2) * M_PI / 4) * retLength;			// Volume of return ducts [m3]
+		double bulkArea = planArea * 1;  // Area of bulk wood in the attic (m2) - based on W trusses, 24oc, 60x36 house w/ 4/12 attic
+		double sheathArea = planArea / 2 / cos(roofPitch * M_PI / 180);         // Area of roof sheathing (m2)
 		hcapacity = hcapacity * .29307107 * 1000 * AFUE;			// Heating capacity of furnace converted from kBtu/hr to Watts and with AFUE adjustment
 					
 		// [START] Filter Loading ==================================================================================
@@ -955,8 +957,6 @@ int main(int argc, char *argv[], char* envp[])
 		int compTime = 0;
 		int compTimeCount = 0;
 		int rivecOn = 0;		   // 0 (off) or 1 (on) for RIVEC devices
-		int mainIterations;
-		int ERRCODE = 0;
 		int hcFlag = 1;         // Start with HEATING (simulations start in January)
 
 		weatherData weather;		// current minute of weather data
@@ -975,7 +975,6 @@ int main(int argc, char *argv[], char* envp[])
 		double qAH;						// Air flowrate of the Air Handler (m^3/s)
 		double uaSolAir;
 		double uaTOut;
-		double rceil;
 		double econodt = 0;			// Temperature difference between inside and outside at which the economizer operates
 		double supVelAH;			// Air velocity in the supply ducts
 		double retVelAH;			// Air velocity in the return ducts
@@ -1011,8 +1010,6 @@ int main(int argc, char *argv[], char* envp[])
 		double chargecapw = 0;
 		double chargeeerw = 0;
 		double Mcoilprevious = 0;
-		double mCeilingOld;
-		double limit;
 		double matticenvout = 0;
 		double mCeiling = 0;
 		//double mretahaoff;
@@ -1030,7 +1027,6 @@ int main(int argc, char *argv[], char* envp[])
 		double Patticint = 0;
 		double mAtticIN = 0;
 		double mAtticOUT = 0;
-		double TSKY = 0;
 		double mHouse = 0;
 		double qHouse = 0;
 		double houseACH = 0;
@@ -1078,7 +1074,8 @@ int main(int argc, char *argv[], char* envp[])
 
 		// Call class constructors
 		Dehumidifier dh(dhCapacity, dhEnergyFactor, dhSetPoint, dhDeadBand);	// Initialize Dehumidifier 
-		Moisture moisture_nodes(atticVolume, retVolume, supVolume, houseVolume, floorArea, planArea, roofPitch, atticMCInit);   // initialize moisture model
+		Moisture moisture_nodes(atticVolume, retDiameter, retLength, supDiameter, supLength,
+			 houseVolume, floorArea, sheathArea, bulkArea, roofIntThick, roofExtRval, atticMCInit);   // initialize moisture model
 
 		cout << endl;
 		cout << "Simulation: " << simNum << endl;
@@ -1301,7 +1298,6 @@ int main(int argc, char *argv[], char* envp[])
 						qAH = qAH_heat;            // Heating Air Flow Rate [m3/s]
 						uaSolAir = uaWall;
 						uaTOut = uaFloor + uaWindow;
-						rceil = ceilRval_heat;
 
 						if(tempOld[15] > (heatThermostat[hour] + .5))
 							AHflag = 0;					// Heat off if building air temp above setpoint
@@ -1335,7 +1331,6 @@ int main(int argc, char *argv[], char* envp[])
 						qAH = qAH_cool;						// Cooling Air Flow Rate
 						uaSolAir = uaWall;
 						uaTOut = uaWindow;
-						rceil = ceilRval_cool;
 						endrunon = 0;
 
 						if(tempOld[15] < (coolThermostat[hour] - .5))
@@ -3002,34 +2997,34 @@ int main(int argc, char *argv[], char* envp[])
 					// [END] Equipment Model ======================================================================================================================================
 
 					// [START] Heat and Mass Transport ==============================================================================================================================
-					mCeilingOld = -1000;														// inital guess
-					mainIterations = 0;
-					limit = envC / 10;
-					if(limit < .00001)
-						limit = .00001;
+					double mCeilingOld = -1000;														// inital guess
+					double mCeilingLimit = envC / 10;
+					if(mCeilingLimit < .00001)
+						mCeilingLimit = .00001;
 
 					// Ventilation and heat transfer calculations
+					int mainIterations = 0;
 					while(1) {
 						mainIterations = mainIterations + 1;	// counting # of temperature/ventilation iterations
-						int flag = 0;
+						int leakIterations = 0;
 
 						while(1) {
 							// Call houseleak subroutine to calculate air flow. Brennan added the variable mCeilingIN to be passed to the subroutine. Re-add between mHouseIN and mHouseOUT
-							sub_houseLeak(AHflag, flag, weather.windSpeed, weather.windDirection, tempHouse, tempAttic, weather.dryBulb, envC, envPressureExp, eaveHeight,
+							sub_houseLeak(AHflag, leakIterations, weather.windSpeed, weather.windDirection, tempHouse, tempAttic, weather.dryBulb, envC, envPressureExp, eaveHeight,
 								leakFracCeil, leakFracFloor, leakFracWall, numFlues, flue, wallFraction, floorFraction, Sw, flueShelterFactor, numWinDoor, winDoor, numFans, fan, numPipes,
 								Pipe, mIN, mOUT, Pint, mFlue, mCeiling, mFloor, atticC, dPflue, Crawl,
 								Hfloor, rowHouse, soffitFraction, Patticint, wallCp, mSupReg, mAH, mRetLeak, mSupLeak,
 								mRetReg, mHouseIN, mHouseOUT, supC, supn, retC, retn, mSupAHoff, mRetAHoff, airDensityIN, airDensityOUT, airDensityATTIC, houseVolume, windPressureExp);
 							//Yihuan : put the mCeilingIN on comment 
-							flag = flag + 1;
+							leakIterations = leakIterations + 1;
 
-							if(abs(mCeilingOld - mCeiling) < limit || flag > 5)
+							if(abs(mCeilingOld - mCeiling) < mCeilingLimit || leakIterations > 5)
 								break;
 							else
 								mCeilingOld = mCeiling;
 
 							// call atticleak subroutine to calculate air flow to/from the attic
-							sub_atticLeak(flag, weather.windSpeed, weather.windDirection, tempHouse, weather.dryBulb, tempAttic, atticC, atticPressureExp, eaveHeight, roofPeakHeight,
+							sub_atticLeak(leakIterations, weather.windSpeed, weather.windDirection, tempHouse, weather.dryBulb, tempAttic, atticC, atticPressureExp, eaveHeight, roofPeakHeight,
 								flueShelterFactor, Sw, numAtticVents, atticVent, soffit, mAtticIN, mAtticOUT, Patticint, mCeiling, rowHouse,
 								soffitFraction, roofPitch, roofPeakPerpendicular, numAtticFans, atticFan, mSupReg, mRetLeak, mSupLeak, matticenvin,
 								matticenvout, mSupAHoff, mRetAHoff, airDensityIN, airDensityOUT, airDensityATTIC);
@@ -3041,14 +3036,14 @@ int main(int argc, char *argv[], char* envp[])
 						//bsize = sizeof(b)/sizeof(b[0]);
 
 						// Call heat subroutine to calculate heat exchange
-						sub_heat(weather.dryBulb, mCeiling, AL4, weather.windSpeed, ssolrad, nsolrad, tempOld, atticVolume, houseVolume, weather.skyCover, b, ERRCODE, TSKY,
+						sub_heat(weather.dryBulb, mCeiling, AL4, weather.windSpeed, ssolrad, nsolrad, tempOld, atticVolume, houseVolume, weather.skyCover, b,
 							floorArea, roofPitch, ductLocation, mSupReg, mRetReg, mRetLeak, mSupLeak, mAH, supRval, retRval, supDiameter,
-							retDiameter, supArea, retArea, supThickness, retThickness, supVolume, retVolume, supCp, retCp, supVel, retVel, suprho,
-							retrho, weather.pressure, weather.humidityRatio, uaSolAir, uaTOut, matticenvin, matticenvout, mHouseIN, mHouseOUT, planArea, mSupAHoff,
-							mRetAHoff, solgain, tsolair, mFanCycler, roofPeakHeight, eaveHeight, retLength, supLength,
-							roofType, roofRval, rceil, AHflag, mERV_AH, ERV_SRE, mHRV, HRV_ASE, mHRV_AH,
+							retDiameter, supThickness, retThickness, supVel, retVel, 
+							weather.pressure, weather.humidityRatio, uaSolAir, uaTOut, matticenvin, matticenvout, mHouseIN, mHouseOUT, planArea, mSupAHoff,
+							mRetAHoff, solgain, tsolair, mFanCycler, roofPeakHeight, retLength, supLength,
+							roofType, roofExtRval, roofIntRval, ceilRval, gableEndRval, AHflag, mERV_AH, ERV_SRE, mHRV, HRV_ASE, mHRV_AH,
 							capacityc, capacityh, evapcap, internalGains, airDensityIN, airDensityOUT, airDensityATTIC, airDensitySUP, airDensityRET, numStories, storyHeight,
-							dh.sensible, H2, H4, H6);
+							dh.sensible, H2, H4, H6, bulkArea, sheathArea);
 
 						if((abs(b[0] - tempAttic) < .2) || (mainIterations > 10)) {	// Testing for convergence
 							tempAttic        = b[0];					
@@ -3320,14 +3315,17 @@ int main(int argc, char *argv[], char* envp[])
 					}
 
 					// ================================= WRITING MOISTURE DATA FILE =================================
-					//File column names, for reference.
-					//moistureFile << "HROUT\tHRattic\tHRreturn\tHRsupply\tHRhouse\tHRmaterials\tRH%house\tRHind60\tRHind70" << endl;
 					if(printMoistureFile) {
-						for(int i=0; i<6; i++) {   // new humidity model wood nodes
-							moistureFile << moisture_nodes.moistureContent[i] << "\t" << moisture_nodes.mTotal[i] << "\t";
+						moistureFile << weather.relativeHumidity << "\t" << weather.dryBulb - C_TO_K;
+						for(int i=0; i<6; i++) {   // humidity model wood nodes
+							moistureFile << "\t" << moisture_nodes.moistureContent[i] << "\t" << moisture_nodes.temperature[i] - C_TO_K;
 							}
-						moistureFile << weather.humidityRatio << "\t" << HRHouse << "\t" << HRAttic << "\t" << HRSupply << "\t" << HRReturn << "\t";
-						moistureFile << RHHouse << "\t" << RHAttic << "\t" << tempHouse - C_TO_K << "\t" << tempAttic - C_TO_K << endl;
+						for(int i=6; i<MOISTURE_NODES; i++) {   // humidity model air nodes
+							moistureFile << "\t" << moisture_nodes.moistureContent[i] << "\t" << moisture_nodes.temperature[i] - C_TO_K;
+							}
+						moistureFile << endl;
+						//moistureFile << weather.humidityRatio << "\t" << HRHouse << "\t" << HRAttic << "\t" << HRSupply << "\t" << HRReturn << "\t";
+						//moistureFile << RHHouse << "\t" << RHAttic << "\t" << tempHouse - C_TO_K << "\t" << tempAttic - C_TO_K << endl;
 					}
 			
 					// ================================= WRITING Filter Loading DATA FILE =================================

@@ -5,41 +5,42 @@
 
 using namespace std;
 
-const double rhoWood = 400.;		// Wood density (@TODO function.cpp uses 500 - need to make consistant)
 const double timeStep = 60.;		// Timestep (1 minute)
-const int MOISTURE_NODES = 11;   // Currently 11 nodes
+const int MOISTURE_NODES = 13;   // Max number of nodes
 
 class Moisture {
 	private:
-		
+		int moisture_nodes;										// Number of moisture nodes
 		double deltaX[MOISTURE_NODES];						// Node thickness
 		double area[MOISTURE_NODES];							// Node area
 		double volume[MOISTURE_NODES];						// Node volume
+		double density[6];										// Wood node density
 		double kappa1[MOISTURE_NODES], kappa2[MOISTURE_NODES];
-		double x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17;
-		double xn67, xn68, xn69, xn7t, xn7o, xn7c, xn76, xn79, xn8t, xn8o, xn8c, xn86, xn87, xn89;
-		double xn9t, xn9o, xn9c, xn96, xn97, xn98, xn910, xn109, xn10t, xn10o;
+		double x60, x30, x06, x03, x61, x41, x16, x14, x62, x52, x26, x25, x66, x6out;
+		double x67, x68, x69, x011, x110, x112, x121, x611, x116, x612, x126;
 		vector< vector<double> > A;
 		double PWOld[MOISTURE_NODES];							// previous time step vapor pressure (Pa)
       double PWInit[MOISTURE_NODES];						// initial vapor pressure (was B() in BASIC code) (Pa)
-		double temperature[MOISTURE_NODES];					// Node temperature (deg K)
 		double tempOld[MOISTURE_NODES];						// previous time step temperature (deg K)
 		double haHouse;											// haHouse is the moisture transport coefficient of the house mass (kg/s)
 		double massWHouse;										// active mass of moisture in the house (kg)
-
+		double roofInsulRatio;									// ratio of exterior insulation U-val to sheathing U-val
+		
 		void cond_bal(int pressure);
-		double calc_kappa_1(int pressure, double temp, double mc, double volume);
-		double calc_kappa_2(double mc, double volume);
+		double calc_kappa_1(int pressure, double temp, double mc, double mass);
+		double calc_kappa_2(double mc, double mass);
       double mc_cubic(double pw, int pressure, double temp);
       double calc_vapor_pressure(double mc, double temp, int pressure);
+		double calc_inter_temp(double temp1, double temp2, double insRatio);
 		
 	public:
+		double temperature[MOISTURE_NODES];					// Node temperature (deg K)
 		double moistureContent[MOISTURE_NODES];			// Node moisture content (%)
 		vector <double> PW;										// Node vapor pressure (Pa). vector so it can be passed to gauss()
 		double mTotal[MOISTURE_NODES];						// Node mass of condensed water (kg)
 
-		Moisture(double atticVolume, double retVolume, double supVolume, double houseVolume, double floorArea,
-					double atticArea, double roofPitch, double mcInit=0.15);
+		Moisture(double atticVolume, double retDiameter, double retLength, double supDiameter, double supLength, double houseVolume,
+					 double floorArea, double sheathArea, double bulkArea, double roofInsThick, double roofExtRval, double mcInit=0.15);
 		void mass_cond_bal(double* node_temps, double tempOut, double RHOut,
                double airDensityOut, double airDensityAttic, double airDensityHouse, double airDensitySup, double airDensityRet,
                int pressure, double hU0, double hU1, double hU2,

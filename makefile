@@ -8,7 +8,7 @@ EXE=rc
 regcap: $(OBJECTS) functions.h config/config.h
 	$(CC) $(OBJECTS) -o $(EXE)
 
-main.o: main.cpp functions.h weather.h 
+main.o: main.cpp functions.h weather.h psychro.h equip.h moisture.h constants.h config/config.h
 	$(CC) -c main.cpp
 
 functions.o: functions.cpp functions.h constants.h gauss.h
