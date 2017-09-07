@@ -38,6 +38,8 @@ class Moisture {
 		double moistureContent[MOISTURE_NODES];			// Node moisture content (%)
 		vector <double> PW;										// Node vapor pressure (Pa). vector so it can be passed to gauss()
 		double mTotal[MOISTURE_NODES];						// Node mass of condensed water (kg)
+		int saturated_minutes[MOISTURE_NODES];				// Number of minutes node vapor pressure is above saturation
+		int total_in_iter, total_out_iter;				// Total number of inner and outer iterations
 
 		Moisture(double atticVolume, double retDiameter, double retLength, double supDiameter, double supLength, double houseVolume,
 					 double floorArea, double sheathArea, double bulkArea, double roofInsThick, double roofExtRval, double mcInit=0.15);

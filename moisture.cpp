@@ -112,13 +112,16 @@ Moisture::Moisture(double atticVolume, double retDiameter, double retLength, dou
 		mTotal[i] = 0;
 		moistureContent[i] = mcInit;
 		PWOld[i] = calc_vapor_pressure(mcInit, tempInit, pressure);
+		saturated_minutes[i] = 0;
 		}
 	// initialize air nodes
 	for(int i=6; i<MOISTURE_NODES; i++) {
 		tempOld[i] = tempInit;
 		PWOld[i] = saturationVaporPressure(tempInit) * RHInit / 100;
+		saturated_minutes[i] = 0;
 		}
-
+	total_out_iter = 0;
+	total_in_iter = 0;
 }							
 							
 /*
@@ -431,8 +434,8 @@ void Moisture::cond_bal(int pressure) {
 
 		do {		// this loops until every PW is within  0.1 Pa of the previous iteration
 			inIter++;
-			if(outIter > 1 || inIter > 1)
-				cout << "iterations: " << outIter << ":" << inIter << endl;
+			//if(outIter > 1 || inIter > 1)
+			//	cout << "iterations: " << outIter << ":" << inIter << endl;
 			for(int i=0; i<moisture_nodes; i++)
 				PWTest[i] = PW[i];
 
@@ -458,6 +461,7 @@ void Moisture::cond_bal(int pressure) {
 				// to exchange moisture rather than changing the moisture contant and use the PW/MC relationship
 				PW[0] = PWSaturation[0];
 				hasCondensedMass[0] = true;
+				saturated_minutes[0]++;
 				}
 
    		// NODE 1:
@@ -477,6 +481,7 @@ void Moisture::cond_bal(int pressure) {
 			else {
             PW[1] = PWSaturation[1];
 				hasCondensedMass[1] = true;
+				saturated_minutes[1]++;
 				}
 
    		// NODE 2:
@@ -490,6 +495,7 @@ void Moisture::cond_bal(int pressure) {
 			else {
             PW[2] = PWSaturation[2];
 				hasCondensedMass[2] = true;
+				saturated_minutes[2]++;
 				}
 
    		// NODE 3:
@@ -503,6 +509,7 @@ void Moisture::cond_bal(int pressure) {
 			else {
             PW[3] = PWSaturation[3];
 				hasCondensedMass[3] = true;
+				saturated_minutes[3]++;
 				}
 
    		// NODE 4:
@@ -516,6 +523,7 @@ void Moisture::cond_bal(int pressure) {
 			else {
             PW[4] = PWSaturation[4];
 				hasCondensedMass[4] = true;
+				saturated_minutes[4]++;
 				}
 
    		// NODE 5:
@@ -529,6 +537,7 @@ void Moisture::cond_bal(int pressure) {
 			else {
             PW[5] = PWSaturation[5];
 				hasCondensedMass[5] = true;
+				saturated_minutes[5]++;
 				}
 
 			// NODE 6: the attic node is treated differently as we do not have accumulating mass of moisture for the attic air - 
@@ -548,14 +557,16 @@ void Moisture::cond_bal(int pressure) {
 			else {
             PW[6] = PWSaturation[6];
 				hasCondensedMass[6] = true;
+				saturated_minutes[6]++;
 				}
 			
 			// Other air nodes - do we need to recalc PW? just fix PW at saturation for now as there is no place to put the moisture
 			for(int i=7; i<moisture_nodes; i++) {
 				//hasCondensedMass[i] = false;
 				if(PW[i] > PWSaturation[i]) {
-				   cout << "Air node " << i << " > saturation: " << PW[i] << "> " << PWSaturation[i] << endl;
+				   //cout << "Air node " << i << " > saturation: " << PW[i] << "> " << PWSaturation[i] << endl;
             	PW[i] = PWSaturation[i];
+				   saturated_minutes[i]++;
             	}
             }
 
@@ -672,6 +683,8 @@ void Moisture::cond_bal(int pressure) {
 		// house mass
 		//moistureContent[MOISTURE_NODES-1] = max(mc_cubic(PW[MOISTURE_NODES-1], pressure, temperature[MOISTURE_NODES-1]), 0.032);
 		} while(redoMassBalance);
+		total_out_iter += outIter - 1;
+		total_in_iter += inIter - 1;
 }
 
 // humidity ratio constants (from Cleary 1985)

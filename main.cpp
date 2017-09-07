@@ -3448,6 +3448,13 @@ int main(int argc, char *argv[], char* envp[])
 		ou2File << "\t" << RHexcAnnual60 << "\t" << RHexcAnnual70 << "\t" << HumidityIndex_Avg << "\t" << dehumidifier_kWh << endl;
 
 		ou2File.close();
+		
+		cout << endl;
+		cout << "Moisture model: out_iter: " << moisture_nodes.total_out_iter << " in_iter: " << moisture_nodes.total_in_iter << endl;
+		cout << "Node, minutes above saturation: ";
+		for(int i=0; i<MOISTURE_NODES; i++)
+			cout << i << "(" << moisture_nodes.saturated_minutes[i] << ") ";
+		cout << endl; 
 
 	}
 	batchFile.close();
