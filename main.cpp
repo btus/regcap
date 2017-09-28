@@ -3062,7 +3062,7 @@ int main(int argc, char *argv[], char* envp[])
 
 					// Call moisture balance
 					double mRetOut = mFanCycler + mHRV_AH + mERV_AH * (1 - ERV_TRE);
-					moisture_nodes.mass_cond_bal(b, weather.dryBulb, weather.relativeHumidity,
+					moisture_nodes.mass_cond_bal(b, weather.dryBulb, weather.humidityRatio,
 						airDensityOUT, airDensityATTIC, airDensityIN, airDensitySUP, airDensityRET,
 						weather.pressure, H4, H2, H6, matticenvin, matticenvout, mCeiling, mHouseIN, mHouseOUT,
 						mAH, mRetAHoff, mRetLeak, mRetReg, mRetOut, mERV_AH * ERV_TRE, mSupAHoff, mSupLeak, mSupReg,

@@ -129,7 +129,7 @@ Moisture::Moisture(double atticVolume, double retDiameter, double retLength, dou
  *                 moisture transport. Includes effects of surfaces at saturation pressure.
  * @param node_temps - array of node temperatures (deg K)
  * @param tempOut - Outdoor temperature (deg K)
- * @param RHOut - Outdoor relative humidity (%)
+ * @param HROut - Outdoor humidity ratio(kg/kg)
  * @param airDensityOut - Outdoor air density (kg/m3)
  * @param airDensityAttic - Attic air density (kg/m3)
  * @param airDensityHouse - Indoor air density (kg/m3)
@@ -157,7 +157,7 @@ Moisture::Moisture(double atticVolume, double retDiameter, double retLength, dou
  * @param dhMoistRemv - moisture removed by the dehumidifier (kg/s)
  * @param latload - indoor latent load (kg/s)
  */
-void Moisture::mass_cond_bal(double* node_temps, double tempOut, double RHOut,
+void Moisture::mass_cond_bal(double* node_temps, double tempOut, double HROut,
                   double airDensityOut, double airDensityAttic, double airDensityHouse, double airDensitySup, double airDensityRet,
                   int pressure, double hU0, double hU1, double hU2,
                   double mAtticIn, double mAtticOut, double mCeiling, double mHouseIn, double mHouseOut,
@@ -188,7 +188,7 @@ void Moisture::mass_cond_bal(double* node_temps, double tempOut, double RHOut,
 		temperature[12] = calc_inter_temp(node_temps[1], node_temps[16], 1);	// middle of north interior insulation
 		}
 
-	PWOut = saturationVaporPressure(tempOut) * RHOut / 100;
+	PWOut = calcVaporPressure(HROut, pressure);
 	
 	// water vapor mass transfer coefficients
 	double hu_conv = 1 / CpAir / pow(LEWIS, 2.0/3.0) / airDensityAttic;

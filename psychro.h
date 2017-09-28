@@ -6,6 +6,7 @@
 
 double saturationVaporPressure(double temp);
 double calcHumidityRatio(double pw, double pressure);
+double calcVaporPressure(double hr, double pressure);
 double KtoF(double degK);
 double calcHfgAir(double temp);
 

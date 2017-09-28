@@ -43,7 +43,7 @@ class Moisture {
 
 		Moisture(double atticVolume, double retDiameter, double retLength, double supDiameter, double supLength, double houseVolume,
 					 double floorArea, double sheathArea, double bulkArea, double roofInsThick, double roofExtRval, double mcInit=0.15);
-		void mass_cond_bal(double* node_temps, double tempOut, double RHOut,
+		void mass_cond_bal(double* node_temps, double tempOut, double HROut,
                double airDensityOut, double airDensityAttic, double airDensityHouse, double airDensitySup, double airDensityRet,
                int pressure, double hU0, double hU1, double hU2,
                double mAtticIn, double mAtticOut, double mCeiling, double mHouseIn, double mHouseOut,

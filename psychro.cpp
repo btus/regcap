@@ -36,6 +36,12 @@ double calcHumidityRatio(double pw, double pressure) {
 	return 0.621945 * (pw / (pressure - pw));
 }
 
+// Calculate vapor pressure from humidity ratio
+// Equation 38 pg 1.9 ASHRAE fundamentals 2009
+double calcVaporPressure(double hr, double pressure) {
+	return hr * pressure / (0.621945 + hr);
+	}
+
 double KtoF(double degK) {
 	return (degK - C_TO_K) * (9.0 / 5.0) + 32;
 }

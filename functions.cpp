@@ -451,6 +451,13 @@ void sub_heat (
 			denShingles = 1100 * 2 * .005;					// asphalt shingles (factor of two because they overlap)
 			cpShingles = 1260;									// CP asphalt shingles
 			break;
+		case 5:			// concrete tile for Fresno house
+			absorptivityRoof = .85;
+			emissivityRoof = .9;
+			Rshingles = 0.5;
+			denShingles = 50;
+			cpShingles = 920;
+			break;
 	}
 
 	// Ducts
@@ -459,7 +466,7 @@ void sub_heat (
 	double retCp = 753.624;											// Specific heat capacity of steel [j/kg/K]
 	double retrho = 16.018 * 2;									// Return duct density [kg/m^3]
 
-	PW = HROUT * pRef / (.621945 + HROUT);						// water vapor partial pressure pg 1.9 ASHRAE fundamentals 2009
+	PW = calcVaporPressure(HROUT,pRef);
 	PW = PW / 1000 / 3.38;											// CONVERT TO INCHES OF HG
 	TSKY = tempOut * pow((.55 + .33 * sqrt(PW)), .25);		// TSKY DEPENDS ON PW
 
