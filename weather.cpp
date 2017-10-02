@@ -128,6 +128,36 @@ weatherData readOneMinuteWeather(ifstream& file) {
 	return result;
 }
 
+// Real data for Fresno house
+weatherData readRealWeather(ifstream& file) {
+	int jul, day, hour, minute;
+	weatherData result;
+	double wd;
+	file >> jul
+		>> day
+		>> hour
+		>> minute
+		>> result.directNormal
+		>> result.globalHorizontal
+		>> result.dryBulb
+		>> result.humidityRatio
+		>> result.windSpeed
+		>> wd
+		>> result.pressure
+		>> result.skyCover
+		>> result.inTdb
+		>> result.inRH
+		>> result.supplyTdb
+		>> result.qAH;
+	
+	result.julianMinute = (((day-1) * 24) + hour) * 60 + minute + 1;
+	result.dryBulb += C_TO_K;					// Convert to deg K
+	result.windDirection = int(wd);			// Wind direction is float in 1 minute files
+	result.pressure *= 1000;					// Convert reference pressure to [Pa]
+	result.skyCover /= 10;						// Converting cloud cover index to decimal fraction
+	return result;
+}
+
 /*
 * surfaceInsolation()
 *

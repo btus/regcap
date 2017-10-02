@@ -15,6 +15,11 @@ struct weatherData {
 	int windDirection;			// wind direction (degrees from North)
 	int pressure;					// Station pressure (Pa)
 	double skyCover;				// Total sky cover (fraction)
+	double inTdb;
+	double inRH;
+	double supplyTdb;
+	double qAH;
+	int julianMinute;
 };
 
 // Modified to use double instead of string from:
@@ -55,6 +60,7 @@ weatherData interpWeather(weatherData begin, weatherData end, int minute);
 weatherData readTMY3(ifstream& file);
 weatherData readEPW(ifstream& file);
 weatherData readOneMinuteWeather(ifstream& file);
+weatherData readRealWeather(ifstream& file);
 double surfaceInsolation(double direct, double diffuse, double beta, double sigma, double gamma);
 
 #endif

@@ -266,7 +266,7 @@ int main(int argc, char *argv[], char* envp[])
 		string endOfFile;
 		
 		// Zeroing the variables to create the sums for the .ou2 file
-		long int minuteYear = 1;
+		long int minuteYear = 0;
 		int endrunon = 0;
 		double Mcoil = 0;
 		double SHR = 0;		
@@ -302,7 +302,7 @@ int main(int argc, char *argv[], char* envp[])
 				return 1; 
 			}
 
-			moistureFile << "RHOut\tTempOut";
+			moistureFile << "day\thour\tminute\tTempOut";
 			for(int i=0; i<6; i++) {
 				moistureFile << "\t" << "MC" << i << "\tTemp" << i;
 				}
@@ -1084,6 +1084,7 @@ int main(int argc, char *argv[], char* envp[])
 		cout << "Output File:\t " << outputFileName << endl;
 		cout << "Weather File:\t " << weatherFileName << endl;
 
+		weather.julianMinute = minuteYear;
 		
 		// =================================================================
 		// ||				 THE SIMULATION LOOPS START HERE:					   ||
@@ -1177,6 +1178,34 @@ int main(int argc, char *argv[], char* envp[])
 					double H2, H4, H6;
 					double airDensityOUT,airDensityIN,airDensityATTIC,airDensitySUP,airDensityRET;
 
+					// Time keeping
+					minuteYear++;													// Minute count of year
+
+					// Read in or interpolate weather data
+					if(weatherFileType == 0) {  // minute
+						//weather = readOneMinuteWeather(weatherFile);
+						if (weather.julianMinute > minuteYear) {
+							cout << "skipping:" << weather.julianMinute << ":" << minuteYear << endl;
+							continue;
+							}
+						if (weather.julianMinute < minuteYear) {
+							weather = readRealWeather(weatherFile);
+							if (weather.julianMinute > minuteYear)
+								continue;
+							}
+						if (weatherFile.eof()) {
+							cout << "End of weather file" << endl;
+							break;
+							}
+					}
+					else {
+						weather = interpWeather(begin, end, minute);
+					}
+					weather.windSpeed *= windSpeedCorrection;		// Correct met wind speed to speed at building eaves height [m/s]
+					if(weather.windSpeed < 1)					// Minimum wind velocity allowed is 1 m/s to account for non-zero start up velocity of anenometers
+						weather.windSpeed = 1;					// Wind speed is never zero
+					dailyCumulativeTemp = dailyCumulativeTemp + weather.dryBulb - C_TO_K;
+					tsolair = weather.dryBulb;
 					target = minute - 39;			// Target is used for fan cycler operation currently set for 20 minutes operation, in the last 20 minutes of the hour.
 					if(target < 0)
 						target = 0;						// For other time periods, replace the "40" with 60 - operating minutes
@@ -1234,19 +1263,6 @@ int main(int argc, char *argv[], char* envp[])
 
 					nonRivecVentSumIN = 0;				// Setting sum of non-RIVEC supply mechanical ventilation to zero
 					nonRivecVentSumOUT = 0;				// Setting sum of non-RIVEC exhaust mechanical ventilation to zero
-
-					// Read in or interpolate weather data
-					if(weatherFileType == 0) {  // minute
-						weather = readOneMinuteWeather(weatherFile);
-					}
-					else {
-						weather = interpWeather(begin, end, minute);
-					}
-					weather.windSpeed *= windSpeedCorrection;		// Correct met wind speed to speed at building eaves height [m/s]
-					if(weather.windSpeed < 1)					// Minimum wind velocity allowed is 1 m/s to account for non-zero start up velocity of anenometers
-						weather.windSpeed = 1;					// Wind speed is never zero
-					dailyCumulativeTemp = dailyCumulativeTemp + weather.dryBulb - C_TO_K;
-					tsolair = weather.dryBulb;
 
 					for(int k=0; k < 4; k++)			// Wind direction as a compass direction?
 						Sw[k] = pow(Swinit[k][weather.windDirection],2);		// store square of Sw to pass to attic_leak and house_leak
@@ -3316,7 +3332,7 @@ int main(int argc, char *argv[], char* envp[])
 
 					// ================================= WRITING MOISTURE DATA FILE =================================
 					if(printMoistureFile) {
-						moistureFile << weather.relativeHumidity << "\t" << weather.dryBulb - C_TO_K;
+						moistureFile << day << "\t" << hour << "\t" << minute << "\t" << weather.dryBulb - C_TO_K;
 						for(int i=0; i<6; i++) {   // humidity model wood nodes
 							moistureFile << "\t" << moisture_nodes.moistureContent[i] << "\t" << moisture_nodes.temperature[i] - C_TO_K;
 							}
@@ -3357,12 +3373,11 @@ int main(int argc, char *argv[], char* envp[])
 					meanHouseACH = meanHouseACH + houseACH;						// Average ACH for the house
 					meanFlueACH = meanFlueACH + abs(flueACH);					// Average ACH for the flue (-ve and +ve flow considered useful)
 
-					// Time keeping
-					minuteYear++;													// Minute count of year
-
 					if(minuteYear > (365 * 1440))
 						break;
 				}     // end of minute loop
+				if (weatherFile.eof())
+					break;
 				begin = end;
 				switch (weatherFileType) {
 				case 1:
@@ -3382,6 +3397,8 @@ int main(int argc, char *argv[], char* envp[])
 				moldIndex_BulkFraming = sub_moldIndex(0, moldIndex_BulkFraming, b[5], moisture_nodes.PW[2], Time_decl_Bulk); //Bulk Attic Framing Surface Node
 
 			}        // end of hour loop
+			if (weatherFile.eof())
+				break;
 		}           // end of day loop
 		//} while (weatherFile);			// Run until end of weather file
 
