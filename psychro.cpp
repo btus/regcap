@@ -4,7 +4,7 @@
    #include <cmath>        // needed for mac g++
 #endif
 
-// using namespace std;
+using namespace std;
 
 double saturationVaporPressure(double temp) {
 	//Coefficients for saturation vapor pressure over ice -100 to 0C. ASHRAE HoF.

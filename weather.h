@@ -1,8 +1,12 @@
 #pragma once
 #ifndef weather_h
 #define weather_h
+#include <sstream>
+#include <iostream>
+#include <string>
+#include <vector>
 
-using namespace std;
+//using namespace std;
 
 struct weatherData {
 	int directNormal;				// Direct normal irradiance (Wh/m2)
@@ -57,10 +61,10 @@ std::istream& operator>>(std::istream& str,CSVRow& data);
 double interpolate(double begin, double end, int step);
 weatherData interpolateWind(weatherData begin, weatherData end, int step);
 weatherData interpWeather(weatherData begin, weatherData end, int minute);
-weatherData readTMY3(ifstream& file);
-weatherData readEPW(ifstream& file);
-weatherData readOneMinuteWeather(ifstream& file);
-weatherData readRealWeather(ifstream& file);
+weatherData readTMY3(std::ifstream& file);
+weatherData readEPW(std::ifstream& file);
+weatherData readOneMinuteWeather(std::ifstream& file);
+weatherData readRealWeather(std::ifstream& file);
 double surfaceInsolation(double direct, double diffuse, double beta, double sigma, double gamma);
 
 #endif

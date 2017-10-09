@@ -7,8 +7,8 @@
 #ifdef __APPLE__
    #include <cmath>        // needed for mac g++
 #endif
-#include "functions.h"
 #include "weather.h"
+#include "functions.h"
 #include "psychro.h"
 #include "equip.h"
 #include "moisture.h"
@@ -3052,10 +3052,10 @@ int main(int argc, char *argv[], char* envp[])
 						//bsize = sizeof(b)/sizeof(b[0]);
 
 						// Call heat subroutine to calculate heat exchange
-						sub_heat(weather.dryBulb, mCeiling, AL4, weather.windSpeed, ssolrad, nsolrad, tempOld, atticVolume, houseVolume, weather.skyCover, b,
+						sub_heat(weather, mCeiling, AL4, ssolrad, nsolrad, tempOld, atticVolume, houseVolume, b,
 							floorArea, roofPitch, ductLocation, mSupReg, mRetReg, mRetLeak, mSupLeak, mAH, supRval, retRval, supDiameter,
 							retDiameter, supThickness, retThickness, supVel, retVel, 
-							weather.pressure, weather.humidityRatio, uaSolAir, uaTOut, matticenvin, matticenvout, mHouseIN, mHouseOUT, planArea, mSupAHoff,
+							uaSolAir, uaTOut, matticenvin, matticenvout, mHouseIN, mHouseOUT, planArea, mSupAHoff,
 							mRetAHoff, solgain, tsolair, mFanCycler, roofPeakHeight, retLength, supLength,
 							roofType, roofExtRval, roofIntRval, ceilRval, gableEndRval, AHflag, mERV_AH, ERV_SRE, mHRV, HRV_ASE, mHRV_AH,
 							capacityc, capacityh, evapcap, internalGains, airDensityIN, airDensityOUT, airDensityATTIC, airDensitySUP, airDensityRET, numStories, storyHeight,

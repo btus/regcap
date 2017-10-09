@@ -3,7 +3,7 @@
 #define moisture_h
 #include <vector>
 
-using namespace std;
+//using namespace std;
 
 const double timeStep = 60.;		// Timestep (1 minute)
 const int MOISTURE_NODES = 13;   // Max number of nodes
@@ -18,7 +18,7 @@ class Moisture {
 		double kappa1[MOISTURE_NODES], kappa2[MOISTURE_NODES];
 		double x60, x30, x06, x03, x61, x41, x16, x14, x62, x52, x26, x25, x66, x6out;
 		double x67, x68, x69, x011, x110, x112, x121, x611, x116, x612, x126;
-		vector< vector<double> > A;
+		std::vector< std::vector<double> > A;
 		double PWOld[MOISTURE_NODES];							// previous time step vapor pressure (Pa)
       double PWInit[MOISTURE_NODES];						// initial vapor pressure (was B() in BASIC code) (Pa)
 		double tempOld[MOISTURE_NODES];						// previous time step temperature (deg K)
@@ -36,7 +36,7 @@ class Moisture {
 	public:
 		double temperature[MOISTURE_NODES];					// Node temperature (deg K)
 		double moistureContent[MOISTURE_NODES];			// Node moisture content (%)
-		vector <double> PW;										// Node vapor pressure (Pa). vector so it can be passed to gauss()
+		std::vector <double> PW;										// Node vapor pressure (Pa). vector so it can be passed to gauss()
 		double mTotal[MOISTURE_NODES];						// Node mass of condensed water (kg)
 		int saturated_minutes[MOISTURE_NODES];				// Number of minutes node vapor pressure is above saturation
 		int total_in_iter, total_out_iter;				// Total number of inner and outer iterations
@@ -51,6 +51,6 @@ class Moisture {
                double mSupAHoff, double mSupLeak, double mSupReg, double latcap, double dhMoistRemv, double latload);
 };
 
-void print_matrix(vector< vector<double> > A);
+void print_matrix(std::vector< std::vector<double> > A);
 
 #endif

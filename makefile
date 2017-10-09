@@ -11,7 +11,7 @@ regcap: $(OBJECTS) functions.h config/config.h
 main.o: main.cpp functions.h weather.h psychro.h equip.h moisture.h constants.h config/config.h
 	$(CC) -c main.cpp
 
-functions.o: functions.cpp functions.h constants.h gauss.h
+functions.o: functions.cpp functions.h constants.h gauss.h weather.h
 	$(CC) -c functions.cpp
 
 gauss.o: gauss.cpp gauss.h

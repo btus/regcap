@@ -3,7 +3,7 @@
 #define gauss_h
 #include <vector>
 
-using namespace std;
+//using namespace std;
 
 // ----- MatSEqn forward declarations -----
 /*
@@ -26,6 +26,6 @@ const int ArraySize = 16;
 int MatSEqn(double A[][ArraySize], double* b);
 int matlu(double A[][ArraySize], int* rpvt, int* cpvt, int& continuevar);
 int matbs(double A[][ArraySize], double* b, double* x, int* rpvt, int* cpvt);
-vector<double> gauss(vector< vector<double> > A);
+std::vector<double> gauss(std::vector< std::vector<double> > A);
 
 #endif

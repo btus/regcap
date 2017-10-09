@@ -1,11 +1,12 @@
-#include "functions.h"
-#include "psychro.h"
-#include "constants.h"
-#include "gauss.h"
 #include <iomanip> // RAD: so far used only for setprecission() in cmd output
 #ifdef __APPLE__
    #include <cmath>        // needed for mac g++
 #endif
+#include "weather.h"
+#include "functions.h"
+#include "psychro.h"
+#include "constants.h"
+#include "gauss.h"
 
 using namespace std;
 
@@ -294,18 +295,14 @@ double sub_Pollutant (
 // Functions definitions...
 
 void sub_heat ( 
-	double& tempOut, 
-	//double& airDensityRef, 
-	//double& airTempRef, 
+	weatherData weather, 
 	double& mCeiling, 
 	double& AL4, 
-	double& windSpeed, 
 	double& ssolrad, 
 	double& nsolrad, 
 	double* tempOld, 
 	double& atticVolume, 
 	double& houseVolume, 
-	double& skyCover, 
 	double* x,
 	double& floorArea, 
 	double& roofPitch, 
@@ -323,8 +320,6 @@ void sub_heat (
 	double& retThickness, 
 	double& supVel, 
 	double& retVel, 
-	int& pRef, 
-	double& HROUT, 
 	double& uaSolAir,
 	double& uaTOut, 
 	double& matticenvin, 
@@ -455,7 +450,7 @@ void sub_heat (
 			absorptivityRoof = .85;
 			emissivityRoof = .9;
 			Rshingles = 0.5;
-			denShingles = 50;
+			denShingles = 46;		// 6-10, 9.5-12 lbs/sqft = 9.4 lbs/sqft = 46 kg/m2
 			cpShingles = 920;
 			break;
 	}
@@ -466,9 +461,9 @@ void sub_heat (
 	double retCp = 753.624;											// Specific heat capacity of steel [j/kg/K]
 	double retrho = 16.018 * 2;									// Return duct density [kg/m^3]
 
-	PW = calcVaporPressure(HROUT,pRef);
+	PW = calcVaporPressure(weather.humidityRatio,weather.pressure);
 	PW = PW / 1000 / 3.38;											// CONVERT TO INCHES OF HG
-	TSKY = tempOut * pow((.55 + .33 * sqrt(PW)), .25);		// TSKY DEPENDS ON PW
+	TSKY = weather.dryBulb * pow((.55 + .33 * sqrt(PW)), .25);		// TSKY DEPENDS ON PW
 
 	// Surface Area of Nodes
 	area[1] = sheathArea;
@@ -575,8 +570,8 @@ void sub_heat (
 	// convection heat transfer coefficients
    htCoef[roofInNorth] = heatTranCoef(tempOld[roofInNorth], tempOld[0], characteristicVelocity);  // inner north sheathing
    htCoef[roofInSouth] = heatTranCoef(tempOld[roofInSouth], tempOld[0], characteristicVelocity);  // inner south sheathing
-	htCoef[2] = heatTranCoef(tempOld[2], tempOut, windSpeed);                  // outer north sheathing
-	htCoef[4] = heatTranCoef(tempOld[4], tempOut, windSpeed);                  // outer south sheathing
+	htCoef[2] = heatTranCoef(tempOld[2], weather.dryBulb, weather.windSpeed);                  // outer north sheathing
+	htCoef[4] = heatTranCoef(tempOld[4], weather.dryBulb, weather.windSpeed);                  // outer south sheathing
 	htCoef[5] = heatTranCoef(tempOld[5], tempOld[0], characteristicVelocity);  // Wood (joists,truss,etc.)
    
 	// Underside of Ceiling. Modified to use fixed numbers from ASHRAE Fundamentals ch.3 on 05/18/2000
@@ -589,7 +584,7 @@ void sub_heat (
 
 	htCoef[7] = heatTranCoef(tempOld[7], tempOld[0], characteristicVelocity);  // Attic Floor
 	htCoef[8] = heatTranCoef(tempOld[8], tempOld[0], characteristicVelocity);  // Inner side of gable endwalls (lumped together)
-	htCoef[9] = heatTranCoef(tempOld[9], tempOut, windSpeed);                 // Outer side of gable ends
+	htCoef[9] = heatTranCoef(tempOld[9], weather.dryBulb, weather.windSpeed);                 // Outer side of gable ends
 
 	if(ductLocation == 1) { //  Ducts in the house
 		// Outer Surface of Ducts
@@ -674,10 +669,10 @@ void sub_heat (
 	rtCoef[6][12] = radTranCoef(emissivityWood, tempOld[6], tempOld[12], 1, area[6]/area[12]);
 
 	// Sky and ground radiation
-	FRS = (1 - skyCover) * (180 - roofPitch) / 180;      	// ROOF-SKY SHAPE FACTOR
+	FRS = (1 - weather.skyCover) * (180 - roofPitch) / 180;      	// ROOF-SKY SHAPE FACTOR
 	FG = 1 - FRS;                            					// ROOF-GROUND SHAPE FACTOR
-	TGROUND = tempOut;                           			// ASSUMING GROUND AT AIR TEMP
-	if(skyCover < 1) {
+	TGROUND = weather.dryBulb;                           			// ASSUMING GROUND AT AIR TEMP
+	if(weather.skyCover < 1) {
 		skyCoef4 = radTranCoef(emissivityRoof, tempOld[4], TSKY, FRS, 0);
 		skyCoef2 = radTranCoef(emissivityRoof, tempOld[2], TSKY, FRS, 0);
 	} else {
@@ -708,7 +703,7 @@ void sub_heat (
 		A[0][0] = heatCap[0] / dtau + htCoef[7] * area[7] + htCoef[5] * area[5]
 			        + htCoef[roofInNorth] * area[roofInNorth] + htCoef[roofInSouth] * area[roofInSouth]
 			        + area[8] * htCoef[8] - mRetLeak * CpAir - matticenvout * CpAir;
-		b[0] = heatCap[0] * tempOld[0] / dtau + matticenvin * CpAir * tempOut;
+		b[0] = heatCap[0] * tempOld[0] / dtau + matticenvin * CpAir * weather.dryBulb;
 		if(mCeiling >= 0) {
 			// flow from attic to house
 			A[0][0] += mCeiling * CpAir + mSupAHoff * CpAir + mRetAHoff * CpAir ;
@@ -754,7 +749,7 @@ void sub_heat (
 		// NODE 2 IS OUTSIDE NORTH SHEATHING
 		A[2][1] = -area[1] * uVal[2];
 		A[2][2] = heatCap[2] / dtau + htCoef[2] * area[2] + area[1] * uVal[2] + skyCoef2 * area[1] + gndCoef2 * area[1];
-		b[2] = heatCap[2] * tempOld[2] / dtau + htCoef[2] * area[2] * tempOut + area[1] * nsolrad * absorptivityRoof
+		b[2] = heatCap[2] * tempOld[2] / dtau + htCoef[2] * area[2] * weather.dryBulb + area[1] * nsolrad * absorptivityRoof
 		     + skyCoef2 * area[1] * TSKY + gndCoef2 * area[1] * TGROUND;
 
 		// NODE 3 IS INSIDE SOUTH SHEATHING
@@ -782,7 +777,7 @@ void sub_heat (
 		// NODE 4 IS OUTSIDE SOUTH SHEATHING
 		A[4][3] = -area[3] * uVal[4];
 		A[4][4] = heatCap[4] / dtau + htCoef[4] * area[4] + area[3] * uVal[4] + skyCoef4 * area[3] + gndCoef4 * area[3];
-		b[4] = heatCap[4] * tempOld[4] / dtau + htCoef[4] * area[4] * tempOut + area[3] * ssolrad * absorptivityRoof
+		b[4] = heatCap[4] * tempOld[4] / dtau + htCoef[4] * area[4] * weather.dryBulb + area[3] * ssolrad * absorptivityRoof
 		     + skyCoef4 * area[3] * TSKY + gndCoef4 * area[3] * TGROUND;
 
 		// NODE 5 IS MASS OF WOOD IN ATTIC I.E. JOISTS AND TRUSSES
@@ -814,7 +809,7 @@ void sub_heat (
 		// NODE 9 IS OUTSIDE ENDWALLS THAT ARE BOTH LUMPED TOGETHER
 		A[9][8] = -area[9] * uVal[9];
 		A[9][9] = heatCap[9] / dtau + htCoef[9] * area[9] + area[9] * uVal[9];
-		b[9] = heatCap[9] * tempOld[9] / dtau + htCoef[9] * area[9] * tempOut;
+		b[9] = heatCap[9] * tempOld[9] / dtau + htCoef[9] * area[9] * weather.dryBulb;
 
 		// NODE 10 Exterior Return Duct Surface
 		// Remember that the fluid properties are evaluated at a constant temperature
@@ -839,16 +834,16 @@ void sub_heat (
 			A[11][11] = heatCap[11] / dtau + area[11] * uVal[10] + mAH * CpAir + mRetAHoff * CpAir;
 			b[11] = heatCap[11] * tempOld[11] / dtau + mRetAHoff * CpAir * toldcur[0]
 			      - mRetLeak * CpAir * toldcur[0] - mRetReg * CpAir * toldcur[15]
-			      - mFanCycler * CpAir * tempOut - mHRV_AH * CpAir * ((1 - HRV_ASE) * tempOut + HRV_ASE * tempOld[15])
-			      - mERV_AH * CpAir * ((1-ERV_SRE) * tempOut + ERV_SRE * tempOld[15]);
+			      - mFanCycler * CpAir * weather.dryBulb - mHRV_AH * CpAir * ((1 - HRV_ASE) * weather.dryBulb + HRV_ASE * tempOld[15])
+			      - mERV_AH * CpAir * ((1-ERV_SRE) * weather.dryBulb + ERV_SRE * tempOld[15]);
 			
 		} else {
 			// flow from house to attic
 			A[11][11] = heatCap[11] / dtau + area[11] * uVal[10] + mAH * CpAir - mRetAHoff * CpAir;
 			b[11] = heatCap[11] * tempOld[11] / dtau - mRetAHoff * CpAir * toldcur[15]
 			      - mRetLeak * CpAir * toldcur[0] - mRetReg * CpAir * toldcur[15]
-			      - mFanCycler * CpAir * tempOut - mHRV_AH * CpAir * ((1 - HRV_ASE) * tempOut + HRV_ASE * tempOld[15])
-			      - mERV_AH * CpAir * ((1-ERV_SRE) * tempOut + ERV_SRE * tempOld[15]);
+			      - mFanCycler * CpAir * weather.dryBulb - mHRV_AH * CpAir * ((1 - HRV_ASE) * weather.dryBulb + HRV_ASE * tempOld[15])
+			      - mERV_AH * CpAir * ((1-ERV_SRE) * weather.dryBulb + ERV_SRE * tempOld[15]);
 		}
 
 		// Node 12 is the mass of the structure of the house that interacts
@@ -897,9 +892,9 @@ void sub_heat (
 			// flow from attic to house
 			A[15][15] = heatCap[15] / dtau + htCoef[6] * area[6] - mRetReg * CpAir
 			          - mHouseOUT * CpAir + htCoef[12] * area[12] + uaSolAir + uaTOut;
-			b[15] = heatCap[15] * tempOld[15] / dtau + (mHouseIN - mHRV) * CpAir * tempOut
-			      + mHRV * CpAir * (( 1 - HRV_ASE) * tempOut + HRV_ASE * tempOld[15])
-			      + uaSolAir * tsolair + uaTOut * tempOut + .05 * solgain + mSupReg * CpAir * toldcur[14] 
+			b[15] = heatCap[15] * tempOld[15] / dtau + (mHouseIN - mHRV) * CpAir * weather.dryBulb
+			      + mHRV * CpAir * (( 1 - HRV_ASE) * weather.dryBulb + HRV_ASE * tempOld[15])
+			      + uaSolAir * tsolair + uaTOut * weather.dryBulb + .05 * solgain + mSupReg * CpAir * toldcur[14] 
 				   + mCeiling * CpAir * toldcur[0] + mSupAHoff * CpAir * toldcur[14]
 				   + mRetAHoff * CpAir * toldcur[11] + internalGains + dhSensibleGain;
 		} else {
@@ -907,9 +902,9 @@ void sub_heat (
 			A[15][15] = heatCap[15] / dtau + htCoef[6] * area[6] - mCeiling * CpAir
 			          - mSupAHoff * CpAir - mRetAHoff * CpAir - mRetReg * CpAir
 			          - mHouseOUT * CpAir + htCoef[12] * area[12] + uaSolAir + uaTOut;
-			b[15] = heatCap[15] * tempOld[15] / dtau + (mHouseIN - mHRV) * CpAir * tempOut
-			      + mHRV * CpAir * ((1 - HRV_ASE) * tempOut + HRV_ASE * tempOld[15]) + uaSolAir * tsolair
-			      + uaTOut * tempOut + .05 * solgain + mSupReg * CpAir * toldcur[14] + internalGains + dhSensibleGain;
+			b[15] = heatCap[15] * tempOld[15] / dtau + (mHouseIN - mHRV) * CpAir * weather.dryBulb
+			      + mHRV * CpAir * ((1 - HRV_ASE) * weather.dryBulb + HRV_ASE * tempOld[15]) + uaSolAir * tsolair
+			      + uaTOut * weather.dryBulb + .05 * solgain + mSupReg * CpAir * toldcur[14] + internalGains + dhSensibleGain;
 		}
 		A[15][6] = -htCoef[6] * area[6];
 		A[15][12] = -htCoef[12] * area[12];

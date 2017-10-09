@@ -2,11 +2,11 @@
 #ifndef functions_h
 #define functions_h
 
-#include <iostream>
-#include <string>
-#include <vector>
+//#include <iostream>
+//#include <string>
+//#include <vector>
 
-using namespace std;
+//using namespace std;
 
 // additional data types
 struct atticVent_struct {
@@ -126,18 +126,14 @@ double sub_Pollutant (
 // Additional functions
 
 void sub_heat ( 
-	double& tempOut, 
-	//double& airDensityRef, 
-	//double& airTempRef, 
+	weatherData weather, 
 	double& mCeiling, 
 	double& AL4, 
-	double& windSpeed, 
 	double& ssolrad, 
 	double& nsolrad, 
 	double* tempOld, 
 	double& atticVolume, 
 	double& houseVolume, 
-	double& sc, 
 	double* b,
 	double& floorArea, 
 	double& roofPitch, 
@@ -155,8 +151,6 @@ void sub_heat (
 	double& retThickness, 
 	double& supVel, 
 	double& retVel, 
-	int& pRef, 
-	double& HROUT, 
 	double& uaSolAir,
 	double& uaTOut, 
 	double& matticenvin, 
