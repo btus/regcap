@@ -3064,13 +3064,13 @@ int main(int argc, char *argv[], char* envp[])
 						if((abs(b[0] - tempAttic) < .2) || (mainIterations > 10)) {	// Testing for convergence
 							tempAttic        = b[0];					
 							tempReturn       = b[11];
-							tempSupply       = b[14];
-							tempHouse        = b[15];
+							tempSupply       = weather.supplyTdb;
+							tempHouse        = weather.inTdb;
 							break;
 						}
 
 						tempAttic = b[0];
-						tempHouse = b[15];
+						tempHouse = weather.inTdb;
 					}
 
 					// setting "old" temps for next timestep to be current temps:
@@ -3078,9 +3078,9 @@ int main(int argc, char *argv[], char* envp[])
 
 					// Call moisture balance
 					double mRetOut = mFanCycler + mHRV_AH + mERV_AH * (1 - ERV_TRE);
-					moisture_nodes.mass_cond_bal(b, weather.dryBulb, weather.humidityRatio,
+					moisture_nodes.mass_cond_bal(b, weather,
 						airDensityOUT, airDensityATTIC, airDensityIN, airDensitySUP, airDensityRET,
-						weather.pressure, H4, H2, H6, matticenvin, matticenvout, mCeiling, mHouseIN, mHouseOUT,
+						H4, H2, H6, matticenvin, matticenvout, mCeiling, mHouseIN, mHouseOUT,
 						mAH, mRetAHoff, mRetLeak, mRetReg, mRetOut, mERV_AH * ERV_TRE, mSupAHoff, mSupLeak, mSupReg,
 						latcap, dh.condensate, latentLoad);
 

@@ -1,3 +1,4 @@
+#include "weather.h"
 #include "moisture.h"
 #include "psychro.h"
 #include "constants.h"
@@ -128,14 +129,12 @@ Moisture::Moisture(double atticVolume, double retDiameter, double retLength, dou
  * mass_cond_bal - Uses the results of the ventilation and heat transfer models to predict
  *                 moisture transport. Includes effects of surfaces at saturation pressure.
  * @param node_temps - array of node temperatures (deg K)
- * @param tempOut - Outdoor temperature (deg K)
- * @param HROut - Outdoor humidity ratio(kg/kg)
+ * @param weather - weather data struct
  * @param airDensityOut - Outdoor air density (kg/m3)
  * @param airDensityAttic - Attic air density (kg/m3)
  * @param airDensityHouse - Indoor air density (kg/m3)
  * @param airDensitySup - Supply air density (kg/m3)
  * @param airDensityRet - Return air density (kg/m3)
- * @param pressure - atmospheric pressure (Pa)
  * @param hU0 - surface heat transfer coefficient for node 0/11 (inner south) (J/sm2K) - was H4
  * @param hU1 - surface heat transfer coefficient for node 1/12 (inner north) (J/sm2K) - was H6
  * @param hU2 - surface heat transfer coefficient for node 2 (bulk wood) (J/sm2K) - was H10
@@ -157,9 +156,9 @@ Moisture::Moisture(double atticVolume, double retDiameter, double retLength, dou
  * @param dhMoistRemv - moisture removed by the dehumidifier (kg/s)
  * @param latload - indoor latent load (kg/s)
  */
-void Moisture::mass_cond_bal(double* node_temps, double tempOut, double HROut,
+void Moisture::mass_cond_bal(double* node_temps, weatherData weather,
                   double airDensityOut, double airDensityAttic, double airDensityHouse, double airDensitySup, double airDensityRet,
-                  int pressure, double hU0, double hU1, double hU2,
+                  double hU0, double hU1, double hU2,
                   double mAtticIn, double mAtticOut, double mCeiling, double mHouseIn, double mHouseOut,
                   double mAH, double mRetAHoff, double mRetLeak, double mRetReg, double mRetOut, double mErvHouse,
                   double mSupAHoff, double mSupLeak, double mSupReg, double latcap, double dhMoistRemv, double latload)
@@ -180,15 +179,13 @@ void Moisture::mass_cond_bal(double* node_temps, double tempOut, double HROut,
 	temperature[5] = node_temps[5];	// bulk wood
 	temperature[6] = node_temps[0];	// attic air
 	temperature[7] = node_temps[11];	// return air
-	temperature[8] = node_temps[14];	// supply air
-	temperature[9] = node_temps[15];	// house air
 	temperature[10] = node_temps[12];	// house mass
 	if(moisture_nodes > 11) {
 		temperature[11] = calc_inter_temp(node_temps[3], node_temps[17], 1);	// middle of south interior insulation
 		temperature[12] = calc_inter_temp(node_temps[1], node_temps[16], 1);	// middle of north interior insulation
 		}
 
-	PWOut = calcVaporPressure(HROut, pressure);
+	PWOut = calcVaporPressure(weather.humidityRatio, weather.pressure);
 	
 	// water vapor mass transfer coefficients
 	double hu_conv = 1 / CpAir / pow(LEWIS, 2.0/3.0) / airDensityAttic;
@@ -197,7 +194,7 @@ void Moisture::mass_cond_bal(double* node_temps, double tempOut, double HROut,
    hw2 = hU2 * hu_conv;
 
 	//NODE  0 inside of south sheathing
-	kappa1[0] = calc_kappa_1(pressure, tempOld[0], moistureContent[0], volume[0] * density[0]);
+	kappa1[0] = calc_kappa_1(weather.pressure, tempOld[0], moistureContent[0], volume[0] * density[0]);
 	kappa2[0] = calc_kappa_2(moistureContent[0], volume[0] * density[0]);
 	x30 = diffCoefWood * area[0] / RWATER / temperature[0] / deltaX[0];
 	x03 = -diffCoefWood * area[0] / RWATER / temperature[3] / deltaX[0];
@@ -218,7 +215,7 @@ void Moisture::mass_cond_bal(double* node_temps, double tempOut, double HROut,
 		}
 
 	//NODE 1 inside of north sheathing
-	kappa1[1] = calc_kappa_1(pressure, tempOld[1], moistureContent[1], volume[1] * density[1]);
+	kappa1[1] = calc_kappa_1(weather.pressure, tempOld[1], moistureContent[1], volume[1] * density[1]);
 	kappa2[1] = calc_kappa_2(moistureContent[1], volume[1] * density[1]);
 	x41 = diffCoefWood * area[1] / RWATER / temperature[1] / deltaX[1];
 	x14 = -diffCoefWood * area[1] / RWATER / temperature[4] / deltaX[1];
@@ -239,7 +236,7 @@ void Moisture::mass_cond_bal(double* node_temps, double tempOut, double HROut,
 		}
 
 	//NODE 2 IS OUTSIDE mass OF WOOD IN ATTIC JOISTS AND TRUSSES
-	kappa1[2] = calc_kappa_1(pressure, tempOld[2], moistureContent[2], volume[2] * density[2]);
+	kappa1[2] = calc_kappa_1(weather.pressure, tempOld[2], moistureContent[2], volume[2] * density[2]);
 	kappa2[2] = calc_kappa_2(moistureContent[2], volume[2] * density[2]);
 	x62 = hw2 * area[2] / RWATER / temperature[2];
 	x52 = diffCoefWood * area[2] / RWATER / temperature[2] / deltaX[2];
@@ -251,21 +248,21 @@ void Moisture::mass_cond_bal(double* node_temps, double tempOut, double HROut,
 	PWInit[2] = kappa1[2] * PWOld[2] - kappa2[2] * (temperature[2] - tempOld[2]);
 
 	//NODE 3 IS  SOUTH SHEATHING
-	kappa1[3] = calc_kappa_1(pressure, tempOld[3], moistureContent[3], volume[3] * density[3]);
+	kappa1[3] = calc_kappa_1(weather.pressure, tempOld[3], moistureContent[3], volume[3] * density[3]);
 	kappa2[3] = calc_kappa_2(moistureContent[3], volume[3] * density[3]);
 	A[3][0] = -x30;
 	A[3][3] = kappa1[3] - x03;
 	PWInit[3] = kappa1[3] * PWOld[3] - kappa2[3] * (temperature[3] - tempOld[3]);
 
 	//NODE 4 IS NORTH SHEATHING
-	kappa1[4] = calc_kappa_1(pressure, tempOld[4], moistureContent[4], volume[4] * density[4]);
+	kappa1[4] = calc_kappa_1(weather.pressure, tempOld[4], moistureContent[4], volume[4] * density[4]);
 	kappa2[4] = calc_kappa_2(moistureContent[4], volume[4] * density[4]);
 	A[4][1] = -x41;
 	A[4][4] = kappa1[4] - x14;
 	PWInit[4] = kappa1[4] * PWOld[4] - kappa2[4] * (temperature[4] - tempOld[4]);
 
 	//NODE 5 IS INNER BULK WOOD
-	kappa1[5] = calc_kappa_1(pressure, tempOld[5], moistureContent[5], volume[5] * density[5]);
+	kappa1[5] = calc_kappa_1(weather.pressure, tempOld[5], moistureContent[5], volume[5] * density[5]);
 	kappa2[5] = calc_kappa_2(moistureContent[5], volume[5] * density[5]);
 	A[5][2] = -x52;
 	A[5][5] = kappa1[5] - x25;
@@ -276,12 +273,12 @@ void Moisture::mass_cond_bal(double* node_temps, double tempOut, double HROut,
 	x6out = -mAtticOut / airDensityAttic / RWATER / temperature[6];
 	if(mCeiling < 0) {
 		x67 = (mRetAHoff + mRetLeak) / RWATER / temperature[7] / airDensityRet;
-		x68 = (mSupAHoff + mSupLeak) / RWATER / temperature[8] / airDensitySup;
-		x69 = mCeiling / RWATER / temperature[9] / airDensityHouse;
+		x68 = (mSupAHoff + mSupLeak) / RWATER / weather.supplyTdb / airDensitySup;
+		x69 = mCeiling / RWATER / weather.inTdb / airDensityHouse;
 		}
 	else {
 		x67 = mRetLeak / RWATER / temperature[7] / airDensityRet;
-		x68 = mSupLeak / RWATER / temperature[8] / airDensitySup;
+		x68 = mSupLeak / RWATER / weather.supplyTdb / airDensitySup;
 		x69 = 0;
 		x66 += (mCeiling + mSupAHoff + mRetAHoff) / RWATER / temperature[6] / airDensityAttic;
 		}
@@ -289,7 +286,7 @@ void Moisture::mass_cond_bal(double* node_temps, double tempOut, double HROut,
 	A[6][7] = x67;
 	A[6][8] = x68;
 	A[6][9] = x69;
-	PWInit[6] = volume[6] * PWOld[6] / RWATER / temperature[6] / timeStep + mAtticIn * PWOut / airDensityOut / RWATER / tempOut;
+	PWInit[6] = volume[6] * PWOld[6] / RWATER / temperature[6] / timeStep + mAtticIn * PWOut / airDensityOut / RWATER / weather.dryBulb;
 	if(moisture_nodes > 11) {
 		x611 = -hw0 * area[11] / RWATER / temperature[11];
 		x116 = hw0 * area[11] / RWATER / temperature[6];
@@ -312,51 +309,51 @@ void Moisture::mass_cond_bal(double* node_temps, double tempOut, double HROut,
 	if(mCeiling < 0) {
 		A[7][7] += (mAH - mRetAHoff) / RWATER / temperature[7] / airDensityRet;
 		A[7][6] = mRetLeak / RWATER / temperature[6] / airDensityAttic;
-		A[7][9] = (mRetReg + mRetAHoff + mErvHouse) / RWATER / temperature[9] / airDensityHouse;
+		A[7][9] = (mRetReg + mRetAHoff + mErvHouse) / RWATER / weather.inTdb / airDensityHouse;
 		}
 	else {
 		A[7][7] += (mAH + mRetAHoff) / RWATER / temperature[7] / airDensityRet;
 		A[7][6] = (mRetLeak - mRetAHoff) / RWATER / temperature[6] / airDensityAttic;
-		A[7][9] = (mRetReg + mErvHouse) / RWATER / temperature[9] / airDensityHouse;
+		A[7][9] = (mRetReg + mErvHouse) / RWATER / weather.inTdb / airDensityHouse;
 		}
-	PWInit[7] = volume[7] * PWOld[7] / RWATER / temperature[7] / timeStep - mRetOut * PWOut / RWATER / tempOut / airDensityOut;
+	PWInit[7] = volume[7] * PWOld[7] / RWATER / temperature[7] / timeStep - mRetOut * PWOut / RWATER / weather.dryBulb / airDensityOut;
 
 	//NODE 8 IS SUPPLY DUCT AIR
-	A[8][8] = volume[8] / RWATER / temperature[8] / timeStep;
+	A[8][8] = volume[8] / RWATER / weather.supplyTdb / timeStep;
 	A[8][7] = -mAH / RWATER / temperature[7] / airDensityRet;
 	if(mCeiling < 0) {
-		A[8][8] += (mSupReg + mSupLeak - mSupAHoff) / RWATER / temperature[8] / airDensitySup;
+		A[8][8] += (mSupReg + mSupLeak - mSupAHoff) / RWATER / weather.supplyTdb / airDensitySup;
 		A[8][6] = 0;
-		A[8][9] = mSupAHoff / RWATER / temperature[9] / airDensityHouse;
+		A[8][9] = mSupAHoff / RWATER / weather.inTdb / airDensityHouse;
 		}
 	else {
-		A[8][8] += (mSupReg + mSupLeak + mSupAHoff) / RWATER / temperature[8] / airDensitySup;
+		A[8][8] += (mSupReg + mSupLeak + mSupAHoff) / RWATER / weather.supplyTdb / airDensitySup;
 		A[8][6] = - mSupAHoff / RWATER / temperature[6] / airDensityAttic;
 		A[8][9] = 0;
 		}
-	PWInit[8] = volume[8] * PWOld[8] / RWATER / temperature[8] / timeStep - latcap / 2501000;
+	PWInit[8] = volume[8] * PWOld[8] / RWATER / weather.supplyTdb / timeStep - latcap / 2501000;
 
 	//NODE 9 IS HOUSE AIR
-	A[9][9] = volume[9] / RWATER / temperature[9] / timeStep + haHouse / pressure;
-	A[9][10] = -haHouse / pressure;
+	A[9][9] = volume[9] / RWATER / weather.inTdb / timeStep + haHouse / weather.pressure;
+	A[9][10] = -haHouse / weather.pressure;
 	if(mCeiling < 0) {
-		A[9][9] += (-mHouseOut - mRetReg - mCeiling - mRetAHoff - mSupAHoff) / RWATER / temperature[9] / airDensityHouse;
+		A[9][9] += (-mHouseOut - mRetReg - mCeiling - mRetAHoff - mSupAHoff) / RWATER / weather.inTdb / airDensityHouse;
 		A[9][6] = 0;
 		A[9][7] = 0;
-		A[9][8] = -mSupReg / RWATER / temperature[8] / airDensitySup;
+		A[9][8] = -mSupReg / RWATER / weather.supplyTdb / airDensitySup;
 		}
 	else {
-		A[9][9] += (-mHouseOut - mRetReg) / RWATER / temperature[9] / airDensityHouse;
+		A[9][9] += (-mHouseOut - mRetReg) / RWATER / weather.inTdb / airDensityHouse;
 		A[9][6] = -mCeiling / RWATER / temperature[6] / airDensityAttic;
 		A[9][7] = -mRetAHoff / RWATER / temperature[7] / airDensityRet;
-		A[9][8] = (-mSupReg - mSupAHoff) / RWATER / temperature[8] / airDensitySup;
+		A[9][8] = (-mSupReg - mSupAHoff) / RWATER / weather.supplyTdb / airDensitySup;
 		}
-	PWInit[9] = volume[9] * PWOld[9] / RWATER / temperature[9] / timeStep + mHouseIn * PWOut / RWATER / tempOut / airDensityOut - dhMoistRemv + latload;
+	PWInit[9] = volume[9] * PWOld[9] / RWATER / weather.inTdb / timeStep + mHouseIn * PWOut / RWATER / weather.dryBulb / airDensityOut - dhMoistRemv + latload;
 
 	//NODE 10 IS HOUSE MASS
-	A[10][9] = -haHouse / pressure;
-	A[10][10] = massWHouse / pressure / timeStep + haHouse / pressure;
-	PWInit[10] = massWHouse * PWOld[10] / pressure / timeStep;
+	A[10][9] = -haHouse / weather.pressure;
+	A[10][10] = massWHouse / weather.pressure / timeStep + haHouse / weather.pressure;
+	PWInit[10] = massWHouse * PWOld[10] / weather.pressure / timeStep;
 
 	if(moisture_nodes > 11) {
 		//NODE 11  - inside of south roof insulation
@@ -381,7 +378,7 @@ void Moisture::mass_cond_bal(double* node_temps, double tempOut, double HROut,
 	// once the attic moisture nodes have been calculated assuming no condensation (as above)
 	// then we call cond_bal to check for condensation and redo the calculations if necessasry
 	// cond_bal performs an iterative scheme that tests for condensation
-	cond_bal(pressure);
+	cond_bal(weather.pressure);
 
 	for(int i=0; i<moisture_nodes; i++) {
 		tempOld[i] = temperature[i];
