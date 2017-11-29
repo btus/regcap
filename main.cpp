@@ -3086,9 +3086,9 @@ int main(int argc, char *argv[], char* envp[])
 
 					HRAttic = calcHumidityRatio(moisture_nodes.PW[6],weather.pressure);
 					HRReturn = calcHumidityRatio(moisture_nodes.PW[7],weather.pressure);  
-					HRSupply = calcHumidityRatio(moisture_nodes.PW[8],weather.pressure);
-					HRHouse = calcHumidityRatio(moisture_nodes.PW[9],weather.pressure);  
-					RHHouse = moisture_nodes.moistureContent[9];
+					//HRSupply = calcHumidityRatio(moisture_nodes.PW[8],weather.pressure);
+					//HRHouse = calcHumidityRatio(moisture_nodes.PW[9],weather.pressure);  
+					//RHHouse = moisture_nodes.moistureContent[9];
 					RHAttic = moisture_nodes.moistureContent[6];
 
 					// [END] Moisture Balance =======================================================================================================================================
@@ -3324,7 +3324,7 @@ int main(int argc, char *argv[], char* envp[])
 						outputFile << fan[0].on << "\t" << fan[1].on << "\t" << fan[2].on << "\t" << fan[3].on << "\t" << fan[4].on << "\t" << fan[5].on << "\t" << fan[6].on << "\t";
 						outputFile << rivecOn << "\t" << relExp << "\t" << relDose << "\t";
 						outputFile << occupied[weekend][hour] << "\t"; 
-						outputFile << weather.humidityRatio << "\t" << HRAttic << "\t" << HRReturn << "\t" << HRSupply << "\t" << HRHouse << "\t" << RHHouse << "\t" << RHind60 << "\t" << RHind70 << "\t" << HumidityIndex << "\t" << dh.condensate << "\t" << indoorConc << "\t" << moldIndex_South << "\t" << moldIndex_North << "\t" << moldIndex_BulkFraming << endl;
+						//outputFile << weather.humidityRatio << "\t" << HRAttic << "\t" << HRReturn << "\t" << HRSupply << "\t" << HRHouse << "\t" << RHHouse << "\t" << RHind60 << "\t" << RHind70 << "\t" << HumidityIndex << "\t" << dh.condensate << "\t" << indoorConc << "\t" << moldIndex_South << "\t" << moldIndex_North << "\t" << moldIndex_BulkFraming << endl;
 						//outputFile << mHouse << "\t" << mHouseIN << "\t" << mHouseOUT << "\t" << mIN << "\t" << mOUT << "\t" << mCeiling << "\t" << mSupReg << "\t" << mSupAHoff << "\t" << mRetAHoff << "\t" << mRetReg << "\t" << mFanCycler << "\t" << mFlue << "\t" << mFloor << "\t" << mAH << endl;
 						//outputFile << mHouse << "\t" << mHouseIN << "\t" << mHouseOUT << mCeiling << "\t" << mHouseIN << "\t" << mHouseOUT << "\t" << mSupReg << "\t" << mRetReg << "\t" << mSupAHoff << "\t" ;
 						//outputFile << mRetAHoff << "\t" << mHouse << "\t"<< flag << "\t"<< AIM2 << "\t" << AEQaim2FlowDiff << "\t" << qFanFlowRatio << "\t" << C << endl; //Breann/Yihuan added these for troubleshooting

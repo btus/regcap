@@ -146,7 +146,7 @@ weatherData readRealWeather(ifstream& file) {
 		>> result.pressure
 		>> result.skyCover
 		>> inTdb
-		>> result.inRH
+		>> result.inHR
 		>> supplyTdb
 		>> result.qAH;
 	

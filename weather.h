@@ -20,7 +20,7 @@ struct weatherData {
 	int pressure;					// Station pressure (Pa)
 	double skyCover;				// Total sky cover (fraction)
 	double inTdb;
-	double inRH;
+	double inHR;
 	double supplyTdb;
 	double qAH;
 	int julianMinute;

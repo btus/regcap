@@ -35,11 +35,12 @@ using namespace std;
  * 5. inside bulk wood - corresponding thermal node is (5)
  * 6. attic air - corresponding thermal node is (0)
  * 7. return air - corresponding thermal node is (11)
+ * 8. interior south roof insulation ((3+15)/2)
+ * 9. interior north roof insulation ((1+14)/2)
+ * OLD:
  * 8. supply air - corresponding thermal node is (14)
  * 9. house air - corresponding thermal node is (15)
  * 10. house materials - corresponding thermal node is (12)
- * 11. interior south roof insulation ((3+17)/2)
- * 11. interior north roof insulation ((1+16)/2)
  */
 Moisture::Moisture(double atticVolume, double retDiameter, double retLength, double supDiameter, double supLength, double houseVolume, 
 						double floorArea, double sheathArea, double bulkArea, double roofInsThick, double roofExtRval, double mcInit) {
@@ -52,16 +53,16 @@ Moisture::Moisture(double atticVolume, double retDiameter, double retLength, dou
 	double RHInit = 50;	// initial air RH (%)
 
 	if(roofInsThick > 0) {
-		moisture_nodes = 13;
-		deltaX[11] = roofInsThick/2;
-		deltaX[12] = deltaX[11];
-		area[11] = sheathArea;
-		area[12] = area[11];
-		volume[11] = area[11] * roofInsThick;
-		volume[12] = area[12] * roofInsThick;
+		moisture_nodes = 10;
+		deltaX[8] = roofInsThick/2;
+		deltaX[9] = deltaX[8];
+		area[8] = sheathArea;
+		area[9] = area[8];
+		volume[8] = area[8] * roofInsThick;
+		volume[9] = area[9] * roofInsThick;
 		}
 	else {
-		moisture_nodes = 11;
+		moisture_nodes = 8;
 		}
 	if(roofExtRval > 0) {
 	   roofInsulRatio = (1/roofExtRval)/(1/roofExtRval + 1/((thickSheathing / kWood) + 0.06));
@@ -94,8 +95,8 @@ Moisture::Moisture(double atticVolume, double retDiameter, double retLength, dou
 	volume[5] = area[2] * bulkThick - volume[2];
 	volume[6] = atticVolume;
 	volume[7] = (pow(retDiameter, 2) * M_PI / 4) * retLength;
-	volume[8] = (pow(supDiameter, 2) * M_PI / 4) * supLength;
-	volume[9] = houseVolume;
+	//volume[8] = (pow(supDiameter, 2) * M_PI / 4) * supLength;
+	//volume[9] = houseVolume;
 
 	density[0] = densitySheathing;
 	density[1] = densitySheathing;
@@ -135,8 +136,8 @@ Moisture::Moisture(double atticVolume, double retDiameter, double retLength, dou
  * @param airDensityHouse - Indoor air density (kg/m3)
  * @param airDensitySup - Supply air density (kg/m3)
  * @param airDensityRet - Return air density (kg/m3)
- * @param hU0 - surface heat transfer coefficient for node 0/11 (inner south) (J/sm2K) - was H4
- * @param hU1 - surface heat transfer coefficient for node 1/12 (inner north) (J/sm2K) - was H6
+ * @param hU0 - surface heat transfer coefficient for node 0/8 (inner south) (J/sm2K) - was H4
+ * @param hU1 - surface heat transfer coefficient for node 1/9 (inner north) (J/sm2K) - was H6
  * @param hU2 - surface heat transfer coefficient for node 2 (bulk wood) (J/sm2K) - was H10
  * @param mAtticIn - air mass flow into attic (kg/s)
  * @param mAtticOut - air mass flow out of attic (kg/s)
@@ -167,7 +168,7 @@ void Moisture::mass_cond_bal(double* node_temps, weatherData weather,
 	const double diffCoefWood = 3E-10; // diffusion coefficient for pine from Cunningham 1990 (m2/s)
 	const double diffCoefIns = 2.12E-5; // diffusion coefficient for fiberglass (106 perm-in) (m2/s)
 	const int RWATER = 462;			// gas constant for water vapor (J/KgK)
-	double PWOut;						// outdoor air vapor pressure (Pa)
+	double PWOut, PWin;				// air vapor pressures (Pa)
 	double hw0, hw1, hw2;			// mass transfer coefficients for water vapor (m/s)
 
 	// set node temperatures 
@@ -179,13 +180,14 @@ void Moisture::mass_cond_bal(double* node_temps, weatherData weather,
 	temperature[5] = node_temps[5];	// bulk wood
 	temperature[6] = node_temps[0];	// attic air
 	temperature[7] = node_temps[11];	// return air
-	temperature[10] = node_temps[12];	// house mass
-	if(moisture_nodes > 11) {
-		temperature[11] = calc_inter_temp(node_temps[3], node_temps[17], 1);	// middle of south interior insulation
-		temperature[12] = calc_inter_temp(node_temps[1], node_temps[16], 1);	// middle of north interior insulation
+	//temperature[10] = node_temps[12];	// house mass
+	if(moisture_nodes > 8) {
+		temperature[8] = calc_inter_temp(node_temps[3], node_temps[15], 1);	// middle of south interior insulation
+		temperature[9] = calc_inter_temp(node_temps[1], node_temps[14], 1);	// middle of north interior insulation
 		}
 
 	PWOut = calcVaporPressure(weather.humidityRatio, weather.pressure);
+	PWin = calcVaporPressure(weather.inHR, weather.pressure);
 	
 	// water vapor mass transfer coefficients
 	double hu_conv = 1 / CpAir / pow(LEWIS, 2.0/3.0) / airDensityAttic;
@@ -201,11 +203,11 @@ void Moisture::mass_cond_bal(double* node_temps, weatherData weather,
 	A[0][0] = kappa1[0] + x30;
 	A[0][3] = x03;
 	PWInit[0] = kappa1[0] * PWOld[0] - kappa2[0] * (temperature[0] - tempOld[0]);
-	if(moisture_nodes > 11) {		// there is interior insulation
-		x110 = diffCoefIns * area[0] / RWATER / temperature[0] / deltaX[11];
-		x011 = -diffCoefIns * area[0] / RWATER / temperature[11] / deltaX[11];
-		A[0][0] += x110;
-		A[0][11] = x011;
+	if(moisture_nodes > 8) {		// there is interior insulation
+		x80 = diffCoefIns * area[0] / RWATER / temperature[0] / deltaX[8];
+		x08 = -diffCoefIns * area[0] / RWATER / temperature[8] / deltaX[8];
+		A[0][0] += x80;
+		A[0][8] = x08;
 		}
 	else {		// exposed to attic air
 		x60 = hw0 * area[0] / RWATER / temperature[0];
@@ -222,11 +224,11 @@ void Moisture::mass_cond_bal(double* node_temps, weatherData weather,
 	A[1][1] = kappa1[1] + x41;
 	A[1][4] = x14;
 	PWInit[1] = kappa1[1] * PWOld[1] - kappa2[1] * (temperature[1] - tempOld[1]);
-	if(moisture_nodes > 11) {		// there is interior insulation
-		x121 = diffCoefIns * area[1] / RWATER / temperature[1] / deltaX[12];
-		x112 = -diffCoefIns * area[1] / RWATER / temperature[12] / deltaX[12];
-		A[1][1] += x121;
-		A[1][12] = x112;
+	if(moisture_nodes > 8) {		// there is interior insulation
+		x91 = diffCoefIns * area[1] / RWATER / temperature[1] / deltaX[9];
+		x19 = -diffCoefIns * area[1] / RWATER / temperature[9] / deltaX[9];
+		A[1][1] += x91;
+		A[1][9] = x19;
 		}
 	else {		// exposed to attic air
 		x61 = hw1 * area[1] / RWATER / temperature[1];
@@ -273,29 +275,30 @@ void Moisture::mass_cond_bal(double* node_temps, weatherData weather,
 	x6out = -mAtticOut / airDensityAttic / RWATER / temperature[6];
 	if(mCeiling < 0) {
 		x67 = (mRetAHoff + mRetLeak) / RWATER / temperature[7] / airDensityRet;
-		x68 = (mSupAHoff + mSupLeak) / RWATER / weather.supplyTdb / airDensitySup;
-		x69 = mCeiling / RWATER / weather.inTdb / airDensityHouse;
+		x6sup = -(mSupAHoff + mSupLeak) / RWATER / weather.supplyTdb / airDensitySup;
+		x6in = -mCeiling / RWATER / weather.inTdb / airDensityHouse;
 		}
 	else {
 		x67 = mRetLeak / RWATER / temperature[7] / airDensityRet;
-		x68 = mSupLeak / RWATER / weather.supplyTdb / airDensitySup;
-		x69 = 0;
+		x6sup = -mSupLeak / RWATER / weather.supplyTdb / airDensitySup;
+		x6in = 0;
+		PWInit[6] = mCeiling * PWin / RWATER / weather.inTdb / airDensityHouse;
 		x66 += (mCeiling + mSupAHoff + mRetAHoff) / RWATER / temperature[6] / airDensityAttic;
 		}
-	A[6][6] = x66 - x26 + x6out;
+	A[6][6] = x66 - x26 + x6out + x6in + x6sup;
 	A[6][7] = x67;
-	A[6][8] = x68;
-	A[6][9] = x69;
-	PWInit[6] = volume[6] * PWOld[6] / RWATER / temperature[6] / timeStep + mAtticIn * PWOut / airDensityOut / RWATER / weather.dryBulb;
-	if(moisture_nodes > 11) {
-		x611 = -hw0 * area[11] / RWATER / temperature[11];
-		x116 = hw0 * area[11] / RWATER / temperature[6];
-		x612 = -hw1 * area[12] / RWATER / temperature[12];
-		x126 = hw1 * area[12] / RWATER / temperature[6];
+	//A[6][8] = x68;
+	//A[6][9] = x69;
+	PWInit[6] += volume[6] * PWOld[6] / RWATER / temperature[6] / timeStep + mAtticIn * PWOut / airDensityOut / RWATER / weather.dryBulb;
+	if(moisture_nodes > 8) {
+		x68 = -hw0 * area[8] / RWATER / temperature[8];
+		x86 = hw0 * area[8] / RWATER / temperature[6];
+		x69 = -hw1 * area[9] / RWATER / temperature[9];
+		x96 = hw1 * area[9] / RWATER / temperature[6];
 		A[6][2] = -x62;
-		A[6][6] += x116 + x126;
-		A[6][11] = x611;
-		A[6][12] = x612;
+		A[6][6] += x86 + x96;
+		A[6][8] = x68;
+		A[6][9] = x69;
 		}
 	else {
 		A[6][0] = -x60;
@@ -309,15 +312,18 @@ void Moisture::mass_cond_bal(double* node_temps, weatherData weather,
 	if(mCeiling < 0) {
 		A[7][7] += (mAH - mRetAHoff) / RWATER / temperature[7] / airDensityRet;
 		A[7][6] = mRetLeak / RWATER / temperature[6] / airDensityAttic;
-		A[7][9] = (mRetReg + mRetAHoff + mErvHouse) / RWATER / weather.inTdb / airDensityHouse;
+		A[7][7] += (mRetReg + mRetAHoff + mErvHouse) / RWATER / weather.inTdb / airDensityHouse;
+		PWInit[7] = (mRetReg + mRetAHoff + mErvHouse) * PWin / RWATER / weather.inTdb / airDensityHouse;
 		}
 	else {
 		A[7][7] += (mAH + mRetAHoff) / RWATER / temperature[7] / airDensityRet;
 		A[7][6] = (mRetLeak - mRetAHoff) / RWATER / temperature[6] / airDensityAttic;
-		A[7][9] = (mRetReg + mErvHouse) / RWATER / weather.inTdb / airDensityHouse;
+		A[7][7] += (mRetReg + mErvHouse) / RWATER / weather.inTdb / airDensityHouse;
+		PWInit[7] = (mRetReg + mErvHouse) * PWin / RWATER / weather.inTdb / airDensityHouse;
 		}
-	PWInit[7] = volume[7] * PWOld[7] / RWATER / temperature[7] / timeStep - mRetOut * PWOut / RWATER / weather.dryBulb / airDensityOut;
+	PWInit[7] += volume[7] * PWOld[7] / RWATER / temperature[7] / timeStep - mRetOut * PWOut / RWATER / weather.dryBulb / airDensityOut;
 
+/*
 	//NODE 8 IS SUPPLY DUCT AIR
 	A[8][8] = volume[8] / RWATER / weather.supplyTdb / timeStep;
 	A[8][7] = -mAH / RWATER / temperature[7] / airDensityRet;
@@ -354,19 +360,20 @@ void Moisture::mass_cond_bal(double* node_temps, weatherData weather,
 	A[10][9] = -haHouse / weather.pressure;
 	A[10][10] = massWHouse / weather.pressure / timeStep + haHouse / weather.pressure;
 	PWInit[10] = massWHouse * PWOld[10] / weather.pressure / timeStep;
+*/
 
-	if(moisture_nodes > 11) {
-		//NODE 11  - inside of south roof insulation
-		A[11][11] = volume[11] / RWATER / temperature[11] / timeStep - x611 - x011;
-		A[11][6] = -x116;
-		A[11][0] = -x110;
-		PWInit[11] = volume[11] * PWOld[11] / RWATER / temperature[11] / timeStep;
+	if(moisture_nodes > 8) {
+		//NODE 8  - inside of south roof insulation
+		A[8][8] = volume[8] / RWATER / temperature[8] / timeStep - x68 - x08;
+		A[8][6] = -x86;
+		A[8][0] = -x80;
+		PWInit[8] = volume[8] * PWOld[8] / RWATER / temperature[8] / timeStep;
 
-		//NODE 12  - inside of north roof insulation
-		A[12][12] = volume[12] / RWATER / temperature[12] / timeStep - x612 - x112;
-		A[12][6] = -x126;
-		A[12][1] = -x121;
-		PWInit[12] = volume[12] * PWOld[12] / RWATER / temperature[12] / timeStep;
+		//NODE 9  - inside of north roof insulation
+		A[9][9] = volume[9] / RWATER / temperature[9] / timeStep - x69 - x19;
+		A[9][6] = -x96;
+		A[9][1] = -x91;
+		PWInit[9] = volume[9] * PWOld[9] / RWATER / temperature[9] / timeStep;
 		}
 
 
@@ -443,9 +450,9 @@ void Moisture::cond_bal(int pressure) {
 				mTotal[0] = 0;
 				massCondensed[0] = 0;
 				hasCondensedMass[0] = false;
-				if(moisture_nodes > 11) {
-					double a00 = kappa1[0] + x110 + x30;
-					PW[0] = -1 / a00 * (x011 * PW[11] + x03 * PW[3]) + PWInit[0] / a00;
+				if(moisture_nodes > 8) {
+					double a00 = kappa1[0] + x80 + x30;
+					PW[0] = -1 / a00 * (x08 * PW[8] + x03 * PW[3]) + PWInit[0] / a00;
 					}
 				else {
 					double a00 = kappa1[0] + x60 + x30;
@@ -466,9 +473,9 @@ void Moisture::cond_bal(int pressure) {
 				mTotal[1] = 0;
 				massCondensed[1] = 0;
 				hasCondensedMass[1] = false;
-				if(moisture_nodes > 11) {
-					double a11 = kappa1[1] + x121 + x41;
-					PW[1] = -1 / a11 * (x112 * PW[12] + x14 * PW[4]) + PWInit[1] / a11;
+				if(moisture_nodes > 8) {
+					double a11 = kappa1[1] + x91 + x41;
+					PW[1] = -1 / a11 * (x19 * PW[9] + x14 * PW[4]) + PWInit[1] / a11;
 					}
 				else {
 					double a11 = kappa1[1] + x61 + x41;
@@ -542,13 +549,13 @@ void Moisture::cond_bal(int pressure) {
 			if(PW[6] < PWSaturation[6]) {
 				massCondensed[6] = 0;
 				hasCondensedMass[6] = false;
-				if(moisture_nodes > 11) {
-					double a33 = x66 + x116 + x126 - x26 + x6out;
-					PW[6] = -1 / a33 * (x611 * PW[11] + x612 * PW[12] - x62 * PW[2] + x67 * PW[7] + x68 * PW[8] + x69 * PW[9]) + PWInit[6] / a33;
+				if(moisture_nodes > 8) {
+					double a33 = x66 + x86 + x96 - x26 + x6out + x6sup;
+					PW[6] = -1 / a33 * (x68 * PW[8] + x69 * PW[9] - x62 * PW[2] + x67 * PW[7]) + PWInit[6] / a33;
 					}
 				else {
-					double a33 = x66 - x06 - x16 - x26 + x6out;
-					PW[6] = -1 / a33 * (-x60 * PW[0] - x61 * PW[1] - x62 * PW[2] + x67 * PW[7] + x68 * PW[8] + x69 * PW[9]) + PWInit[6] / a33;
+					double a33 = x66 - x06 - x16 - x26 + x6out + x6sup;
+					PW[6] = -1 / a33 * (-x60 * PW[0] - x61 * PW[1] - x62 * PW[2] + x67 * PW[7]) + PWInit[6] / a33;
 					}
 				}
 			else {
@@ -586,8 +593,8 @@ void Moisture::cond_bal(int pressure) {
 			// here the fluxes of water from the air to the other surface nodes in contact with attic air is determined
 			double fluxTotal = 0;
 			double fluxTo[4];
-			if(moisture_nodes > 11) {
-				massCondensed[6] = timeStep * (-A[6][6] * PW[6] + x611 * PW[1] + x612 * PW[12] + x62 * PW[2] + PWInit[6]);
+			if(moisture_nodes > 8) {
+				massCondensed[6] = timeStep * (-A[6][6] * PW[6] + x68 * PW[1] + x69 * PW[9] + x62 * PW[2] + PWInit[6]);
 				}
 			else {
 				massCondensed[6] = timeStep * (-A[6][6] * PW[6] + x60 * PW[0] + x61 * PW[1] + x62 * PW[2] + PWInit[6]);
@@ -632,16 +639,16 @@ void Moisture::cond_bal(int pressure) {
 			if(hasCondensedMass[i]) {
 				switch (i) {
 				case 0:
-					if(moisture_nodes > 11) {
-						massCondensed[0] = timeStep * (-kappa1[0] * (PW[0] - PWOld[0]) - kappa2[0] * (temperature[0] - tempOld[0]) - x110 * PW[0] - x011 * PW[11] - x30 * PW[0] - x03 * PW[3]);
+					if(moisture_nodes > 8) {
+						massCondensed[0] = timeStep * (-kappa1[0] * (PW[0] - PWOld[0]) - kappa2[0] * (temperature[0] - tempOld[0]) - x80 * PW[0] - x08 * PW[8] - x30 * PW[0] - x03 * PW[3]);
 						}
 					else {
 						massCondensed[0] = timeStep * (-kappa1[0] * (PW[0] - PWOld[0]) - kappa2[0] * (temperature[0] - tempOld[0]) - x60 * PW[0] - x06 * PW[6] - x30 * PW[0] - x03 * PW[3]);
 						}
 					break;
 				case 1:
-					if(moisture_nodes > 11) {
-						massCondensed[1] = timeStep * (-kappa1[1] * (PW[1] - PWOld[1]) - kappa2[1] * (temperature[1] - tempOld[1]) - x121 * PW[1] - x112 * PW[12] - x41 * PW[1] - x14 * PW[4]);
+					if(moisture_nodes > 8) {
+						massCondensed[1] = timeStep * (-kappa1[1] * (PW[1] - PWOld[1]) - kappa2[1] * (temperature[1] - tempOld[1]) - x91 * PW[1] - x19 * PW[9] - x41 * PW[1] - x14 * PW[4]);
 						}
 					else {
 						massCondensed[1] = timeStep * (-kappa1[1] * (PW[1] - PWOld[1]) - kappa2[1] * (temperature[1] - tempOld[1]) - x61 * PW[1] - x16 * PW[6] - x41 * PW[1] - x14 * PW[4]);
