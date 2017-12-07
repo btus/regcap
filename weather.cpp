@@ -132,7 +132,6 @@ weatherData readOneMinuteWeather(ifstream& file) {
 weatherData readRealWeather(ifstream& file) {
 	int jul, day, hour, minute;
 	weatherData result;
-	double wd, inTdb, supplyTdb;
 	file >> jul
 		>> day
 		>> hour
@@ -142,21 +141,19 @@ weatherData readRealWeather(ifstream& file) {
 		>> result.dryBulb
 		>> result.humidityRatio
 		>> result.windSpeed
-		>> wd
+		>> result.windDirection
 		>> result.pressure
 		>> result.skyCover
-		>> inTdb
+		>> result.inTdb
 		>> result.inHR
-		>> supplyTdb
+		>> result.supplyTdb
 		>> result.qAH;
 	
 	result.julianMinute = (((day-1) * 24) + hour) * 60 + minute + 1;
 	result.dryBulb += C_TO_K;					// Convert to deg K
-	result.windDirection = int(wd);			// Wind direction is float in 1 minute files
-	result.pressure *= 1000;					// Convert reference pressure to [Pa]
 	result.skyCover /= 10;						// Converting cloud cover index to decimal fraction
-	result.inTdb = inTdb + C_TO_K;
-	result.supplyTdb = supplyTdb  + C_TO_K;
+	result.inTdb += C_TO_K;
+	result.supplyTdb += C_TO_K;
 	return result;
 }
 
