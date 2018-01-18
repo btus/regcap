@@ -1310,7 +1310,7 @@ int main(int argc, char *argv[], char* envp[])
 						hcFlag = 1;					// Heating
 					else
 						hcFlag = 2;					// Cooling
-			
+/*			
 					// ====================== HEATING THERMOSTAT CALCULATIONS ============================
 					if(hcFlag == 1) {
 						qAH = qAH_heat;            // Heating Air Flow Rate [m3/s]
@@ -1960,9 +1960,9 @@ int main(int argc, char *argv[], char* envp[])
 						}
 					//}
 					// [END] Auxiliary Fan Controls ========================================================================================================
-
+*/
 			
-
+/*
 					// [START] Equipment Model ===============================================================================================================================
 					
 					evapcap = 0;
@@ -2093,7 +2093,7 @@ int main(int argc, char *argv[], char* envp[])
 					if(dhCapacity > 0) {
 						dh.run(RHHouse, tempHouse);	// run dehumidifier using house air node conditions
 						}
-					
+*/					
 					// [END] Equipment Model ======================================================================================================================================
 
 					// [START] Heat and Mass Transport ==============================================================================================================================

@@ -312,12 +312,11 @@ void Moisture::mass_cond_bal(double* node_temps, weatherData weather,
 	A[7][7] = volume[7] / RWATER / temperature[7] / timeStep;
 	if(mCeiling < 0) {
 		A[7][7] += (mAH - mRetAHoff) / RWATER / temperature[7] / airDensityRet;
-		A[7][6] = mRetLeak / RWATER / temperature[6] / airDensityAttic;
 		}
 	else {
 		A[7][7] += (mAH + mRetAHoff) / RWATER / temperature[7] / airDensityRet;
-		A[7][6] = (mRetLeak - mRetAHoff) / RWATER / temperature[6] / airDensityAttic;
 		}
+	A[7][6] = mRetLeak / RWATER / temperature[6] / airDensityAttic;
 	PWInit[7] += volume[7] * PWOld[7] / RWATER / temperature[7] / timeStep
 					- mRetOut * PWOut / RWATER / weather.dryBulb / airDensityOut
 					+ mRetReg * PWhouse / RWATER / weather.houseTdb / airDensityHouse;
