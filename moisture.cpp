@@ -168,7 +168,7 @@ void Moisture::mass_cond_bal(double* node_temps, weatherData weather,
 	const double diffCoefWood = 3E-10; // diffusion coefficient for pine from Cunningham 1990 (m2/s)
 	const double diffCoefIns = 2.12E-5; // diffusion coefficient for fiberglass (106 perm-in) (m2/s)
 	const int RWATER = 462;			// gas constant for water vapor (J/KgK)
-	double PWOut, PWhouse;				// air vapor pressures (Pa)
+	double PWOut, PWhouse, PWsupply;				// air vapor pressures (Pa)
 	double hw0, hw1, hw2;			// mass transfer coefficients for water vapor (m/s)
 
 	// set node temperatures 
@@ -188,6 +188,7 @@ void Moisture::mass_cond_bal(double* node_temps, weatherData weather,
 
 	PWOut = calcVaporPressure(weather.humidityRatio, weather.pressure);
 	PWhouse = calcVaporPressure(weather.houseHR, weather.pressure);
+	PWsupply = saturationVaporPressure(weather.supplyTdb);
 	
 	// water vapor mass transfer coefficients
 	double hu_conv = 1 / CpAir / pow(LEWIS, 2.0/3.0) / airDensityAttic;
@@ -275,19 +276,21 @@ void Moisture::mass_cond_bal(double* node_temps, weatherData weather,
 	x6out = -mAtticOut / airDensityAttic / RWATER / temperature[6];
 	if(mCeiling < 0) {
 		x67 = (mRetAHoff + mRetLeak) / RWATER / temperature[7] / airDensityRet;
-		x6sup = (mSupAHoff + mSupLeak) / RWATER / weather.supplyTdb / airDensitySup;
+		//x6sup = (mSupAHoff + mSupLeak) / RWATER / weather.supplyTdb / airDensitySup;
 		PWInit[6] = -mCeiling * PWhouse / RWATER / weather.houseTdb / airDensityHouse;
 		}
 	else {
 		x67 = mRetLeak / RWATER / temperature[7] / airDensityRet;
-		x6sup = mSupLeak / RWATER / weather.supplyTdb / airDensitySup;
+		//x6sup = mSupLeak / RWATER / weather.supplyTdb / airDensitySup;
 		x66 += (mCeiling + mSupAHoff + mRetAHoff) / RWATER / temperature[6] / airDensityAttic;
 		}
-	A[6][6] = x66 - x26 + x6out + x6sup;
+	A[6][6] = x66 - x26 + x6out; // + x6sup;
 	A[6][7] = x67;
 	//A[6][8] = x68;
 	//A[6][9] = x69;
-	PWInit[6] += volume[6] * PWOld[6] / RWATER / temperature[6] / timeStep + mAtticIn * PWOut / airDensityOut / RWATER / weather.dryBulb;
+	PWInit[6] += volume[6] * PWOld[6] / RWATER / temperature[6] / timeStep 
+					+ mAtticIn * PWOut / airDensityOut / RWATER / weather.dryBulb
+					+ mSupLeak * PWsupply / airDensitySup / RWATER / weather.supplyTdb;
 	if(moisture_nodes > 8) {
 		x68 = -hw0 * area[8] / RWATER / temperature[8];
 		x86 = hw0 * area[8] / RWATER / temperature[6];
@@ -310,17 +313,14 @@ void Moisture::mass_cond_bal(double* node_temps, weatherData weather,
 	if(mCeiling < 0) {
 		A[7][7] += (mAH - mRetAHoff) / RWATER / temperature[7] / airDensityRet;
 		A[7][6] = mRetLeak / RWATER / temperature[6] / airDensityAttic;
-		A[7][7] += (mRetReg + mRetAHoff + mErvHouse) / RWATER / weather.houseTdb / airDensityHouse;
-		PWInit[7] = (mRetReg + mRetAHoff + mErvHouse) * PWhouse / RWATER / weather.houseTdb / airDensityHouse;
 		}
 	else {
 		A[7][7] += (mAH + mRetAHoff) / RWATER / temperature[7] / airDensityRet;
 		A[7][6] = (mRetLeak - mRetAHoff) / RWATER / temperature[6] / airDensityAttic;
-		A[7][7] += (mRetReg + mErvHouse) / RWATER / weather.houseTdb / airDensityHouse;
-		PWInit[7] = (mRetReg + mErvHouse) * PWhouse / RWATER / weather.houseTdb / airDensityHouse;
 		}
-	PWInit[7] += volume[7] * PWOld[7] / RWATER / temperature[7] / timeStep - mRetOut * PWOut / RWATER / weather.dryBulb / airDensityOut;
-
+	PWInit[7] += volume[7] * PWOld[7] / RWATER / temperature[7] / timeStep
+					- mRetOut * PWOut / RWATER / weather.dryBulb / airDensityOut
+					+ mRetReg * PWhouse / RWATER / weather.houseTdb / airDensityHouse;
 /*
 	//NODE 8 IS SUPPLY DUCT AIR
 	A[8][8] = volume[8] / RWATER / weather.supplyTdb / timeStep;
@@ -548,11 +548,11 @@ void Moisture::cond_bal(int pressure) {
 				massCondensed[6] = 0;
 				hasCondensedMass[6] = false;
 				if(moisture_nodes > 8) {
-					double a33 = x66 + x86 + x96 - x26 + x6out + x6sup;
+					double a33 = x66 + x86 + x96 - x26 + x6out; // + x6sup;
 					PW[6] = -1 / a33 * (x68 * PW[8] + x69 * PW[9] - x62 * PW[2] + x67 * PW[7]) + PWInit[6] / a33;
 					}
 				else {
-					double a33 = x66 - x06 - x16 - x26 + x6out + x6sup;
+					double a33 = x66 - x06 - x16 - x26 + x6out; // + x6sup;
 					PW[6] = -1 / a33 * (-x60 * PW[0] - x61 * PW[1] - x62 * PW[2] + x67 * PW[7]) + PWInit[6] / a33;
 					}
 				}
