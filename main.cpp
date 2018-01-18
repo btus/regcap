@@ -309,7 +309,7 @@ int main(int argc, char *argv[], char* envp[])
 			for(int i=6; i<MOISTURE_NODES; i++) {
 				moistureFile << "\t" << "RH" << i << "\tTemp" << i;
 				}
-			moistureFile << endl;
+			moistureFile << "\t" << "NSurf" << "\t" << "SSurf" << endl;
 			//moistureFile << "HROut\tHRHouse\tHRAttic\tHRSupply\tHRReturn\t";
 			//moistureFile << "RHHouse\tRHAttic\tTempHouse\ttempAttic" << endl;
 		}
@@ -517,7 +517,7 @@ int main(int argc, char *argv[], char* envp[])
 		buildingFile >> dhCapacity;	
 		buildingFile >> dhEnergyFactor;
 		buildingFile >> dhSetPoint;	
-		
+	
 		buildingFile >> endOfFile;
 		if(endOfFile != "E_O_F") {
 			cout << "Error in input file. Last line: >>" << endOfFile << "<<" << endl;
@@ -804,10 +804,10 @@ int main(int argc, char *argv[], char* envp[])
 		tempOld[2] = 278;
 		tempOld[4] = 278;
 
-		double tempAttic = tempOld[0];
-		double tempReturn = tempOld[11];
-		double tempSupply = tempOld[14];
-		double tempHouse = tempOld[15];
+		double tempAttic = airTempRef;
+		double tempReturn = airTempRef;
+		double tempSupply = airTempRef;
+		double tempHouse = airTempRef;
 
 		// The following are defined for RIVEC ==============================================================================================================
 		// Start and end times for the RIVEC base, peak and recovery periods [h]
@@ -1201,9 +1201,11 @@ int main(int argc, char *argv[], char* envp[])
 					else {
 						weather = interpWeather(begin, end, minute);
 					}
+/*
 					weather.windSpeed *= windSpeedCorrection;		// Correct met wind speed to speed at building eaves height [m/s]
 					if(weather.windSpeed < 1)					// Minimum wind velocity allowed is 1 m/s to account for non-zero start up velocity of anenometers
 						weather.windSpeed = 1;					// Wind speed is never zero
+*/
 					dailyCumulativeTemp = dailyCumulativeTemp + weather.dryBulb - C_TO_K;
 					tsolair = weather.dryBulb;
 					target = minute - 39;			// Target is used for fan cycler operation currently set for 20 minutes operation, in the last 20 minutes of the hour.
@@ -2099,6 +2101,23 @@ int main(int argc, char *argv[], char* envp[])
 					double mCeilingLimit = envC / 10;
 					if(mCeilingLimit < .00001)
 						mCeilingLimit = .00001;
+					
+					// Fresno Settings
+					if(weather.qAH > 0.02)
+						AHflag = 1;
+					else
+						AHflag = 0;
+					supVelAH = weather.qAH / (pow(supDiameter,2) * M_PI / 4);
+					retVelAH = weather.qAH / (pow(retDiameter,2) * M_PI / 4);
+					qSupReg = weather.qAH * (1 - supLF);
+					qRetReg = weather.qAH * (retLF - 1);
+					qRetLeak = -weather.qAH * retLF;
+					qSupLeak = weather.qAH * supLF;
+					mSupLeak = qSupLeak * airDensityIN;
+					mRetLeak = qRetLeak * airDensityIN;
+					mAH = weather.qAH * airDensityIN;
+					mSupReg = qSupReg * airDensityIN;
+					mRetReg = qRetReg * airDensityIN;
 
 					// Ventilation and heat transfer calculations
 					int mainIterations = 0;
@@ -2128,8 +2147,6 @@ int main(int argc, char *argv[], char* envp[])
 								matticenvout, mSupAHoff, mRetAHoff, airDensityIN, airDensityOUT, airDensityATTIC);
 						}
 
-						// adding fan heat for supply fans, internalGains1 is from input file, fanHeat reset to zero each minute, internalGains is common
-						internalGains = internalGains1 + fanHeat;
 
 						//bsize = sizeof(b)/sizeof(b[0]);
 
@@ -2147,12 +2164,12 @@ int main(int argc, char *argv[], char* envp[])
 							tempAttic        = b[0];					
 							tempReturn       = b[11];
 							tempSupply       = weather.supplyTdb;
-							tempHouse        = weather.inTdb;
+							tempHouse        = weather.houseTdb;
 							break;
 						}
 
 						tempAttic = b[0];
-						tempHouse = weather.inTdb;
+						tempHouse = weather.houseTdb;
 					}
 
 					// setting "old" temps for next timestep to be current temps:
@@ -2273,96 +2290,6 @@ int main(int argc, char *argv[], char* envp[])
 					indoorConc = sub_Pollutant(outdoorConc, indoorConc, indoorSource, houseVolume, qHouse, qDeposition, penetrationFactor, qAH, AHflag, filterEfficiency);
 
 					
-					//occupiedExp and occupiedDose are calculated and running summed only for occupied minutes of the year. Their values are otherwise remain fixed at the prior time step value. 
-					//Occupancy-based controls use relExp and occupiedDose.
-					
-// 					if(occupied[weekend][hour] == 1) { //house is occupied, then calculate new occupiedDose and increment counter. 
-// 					//Otherwise leave occupiedDose fixed at value from prior time step.
-// 						occupiedMinCount += 1; // counts number of minutes while house is occupied
-// 						occupiedDose = relDose;				// For annual average calculation, occupiedDose is unchanged when unoccupied.
-// 						occupiedExp = relExp;
-// 						totalOccupiedDose = totalOccupiedDose + occupiedDose; // Sums all dose values during occupied mins.
-// 						totalOccupiedExp = totalOccupiedExp + occupiedExp;
-// 					}
-
-					/* -------dkm: To add flue in relDose/relExp calc the following two IF sentences have been added------
-					if(flueACH <= 0)
-					ventSumOUTD = ventSumOUT + abs(flueACH);
-					else
-					ventSumIND = ventSumIN + flueACH;
-
-					if(ventSumIND > ventSumOUTD)	//ventSum based on largest of inflow or outflow
-					ventsumD = ventSumIND;
-					else
-					ventsumD = ventSumOUTD;
-
-					if(ventsumD <= 0)
-					ventsumD = .000001;*/
-
-					//Calculation of turnover
-					// Automatically chosen based on previous selection of Aeq calculations (above) using AeqCalcs variable. Brennan. Need to change. 
-// 					switch (AeqCalcs) {
-// 					case 1:
-// 						// 1. 62.2 ventilation rate with no infiltration credit
-// 						turnover = (1 - exp(-(ventSum + wInfil) * rivecdt)) / (ventSum + wInfil) + turnoverOld * exp(-(ventSum + wInfil) * rivecdt); //This is used to compare Qtot (i.e., AEQ) to ventSum+wInfil
-// 						//turnover = (1 - exp(-ventSum * rivecdt)) / ventSum + turnoverOld * exp(-ventSum * rivecdt); //This was the orignal formulation here. Assumes that ONLY fan flow is known for IAQ calculations. I had to change this based on use of AeqCalcs earlier in the code.
-// 						break;
-// 					case 2:
-// 						// 2. 62.2 ventilation rate + infiltration credit from weather factors (w x NL)
-// 						turnover = (1 - exp(-(ventSum + wInfil) * rivecdt)) / (ventSum + wInfil) + turnoverOld * exp(-(ventSum + wInfil) * rivecdt);
-// 						break;
-// 					case 3:
-// 						// 3. 62.2 ventilation rate + 62.2 default infiltration credit (62.2, 4.1.3 p.4)
-// 						turnover = (1 - exp(-(ventSum + defaultInfil) * rivecdt)) / (ventSum + defaultInfil) + turnoverOld * exp(-(ventSum + defaultInfil) * rivecdt);
-// 						//turnover = (1 - exp(-(houseACH) * rivecdt)) / (houseACH) + turnoverOld * exp(-(houseACH) * rivecdt);
-// 						break;
-// 					case 4:
-// 						// 1. 62.2 ventilation rate with no infiltration credit + existing home deficit. This is the same as the original formulation for AeqCalcs =1 (commented out above). Again, this is just deal with the use of AeqCalcs variable earlier in the codes.
-// 						turnover = (1 - exp(-ventSum * rivecdt)) / ventSum + turnoverOld * exp(-ventSum * rivecdt);
-// 						break;
-// 					}
-
-					// The 'real' turnover of the house using ACH of the house (that includes infiltration rather than just mechanical ventilation and flues)
-					//turnoverReal = (1 - exp(-(houseACH) * rivecdt)) / (houseACH) + turnoverRealOld * exp(-(houseACH) * rivecdt);
-					//relExp = Aeq * turnover; 
-					//relExpReal = Aeq * turnoverReal;
-
-					// Relative Dose and Exposure for times when the house is occupied
-// 					if(occupied[weekend][hour] == 0) { //unoccupied. fixes dose at 1
-// 						relDose = 1 * (1 - exp(-rivecdt / 24)) + relDoseOld * exp(-rivecdt / 24);
-// 						relDoseReal = 1 * (1 - exp(-rivecdt / 24)) + relDoseRealOld * exp(-rivecdt / 24);
-// 					} else { //occupied. dose calculated by based on turnover.
-// 						relDose = relExp * (1 - exp(-rivecdt / 24)) + relDoseOld * exp(-rivecdt / 24);
-// 						relDoseReal = relExpReal * (1 - exp(-rivecdt / 24)) + relDoseRealOld * exp(-rivecdt / 24);
-// 					}
-
-
-					
-					
-			
-					//occupiedDose = relDose * occupied[weekend][hour];				// For annual average calculation, occupiedDose = 0 when unoccupied. 
-					//occupiedExp = relExp * occupied[weekend][hour];					// For annual average calculation, occupiedExp = 0 when unoccupied. 
-			
-// 					occupiedDoseReal = relDoseReal * occupied[weekend][hour];		// dose and exposure for when the building is occupied
-// 					occupiedExpReal = relExpReal * occupied[weekend][hour];			//If house is always occupied, then relExpReal = occupiedExpReal
-
-// 					totalOccupiedDose = totalOccupiedDose + occupiedDose;   // Sums all dose and exposure values during the simulation (unoccupied periods are 0). 
-// 					totalOccupiedExp = totalOccupiedExp + occupiedExp;
-
-// 					totalOccupiedDoseReal = totalOccupiedDoseReal + occupiedDoseReal;   // Brennan. Added these for "real" calculations. total dose and exp over the occupied time period
-// 					totalOccupiedExpReal = totalOccupiedExpReal + occupiedExpReal;
-			
-// 					meanRelDose = meanRelDose + relDose;
-// 					meanRelExp = meanRelExp + relExp;
-
-// 					meanRelDoseReal = meanRelDoseReal + relDoseReal; //Brennan, added these to include REAL calculations.
-// 					meanRelExpReal = meanRelExpReal + relExpReal;
-
-		
-
-
-
-
 					// [END] IAQ calculations =======================================================================================================================================
 					if(RHHouse >= 60){ //RHind60 and 70 count the minutes where high RH occurs
 						RHind60 = 1;
@@ -2421,7 +2348,7 @@ int main(int argc, char *argv[], char* envp[])
 						for(int i=6; i<MOISTURE_NODES; i++) {   // humidity model air nodes
 							moistureFile << "\t" << moisture_nodes.moistureContent[i] << "\t" << moisture_nodes.temperature[i] - C_TO_K;
 							}
-						moistureFile << endl;
+						moistureFile << "\t" << b[2] - C_TO_K << "\t" << b[4] - C_TO_K << endl;
 						//moistureFile << weather.humidityRatio << "\t" << HRHouse << "\t" << HRAttic << "\t" << HRSupply << "\t" << HRReturn << "\t";
 						//moistureFile << RHHouse << "\t" << RHAttic << "\t" << tempHouse - C_TO_K << "\t" << tempAttic - C_TO_K << endl;
 					}

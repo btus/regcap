@@ -17,7 +17,7 @@ class Moisture {
 		double density[6];										// Wood node density
 		double kappa1[MOISTURE_NODES], kappa2[MOISTURE_NODES];
 		double x60, x30, x06, x03, x61, x41, x16, x14, x62, x52, x26, x25, x66, x6out;
-		double x67, x6sup, x6in, x08, x80, x19, x91, x68, x86, x69, x96;
+		double x67, x6sup, x08, x80, x19, x91, x68, x86, x69, x96;
 		std::vector< std::vector<double> > A;
 		double PWOld[MOISTURE_NODES];							// previous time step vapor pressure (Pa)
       double PWInit[MOISTURE_NODES];						// initial vapor pressure (was B() in BASIC code) (Pa)

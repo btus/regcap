@@ -19,8 +19,8 @@ struct weatherData {
 	int windDirection;			// wind direction (degrees from North)
 	int pressure;					// Station pressure (Pa)
 	double skyCover;				// Total sky cover (fraction)
-	double inTdb;
-	double inHR;
+	double houseTdb;
+	double houseHR;
 	double supplyTdb;
 	double qAH;
 	int julianMinute;

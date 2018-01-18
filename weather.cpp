@@ -144,15 +144,15 @@ weatherData readRealWeather(ifstream& file) {
 		>> result.windDirection
 		>> result.pressure
 		>> result.skyCover
-		>> result.inTdb
-		>> result.inHR
+		>> result.houseTdb
+		>> result.houseHR
 		>> result.supplyTdb
 		>> result.qAH;
 	
 	result.julianMinute = (((day-1) * 24) + hour) * 60 + minute + 1;
 	result.dryBulb += C_TO_K;					// Convert to deg K
 	result.skyCover /= 10;						// Converting cloud cover index to decimal fraction
-	result.inTdb += C_TO_K;
+	result.houseTdb += C_TO_K;
 	result.supplyTdb += C_TO_K;
 	return result;
 }

@@ -168,7 +168,7 @@ void Moisture::mass_cond_bal(double* node_temps, weatherData weather,
 	const double diffCoefWood = 3E-10; // diffusion coefficient for pine from Cunningham 1990 (m2/s)
 	const double diffCoefIns = 2.12E-5; // diffusion coefficient for fiberglass (106 perm-in) (m2/s)
 	const int RWATER = 462;			// gas constant for water vapor (J/KgK)
-	double PWOut, PWin;				// air vapor pressures (Pa)
+	double PWOut, PWhouse;				// air vapor pressures (Pa)
 	double hw0, hw1, hw2;			// mass transfer coefficients for water vapor (m/s)
 
 	// set node temperatures 
@@ -187,7 +187,7 @@ void Moisture::mass_cond_bal(double* node_temps, weatherData weather,
 		}
 
 	PWOut = calcVaporPressure(weather.humidityRatio, weather.pressure);
-	PWin = calcVaporPressure(weather.inHR, weather.pressure);
+	PWhouse = calcVaporPressure(weather.houseHR, weather.pressure);
 	
 	// water vapor mass transfer coefficients
 	double hu_conv = 1 / CpAir / pow(LEWIS, 2.0/3.0) / airDensityAttic;
@@ -275,17 +275,15 @@ void Moisture::mass_cond_bal(double* node_temps, weatherData weather,
 	x6out = -mAtticOut / airDensityAttic / RWATER / temperature[6];
 	if(mCeiling < 0) {
 		x67 = (mRetAHoff + mRetLeak) / RWATER / temperature[7] / airDensityRet;
-		x6sup = -(mSupAHoff + mSupLeak) / RWATER / weather.supplyTdb / airDensitySup;
-		x6in = -mCeiling / RWATER / weather.inTdb / airDensityHouse;
+		x6sup = (mSupAHoff + mSupLeak) / RWATER / weather.supplyTdb / airDensitySup;
+		PWInit[6] = -mCeiling * PWhouse / RWATER / weather.houseTdb / airDensityHouse;
 		}
 	else {
 		x67 = mRetLeak / RWATER / temperature[7] / airDensityRet;
-		x6sup = -mSupLeak / RWATER / weather.supplyTdb / airDensitySup;
-		x6in = 0;
-		PWInit[6] = mCeiling * PWin / RWATER / weather.inTdb / airDensityHouse;
+		x6sup = mSupLeak / RWATER / weather.supplyTdb / airDensitySup;
 		x66 += (mCeiling + mSupAHoff + mRetAHoff) / RWATER / temperature[6] / airDensityAttic;
 		}
-	A[6][6] = x66 - x26 + x6out + x6in + x6sup;
+	A[6][6] = x66 - x26 + x6out + x6sup;
 	A[6][7] = x67;
 	//A[6][8] = x68;
 	//A[6][9] = x69;
@@ -312,14 +310,14 @@ void Moisture::mass_cond_bal(double* node_temps, weatherData weather,
 	if(mCeiling < 0) {
 		A[7][7] += (mAH - mRetAHoff) / RWATER / temperature[7] / airDensityRet;
 		A[7][6] = mRetLeak / RWATER / temperature[6] / airDensityAttic;
-		A[7][7] += (mRetReg + mRetAHoff + mErvHouse) / RWATER / weather.inTdb / airDensityHouse;
-		PWInit[7] = (mRetReg + mRetAHoff + mErvHouse) * PWin / RWATER / weather.inTdb / airDensityHouse;
+		A[7][7] += (mRetReg + mRetAHoff + mErvHouse) / RWATER / weather.houseTdb / airDensityHouse;
+		PWInit[7] = (mRetReg + mRetAHoff + mErvHouse) * PWhouse / RWATER / weather.houseTdb / airDensityHouse;
 		}
 	else {
 		A[7][7] += (mAH + mRetAHoff) / RWATER / temperature[7] / airDensityRet;
 		A[7][6] = (mRetLeak - mRetAHoff) / RWATER / temperature[6] / airDensityAttic;
-		A[7][7] += (mRetReg + mErvHouse) / RWATER / weather.inTdb / airDensityHouse;
-		PWInit[7] = (mRetReg + mErvHouse) * PWin / RWATER / weather.inTdb / airDensityHouse;
+		A[7][7] += (mRetReg + mErvHouse) / RWATER / weather.houseTdb / airDensityHouse;
+		PWInit[7] = (mRetReg + mErvHouse) * PWhouse / RWATER / weather.houseTdb / airDensityHouse;
 		}
 	PWInit[7] += volume[7] * PWOld[7] / RWATER / temperature[7] / timeStep - mRetOut * PWOut / RWATER / weather.dryBulb / airDensityOut;
 
@@ -330,7 +328,7 @@ void Moisture::mass_cond_bal(double* node_temps, weatherData weather,
 	if(mCeiling < 0) {
 		A[8][8] += (mSupReg + mSupLeak - mSupAHoff) / RWATER / weather.supplyTdb / airDensitySup;
 		A[8][6] = 0;
-		A[8][9] = mSupAHoff / RWATER / weather.inTdb / airDensityHouse;
+		A[8][9] = mSupAHoff / RWATER / weather.houseTdb / airDensityHouse;
 		}
 	else {
 		A[8][8] += (mSupReg + mSupLeak + mSupAHoff) / RWATER / weather.supplyTdb / airDensitySup;
@@ -340,21 +338,21 @@ void Moisture::mass_cond_bal(double* node_temps, weatherData weather,
 	PWInit[8] = volume[8] * PWOld[8] / RWATER / weather.supplyTdb / timeStep - latcap / 2501000;
 
 	//NODE 9 IS HOUSE AIR
-	A[9][9] = volume[9] / RWATER / weather.inTdb / timeStep + haHouse / weather.pressure;
+	A[9][9] = volume[9] / RWATER / weather.houseTdb / timeStep + haHouse / weather.pressure;
 	A[9][10] = -haHouse / weather.pressure;
 	if(mCeiling < 0) {
-		A[9][9] += (-mHouseOut - mRetReg - mCeiling - mRetAHoff - mSupAHoff) / RWATER / weather.inTdb / airDensityHouse;
+		A[9][9] += (-mHouseOut - mRetReg - mCeiling - mRetAHoff - mSupAHoff) / RWATER / weather.houseTdb / airDensityHouse;
 		A[9][6] = 0;
 		A[9][7] = 0;
 		A[9][8] = -mSupReg / RWATER / weather.supplyTdb / airDensitySup;
 		}
 	else {
-		A[9][9] += (-mHouseOut - mRetReg) / RWATER / weather.inTdb / airDensityHouse;
+		A[9][9] += (-mHouseOut - mRetReg) / RWATER / weather.houseTdb / airDensityHouse;
 		A[9][6] = -mCeiling / RWATER / temperature[6] / airDensityAttic;
 		A[9][7] = -mRetAHoff / RWATER / temperature[7] / airDensityRet;
 		A[9][8] = (-mSupReg - mSupAHoff) / RWATER / weather.supplyTdb / airDensitySup;
 		}
-	PWInit[9] = volume[9] * PWOld[9] / RWATER / weather.inTdb / timeStep + mHouseIn * PWOut / RWATER / weather.dryBulb / airDensityOut - dhMoistRemv + latload;
+	PWInit[9] = volume[9] * PWOld[9] / RWATER / weather.houseTdb / timeStep + mHouseIn * PWOut / RWATER / weather.dryBulb / airDensityOut - dhMoistRemv + latload;
 
 	//NODE 10 IS HOUSE MASS
 	A[10][9] = -haHouse / weather.pressure;
