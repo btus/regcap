@@ -317,9 +317,9 @@ void Moisture::mass_cond_bal(double* node_temps, weatherData weather,
 		A[7][7] += (mAH + mRetAHoff) / RWATER / temperature[7] / airDensityRet;
 		}
 	A[7][6] = mRetLeak / RWATER / temperature[6] / airDensityAttic;
-	PWInit[7] += volume[7] * PWOld[7] / RWATER / temperature[7] / timeStep
-					- mRetOut * PWOut / RWATER / weather.dryBulb / airDensityOut
-					+ mRetReg * PWhouse / RWATER / weather.houseTdb / airDensityHouse;
+	PWInit[7] = volume[7] * PWOld[7] / RWATER / temperature[7] / timeStep
+					+ mRetOut * PWOut / RWATER / weather.dryBulb / airDensityOut
+					- mRetReg * PWhouse / RWATER / weather.houseTdb / airDensityHouse;
 /*
 	//NODE 8 IS SUPPLY DUCT AIR
 	A[8][8] = volume[8] / RWATER / weather.supplyTdb / timeStep;
