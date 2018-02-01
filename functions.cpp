@@ -461,9 +461,8 @@ void sub_heat (
 			cpShingles = 1260;									// CP asphalt shingles
 			break;
 		case 5:			// prescriptive roof tile finish per Title 24 2016 Prescriptive Package A, CZ 10-15.
-			alpha5 = .8;
-			alpha3 = .8;
-			epsshingles = .75;
+			absorptivityRoof = .8;
+			emissivityRoof = .75;
 			Rshingles = .5;
 			denShingles = 50;
 			cpShingles = 880;										// CP for tile roof
