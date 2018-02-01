@@ -3341,10 +3341,10 @@ int main(int argc, char *argv[], char* envp[])
 					if(printMoistureFile) {
 						moistureFile << weather.relativeHumidity << "\t" << weather.dryBulb - C_TO_K;
 						for(int i=0; i<6; i++) {   // humidity model wood nodes
-							moistureFile << "\t" << moisture_nodes.moistureContent[i] << "\t" << moisture_nodes.temperature[i] - C_TO_K;
+							moistureFile << "\t" << moisture_nodes.moistureContent[i] << "\t" << moisture_nodes.PW[i] << "\t" << moisture_nodes.temperature[i] - C_TO_K;
 							}
 						for(int i=6; i<MOISTURE_NODES; i++) {   // humidity model air nodes
-							moistureFile << "\t" << moisture_nodes.moistureContent[i] << "\t" << moisture_nodes.temperature[i] - C_TO_K;
+							moistureFile << "\t" << moisture_nodes.moistureContent[i] << "\t" << moisture_nodes.PW[i] << "\t" << moisture_nodes.temperature[i] - C_TO_K;
 							}
 						moistureFile << endl;
 						//moistureFile << weather.humidityRatio << "\t" << HRHouse << "\t" << HRAttic << "\t" << HRSupply << "\t" << HRReturn << "\t";
