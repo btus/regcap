@@ -459,6 +459,14 @@ void sub_heat (
 			denShingles = 1100 * 2 * .005;					// asphalt shingles (factor of two because they overlap)
 			cpShingles = 1260;									// CP asphalt shingles
 			break;
+		case 5:			// prescriptive roof tile finish per Title 24 2016 Prescriptive Package A, CZ 10-15.
+			alpha5 = .8;
+			alpha3 = .8;
+			epsshingles = .75;
+			Rshingles = .5;
+			denShingles = 50;
+			cpShingles = 880;										// CP for tile roof
+			break;
 	}
 
 	// Ducts
