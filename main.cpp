@@ -733,7 +733,7 @@ int main(int argc, char *argv[], char* envp[])
 				cout << "Cannot open output file: " << outputFileName << endl;
 				return 1; 
 			}
-			outputFile << "Time\tMin\twindSpeed\ttempOut\ttempHouse\tsetpoint\ttempAttic\ttempSupply\ttempReturn\tAHflag\tAHpower\tcompressPower\tmechVentPower\tHR\tSHR\tMcoil\thousePress\tQhouse\tACH\tACHflue\tventSum\tnonRivecVentSum\tfan1\tfan2\tfan3\tfan4\tfan5\tfan6\tfan7\trivecOn\trelExp\trelDose\toccupied\tHROUT\tHRattic\tHRreturn\tHRsupply\tHRhouse\tRHhouse\tRHind60\tRHind70\tHumidityIndex\tDHcondensate\tPollutantConc\tmoldIndex_South\tmoldIndex_North\tmoldIndex_BulkFraming\tmHouseIN\tmHouseOUT\tmCeiling\tmatticenvin\tmatticenvout" << endl; 
+			outputFile << "Time\tMin\twindSpeed\ttempOut\ttempHouse\tsetpoint\ttempAttic\ttempSupply\ttempReturn\tAHflag\tAHpower\tcompressPower\tmechVentPower\tHR\tSHR\tMcoil\thousePress\tQhouse\tACH\tACHflue\tventSum\tnonRivecVentSum\tfan1\tfan2\tfan3\tfan4\tfan5\tfan6\tfan7\trivecOn\trelExp\trelDose\toccupied\tHROUT\tHRattic\tHRreturn\tHRsupply\tHRhouse\tRHhouse\tRHind60\tRHind70\tHumidityIndex\tDHcondensate\tPollutantConc\tmoldIndex_South\tmoldIndex_North\tmoldIndex_BulkFraming\tmHouseIN\tmHouseOUT\tmCeilingAll\tmatticenvin\tmatticenvout\tmSupReg\tmRetReg\tqHouseIN\tqHouseOUT\tqCeilingAll\tqAtticIN\tqAtticOUT\tqSupReg\tqRetReg" << endl; 
 		}
 		
 		// ================== OPEN WEATHER FILE FOR INPUT ========================================
@@ -1034,6 +1034,13 @@ int main(int argc, char *argv[], char* envp[])
 		double houseACH = 0;
 		double flueACH = 0;
 		double ventSum = 0;
+		
+		double qHouseIN = 0; //Airflow into house
+		double qHouseOUT = 0; //Airflow out of house
+		double qAtticIN = 0; //Airflow into attic
+		double qAtticOUT = 0; //Airflow out of attic
+		double qCeiling = 0; //Airflow through ceiling, positive or negative
+		
 		//double ventsumD = 0;
 		//double ventSumOUTD = 0;
 		//double ventSumIND = 0;
@@ -3092,6 +3099,19 @@ int main(int argc, char *argv[], char* envp[])
 					qHouse = abs(mHouse / airDensityIN);			// Air flow rate through the house [m^3/s]. Brennan. These suddenly compute to 0, at minute 228,044, which means mHouse went to 0. I think. We get very werid flucations in house pressure and qHouse leading up to the error, where pressure cycles minute-by-minute between 4 and almost 0, and then eventually evaluates to actual 0.
 					houseACH = qHouse / houseVolume * 3600;			// Air Changes per Hour for the whole house [h-1]. Brennan. These suddnely compute to 0, at minute 228,044
 
+					//Airflows into and out of the house, attic, ducts and ceiling.
+					qHouseIN = mHouseIN / airDensityOUT;
+					qHouseOUT = mHouseOUT / airDensityIN;
+					qAtticIN = matticenvin / airDensityOUT;
+					qAtticOUT = matticenvout / airDensityATTIC;
+					//qSupLeak = mSupLeak / airDensitySUP; //already calculated in the AHU section.
+					//qRetLeak = mRetLeak / airDensityATTIC;
+					if(mCeiling >= 0) { // flow from attic to house.
+						qCeiling = (mCeiling + mSupAHoff + mRetAHoff) / airDensityATTIC;
+					} else {
+						qCeiling = (mCeiling + mSupAHoff + mRetAHoff) / airDensityIN;
+					}
+					
 					if(mFlue < 0)												// mFlue is the mass airflow through all of the flues combined (if any)
 						flueACH = (mFlue / airDensityIN) / houseVolume * 3600;	// Flow from house air to outside
 					else
@@ -3099,7 +3119,7 @@ int main(int argc, char *argv[], char* envp[])
 
 
 					//// ************** Brennan Less. Calculating the dry and moist air loads due to air exchange.  
-						if(mCeiling >= 0) { // flow from attic to house. Brennan, create new variable. Include envelope, ceiling and air handler off flows, but NOT mSupReg or mRetReg
+				if(mCeiling >= 0) { // flow from attic to house. Brennan, create new variable. Include envelope, ceiling and air handler off flows, but NOT mSupReg or mRetReg
 					//mHouseIN = mIN - mCeiling - mSupReg - mSupAHoff - mRetAHoff; //Above, all these things have been added into mIN or mOUT, depending on flow directions.
 					mCeilingIN = mCeiling + mSupAHoff + mRetAHoff; //Do we want to include duct leakage in ventilation loads? If so, we need another term, including supply/reutrn temps. 
 					//mHouseOUT = mOUT - mRetReg; //Why do we add them in above and then subtract them out here. I DO NOT understand. 
@@ -3311,7 +3331,8 @@ int main(int argc, char *argv[], char* envp[])
 						outputFile << rivecOn << "\t" << relExp << "\t" << relDose << "\t";
 						outputFile << occupied[weekend][hour] << "\t"; 
 						outputFile << weather.humidityRatio << "\t" << HRAttic << "\t" << HRReturn << "\t" << HRSupply << "\t" << HRHouse << "\t" << RHHouse << "\t" << RHind60 << "\t" << RHind70 << "\t" << HumidityIndex << "\t" << dh.condensate << "\t" << indoorConc << "\t" << moldIndex_South << "\t" << moldIndex_North << "\t" << moldIndex_BulkFraming << "\t";
-						outputFile << mHouseIN << "\t" << mHouseOUT << "\t" << mCeiling << "\t" << matticenvin << "\t" << matticenvout << endl;
+						outputFile << mHouseIN << "\t" << mHouseOUT << "\t" << (mCeiling + mSupAHoff + mRetAHoff) << "\t" << matticenvin << "\t" << matticenvout << "\t" << mSupReg << "\t" << mRetReg << "\t";
+						outputFile << qHouseIN << "\t" << qHouseOUT << "\t" << qCeiling << "\t" << qAtticIN << "\t" << qAtticOUT << "\t" << qSupReg << "\t" << qRetReg << endl;
 						//outputFile << mHouse << "\t" << mHouseIN << "\t" << mHouseOUT << mCeiling << "\t" << mHouseIN << "\t" << mHouseOUT << "\t" << mSupReg << "\t" << mRetReg << "\t" << mSupAHoff << "\t" ;
 						//outputFile << mRetAHoff << "\t" << mHouse << "\t"<< flag << "\t"<< AIM2 << "\t" << AEQaim2FlowDiff << "\t" << qFanFlowRatio << "\t" << C << endl; //Breann/Yihuan added these for troubleshooting
 					}
