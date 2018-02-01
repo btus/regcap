@@ -16,6 +16,7 @@ const double densityWood = 530.;       // Bulk wood density - douglas fir (kg/m3
 const double densitySheathing = 650.;  // Shething wood density - OSB (kg/m3)
 const double thickSheathing = .015;		// thickness of sheathing material (m)
 const double emissivityWood = .9;      // emissivity of building materials
+const double emissivityRadiantBarrier = 0.05; //Emissivity of a radiant barrier, per T24 2016 mandatory requirements.
 const double kWood = 0.15;					// check with Iain about this
 
 #endif

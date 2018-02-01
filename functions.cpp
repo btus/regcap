@@ -241,16 +241,24 @@ double sub_moldIndex(
 	if(SurfTemp <= 0 || SurfRH <= RH_critical) { //Period of declining MoldIndex.
 	
 		Time_decl += 1; //Increment the Time_decl counter. Change of conditions from favorable to unfavorable.
-	
-		if(Time_decl <= 6) {
-			MoldIndex_delta = -0.00133 * k3;
-		} else if (Time_decl > 6 && Time_decl <= 24) {
-			MoldIndex_delta = 0;	
-		} else if(Time_decl > 24) {
-			MoldIndex_delta = -0.000667 * k3;
-		}	
 		
-	} else if(SurfTemp > 0 && SurfRH > RH_critical) { //Period of increasing MoldIndex.
+		if(Time_decl > 24) {
+			MoldIndex_delta = -0.000667 * k3;
+		} else if (Time_decl <= 6){
+			MoldIndex_delta = -0.00133 * k3;
+		} else if (Time_decl > 6 && Time_decl <= 24){
+			MoldIndex_delta = 0;
+		}
+		
+// 		if(Time_decl <= 6) {
+// 			MoldIndex_delta = -0.00133 * k3;
+// 		} else if (Time_decl > 6 && Time_decl <= 24) {
+// 			MoldIndex_delta = 0;	
+// 		} else if(Time_decl > 24) {
+// 			MoldIndex_delta = -0.000667 * k3;
+// 		}	
+		
+	} else { // if(SurfTemp > 0 && SurfRH > RH_critical) { //Period of increasing MoldIndex. Commented this statement out 2018-01-31, to align with python code that "works".
 		Time_decl = 0;
 		MoldIndex_delta = (k1 * k2)/(168 * exp(-0.68 * log(SurfTemp) - 13.9 * log(SurfRH) + 0.14 * W + 66.02)); //Equation 6-4a
 	}
@@ -368,7 +376,8 @@ void sub_heat (
 	double& innerSouthH,
 	double& bulkH,
 	double bulkArea,
-	double sheathArea
+	double sheathArea,
+	int radiantBarrier
 ) {
 	vector<double> b;
 	vector< vector<double> > A;
@@ -388,6 +397,7 @@ void sub_heat (
 	double TGROUND;
 	int heatIterations;
 	int roofInNorth, roofInSouth, attic_nodes;
+	double emissivitySheathing; //emissivity of the sheathing, depends on radiantBarrier (1=yes, 0=no). 
 
 	// Node 0 is the Attic Air
 	// Node 1 is the Inner North Sheathing
@@ -418,6 +428,14 @@ void sub_heat (
       roofInSouth = 3;
       attic_nodes = 16;
    }
+   
+   //Set roof sheathing emissivity based on presence of radiant barrier.
+   if(radiantBarrier == 1){
+   		emissivitySheathing = emissivityRadiantBarrier;
+   } else {
+   		emissivitySheathing = emissivityWood;
+   }
+   
    // set size of equation vectors to number of nodes (A contains both)
    A.resize(attic_nodes, vector<double>(attic_nodes+1, 0));
    b.resize(attic_nodes, 0);
@@ -450,6 +468,13 @@ void sub_heat (
 			Rshingles = .078;										// ASHRAE Fundamentals 2011 pg 26.7
 			denShingles = 1100 * 2 * .005;					// asphalt shingles (factor of two because they overlap)
 			cpShingles = 1260;									// CP asphalt shingles
+			break;
+		case 5:			// prescriptive roof tile finish per Title 24 2016 Prescriptive Package A, CZ 10-15.
+			absorptivityRoof = .8;
+			emissivityRoof = .75;
+			Rshingles = .5;
+			denShingles = 50;
+			cpShingles = 880;										// CP for tile roof
 			break;
 	}
 
@@ -635,12 +660,13 @@ void sub_heat (
 		viewFactor[3][1] = (1 - viewFactor[3][7] - viewFactor[3][10] - viewFactor[3][13]);
 
 		// North Sheathing
-		rtCoef[roofInNorth][10] = radTranCoef(emissivityWood, tempOld[roofInNorth], tempOld[10], viewFactor[1][10], area[1]/(area[10]/3));
-		rtCoef[roofInNorth][13] = radTranCoef(emissivityWood, tempOld[roofInNorth], tempOld[13], viewFactor[1][13], area[1]/(area[13]/3));
-
+		rtCoef[roofInNorth][10] = radTranCoef(emissivitySheathing, tempOld[roofInNorth], tempOld[10], viewFactor[1][10], area[1]/(area[10]/3));
+		rtCoef[roofInNorth][13] = radTranCoef(emissivitySheathing, tempOld[roofInNorth], tempOld[13], viewFactor[1][13], area[1]/(area[13]/3));
+		
 		// South Sheathing
-		rtCoef[roofInSouth][10] = radTranCoef(emissivityWood, tempOld[roofInSouth], tempOld[10], viewFactor[3][10], area[3]/(area[10]/3));
-		rtCoef[roofInSouth][13] = radTranCoef(emissivityWood, tempOld[roofInSouth], tempOld[13], viewFactor[3][13], area[3]/(area[13]/3));
+		rtCoef[roofInSouth][10] = radTranCoef(emissivitySheathing, tempOld[roofInSouth], tempOld[10], viewFactor[3][10], area[3]/(area[10]/3));
+		rtCoef[roofInSouth][13] = radTranCoef(emissivitySheathing, tempOld[roofInSouth], tempOld[13], viewFactor[3][13], area[3]/(area[13]/3));
+
 
 		// Return Ducts (note, No radiative exchange w/ supply ducts)
 		rtCoef[10][roofInSouth] = radTranCoef(emissivityWood, tempOld[10], tempOld[roofInSouth], viewFactor[10][3], area[10]/area[3]);
@@ -650,14 +676,15 @@ void sub_heat (
 		rtCoef[13][roofInSouth] = radTranCoef(emissivityWood, tempOld[13], tempOld[roofInSouth], viewFactor[13][3], area[13]/area[3]);
 		rtCoef[13][roofInNorth] = radTranCoef(emissivityWood, tempOld[13], tempOld[roofInNorth], viewFactor[13][1], area[13]/area[1]);
 	}
+	
 
 	// North Sheathing
-	rtCoef[roofInNorth][roofInSouth] = radTranCoef(emissivityWood, tempOld[roofInNorth], tempOld[roofInSouth], viewFactor[1][3], area[1]/area[3]);
-	rtCoef[roofInNorth][7] = radTranCoef(emissivityWood, tempOld[roofInNorth], tempOld[7], viewFactor[1][7], area[1]/area[7]);
-
+	rtCoef[roofInNorth][roofInSouth] = radTranCoef(emissivitySheathing, tempOld[roofInNorth], tempOld[roofInSouth], viewFactor[1][3], area[1]/area[3]);
+	rtCoef[roofInNorth][7] = radTranCoef(emissivitySheathing, tempOld[roofInNorth], tempOld[7], viewFactor[1][7], area[1]/area[7]);
+	
 	// South Sheathing
-	rtCoef[roofInSouth][roofInNorth] = radTranCoef(emissivityWood, tempOld[roofInSouth], tempOld[roofInNorth], viewFactor[3][1], area[3]/area[1]);
-	rtCoef[roofInSouth][7] = radTranCoef(emissivityWood, tempOld[roofInSouth], tempOld[7], viewFactor[3][7], area[3]/area[7]);
+	rtCoef[roofInSouth][roofInNorth] = radTranCoef(emissivitySheathing, tempOld[roofInSouth], tempOld[roofInNorth], viewFactor[3][1], area[3]/area[1]);
+	rtCoef[roofInSouth][7] = radTranCoef(emissivitySheathing, tempOld[roofInSouth], tempOld[7], viewFactor[3][7], area[3]/area[7]);
 
 	// Attic Floor
 	rtCoef[7][roofInSouth] = radTranCoef(emissivityWood, tempOld[7], tempOld[roofInSouth], viewFactor[7][3], area[7]/area[3]);
