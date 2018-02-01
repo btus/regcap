@@ -733,7 +733,7 @@ int main(int argc, char *argv[], char* envp[])
 				cout << "Cannot open output file: " << outputFileName << endl;
 				return 1; 
 			}
-			outputFile << "Time\tMin\twindSpeed\ttempOut\ttempHouse\tsetpoint\ttempAttic\ttempSupply\ttempReturn\tAHflag\tAHpower\tcompressPower\tmechVentPower\tHR\tSHR\tMcoil\thousePress\tQhouse\tACH\tACHflue\tventSum\tnonRivecVentSum\tfan1\tfan2\tfan3\tfan4\tfan5\tfan6\tfan7\trivecOn\trelExp\trelDose\toccupied\tHROUT\tHRattic\tHRreturn\tHRsupply\tHRhouse\tRHhouse\tRHind60\tRHind70\tHumidityIndex\tDHcondensate\tPollutantConc\tmoldIndex_South\tmoldIndex_North\tmoldIndex_BulkFraming" << endl; 
+			outputFile << "Time\tMin\twindSpeed\ttempOut\ttempHouse\tsetpoint\ttempAttic\ttempSupply\ttempReturn\tAHflag\tAHpower\tcompressPower\tmechVentPower\tHR\tSHR\tMcoil\thousePress\tQhouse\tACH\tACHflue\tventSum\tnonRivecVentSum\tfan1\tfan2\tfan3\tfan4\tfan5\tfan6\tfan7\trivecOn\trelExp\trelDose\toccupied\tHROUT\tHRattic\tHRreturn\tHRsupply\tHRhouse\tRHhouse\tRHind60\tRHind70\tHumidityIndex\tDHcondensate\tPollutantConc\tmoldIndex_South\tmoldIndex_North\tmoldIndex_BulkFraming\tmHouseIN\tmHouseOUT\tmCeiling\tmatticenvin\tmatticenvout" << endl; 
 		}
 		
 		// ================== OPEN WEATHER FILE FOR INPUT ========================================
@@ -1012,10 +1012,8 @@ int main(int argc, char *argv[], char* envp[])
 		double chargecapw = 0;
 		double chargeeerw = 0;
 		double Mcoilprevious = 0;
-		double matticenvout = 0;
 		double mCeiling = 0;
 		//double mretahaoff;
-		double matticenvin = 0;
 		double mHouseIN = 0;
 		double mCeilingIN = 0; //Ceiling mass flows, not including register flows. Brennan added for ventilation load calculations.
 		double mHouseOUT = 0;
@@ -1029,6 +1027,8 @@ int main(int argc, char *argv[], char* envp[])
 		double Patticint = 0;
 		double mAtticIN = 0;
 		double mAtticOUT = 0;
+		double matticenvin = 0; //mass flow from outside into the attic
+		double matticenvout = 0; //mass flow from attic to outside
 		double mHouse = 0;
 		double qHouse = 0;
 		double houseACH = 0;
@@ -3310,8 +3310,8 @@ int main(int argc, char *argv[], char* envp[])
 						outputFile << fan[0].on << "\t" << fan[1].on << "\t" << fan[2].on << "\t" << fan[3].on << "\t" << fan[4].on << "\t" << fan[5].on << "\t" << fan[6].on << "\t";
 						outputFile << rivecOn << "\t" << relExp << "\t" << relDose << "\t";
 						outputFile << occupied[weekend][hour] << "\t"; 
-						outputFile << weather.humidityRatio << "\t" << HRAttic << "\t" << HRReturn << "\t" << HRSupply << "\t" << HRHouse << "\t" << RHHouse << "\t" << RHind60 << "\t" << RHind70 << "\t" << HumidityIndex << "\t" << dh.condensate << "\t" << indoorConc << "\t" << moldIndex_South << "\t" << moldIndex_North << "\t" << moldIndex_BulkFraming << endl;
-						//outputFile << mHouse << "\t" << mHouseIN << "\t" << mHouseOUT << "\t" << mIN << "\t" << mOUT << "\t" << mCeiling << "\t" << mSupReg << "\t" << mSupAHoff << "\t" << mRetAHoff << "\t" << mRetReg << "\t" << mFanCycler << "\t" << mFlue << "\t" << mFloor << "\t" << mAH << endl;
+						outputFile << weather.humidityRatio << "\t" << HRAttic << "\t" << HRReturn << "\t" << HRSupply << "\t" << HRHouse << "\t" << RHHouse << "\t" << RHind60 << "\t" << RHind70 << "\t" << HumidityIndex << "\t" << dh.condensate << "\t" << indoorConc << "\t" << moldIndex_South << "\t" << moldIndex_North << "\t" << moldIndex_BulkFraming << "\t";
+						outputFile << mHouseIN << "\t" << mHouseOUT << "\t" << mCeiling << "\t" << matticenvin << "\t" << matticenvout << endl;
 						//outputFile << mHouse << "\t" << mHouseIN << "\t" << mHouseOUT << mCeiling << "\t" << mHouseIN << "\t" << mHouseOUT << "\t" << mSupReg << "\t" << mRetReg << "\t" << mSupAHoff << "\t" ;
 						//outputFile << mRetAHoff << "\t" << mHouse << "\t"<< flag << "\t"<< AIM2 << "\t" << AEQaim2FlowDiff << "\t" << qFanFlowRatio << "\t" << C << endl; //Breann/Yihuan added these for troubleshooting
 					}
