@@ -3374,8 +3374,13 @@ int main(int argc, char *argv[], char* envp[])
 				}
 
 				// Mold Index Calculations per ASHRAE 160, BDL 12/2016
+				
 				// Sheathing surfaces are Sensitive (1) and bulk wood is Very Sensitive (0)
-				// Should these be using minute or avg hourly data?
+					//int SensitivityClass, //Material sensitivity class, determined in Table 6.1.1. 0 = VerySensitive, 1 = Sensitive.
+					//double MoldIndex_old, //MoldIndex from the prior hour.
+					//double SurfTemp_K, //Material surface temperature, K.
+					//double SurfPw,	//Material surface partial vapor pressure, Pa
+					//int& Time_decl //MoldIndex decline time, hr
 				
 				moldIndex_South = sub_moldIndex(1, moldIndex_South, b[3], moisture_nodes.PW[0], Time_decl_South); //South Roof Sheathing Surface Node						
 				moldIndex_North = sub_moldIndex(1, moldIndex_North, b[1], moisture_nodes.PW[1], Time_decl_North); //North Roof Sheathing Surface Node

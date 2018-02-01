@@ -241,16 +241,24 @@ double sub_moldIndex(
 	if(SurfTemp <= 0 || SurfRH <= RH_critical) { //Period of declining MoldIndex.
 	
 		Time_decl += 1; //Increment the Time_decl counter. Change of conditions from favorable to unfavorable.
-	
-		if(Time_decl <= 6) {
-			MoldIndex_delta = -0.00133 * k3;
-		} else if (Time_decl > 6 && Time_decl <= 24) {
-			MoldIndex_delta = 0;	
-		} else if(Time_decl > 24) {
-			MoldIndex_delta = -0.000667 * k3;
-		}	
 		
-	} else if(SurfTemp > 0 && SurfRH > RH_critical) { //Period of increasing MoldIndex.
+		if(Time_decl > 24) {
+			MoldIndex_delta = -0.000667 * k3;
+		} else if (Time_decl <= 6){
+			MoldIndex_delta = -0.00133 * k3;
+		} else if (Time_decl > 6 && Time_decl <= 24){
+			MoldIndex_delta = 0;
+		}
+		
+// 		if(Time_decl <= 6) {
+// 			MoldIndex_delta = -0.00133 * k3;
+// 		} else if (Time_decl > 6 && Time_decl <= 24) {
+// 			MoldIndex_delta = 0;	
+// 		} else if(Time_decl > 24) {
+// 			MoldIndex_delta = -0.000667 * k3;
+// 		}	
+		
+	} else { // if(SurfTemp > 0 && SurfRH > RH_critical) { //Period of increasing MoldIndex. Commented this statement out 2018-01-31, to align with python code that "works".
 		Time_decl = 0;
 		MoldIndex_delta = (k1 * k2)/(168 * exp(-0.68 * log(SurfTemp) - 13.9 * log(SurfRH) + 0.14 * W + 66.02)); //Equation 6-4a
 	}
