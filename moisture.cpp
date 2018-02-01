@@ -565,7 +565,7 @@ void Moisture::cond_bal(int pressure) {
 				//hasCondensedMass[i] = false;
 				if(PW[i] > PWSaturation[i]) {
 				   //cout << "Air node " << i << " > saturation: " << PW[i] << "> " << PWSaturation[i] << endl;
-            	PW[i] = PWSaturation[i];
+            	//PW[i] = PWSaturation[i];
 				   saturated_minutes[i]++;
             	}
             }

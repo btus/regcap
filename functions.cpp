@@ -397,6 +397,7 @@ void sub_heat (
 	double TGROUND;
 	int heatIterations;
 	int roofInNorth, roofInSouth, attic_nodes;
+	double emissivitySheathing; //emissivity of the sheathing, depends on radiantBarrier (1=yes, 0=no). 
 
 	// Node 0 is the Attic Air
 	// Node 1 is the Inner North Sheathing
@@ -427,6 +428,14 @@ void sub_heat (
       roofInSouth = 3;
       attic_nodes = 16;
    }
+   
+   //Set roof sheathing emissivity based on presence of radiant barrier.
+   if(radiantBarrier == 1){
+   		emissivitySheathing = emissivityRadiantBarrier;
+   } else {
+   		emissivitySheathing = emissivityWood;
+   }
+   
    // set size of equation vectors to number of nodes (A contains both)
    A.resize(attic_nodes, vector<double>(attic_nodes+1, 0));
    b.resize(attic_nodes, 0);
@@ -650,22 +659,14 @@ void sub_heat (
 		viewFactor[1][3] = (1 - viewFactor[1][7] - viewFactor[1][10] - viewFactor[1][13]);
 		viewFactor[3][1] = (1 - viewFactor[3][7] - viewFactor[3][10] - viewFactor[3][13]);
 
-		//Adding radiant barrier option to roof deck radiation heat transfer calculations. Brennan. 2018-02-01
-		if(radiantBarrier == 1){
-			// North Sheathing
-			rtCoef[roofInNorth][10] = radTranCoef(emissivityRadiantBarrier, tempOld[roofInNorth], tempOld[10], viewFactor[1][10], area[1]/(area[10]/3));
-			rtCoef[roofInNorth][13] = radTranCoef(emissivityRadiantBarrier, tempOld[roofInNorth], tempOld[13], viewFactor[1][13], area[1]/(area[13]/3));
-			// South Sheathing
-			rtCoef[roofInSouth][10] = radTranCoef(emissivityRadiantBarrier, tempOld[roofInSouth], tempOld[10], viewFactor[3][10], area[3]/(area[10]/3));
-			rtCoef[roofInSouth][13] = radTranCoef(emissivityRadiantBarrier, tempOld[roofInSouth], tempOld[13], viewFactor[3][13], area[3]/(area[13]/3));
+		// North Sheathing
+		rtCoef[roofInNorth][10] = radTranCoef(emissivitySheathing, tempOld[roofInNorth], tempOld[10], viewFactor[1][10], area[1]/(area[10]/3));
+		rtCoef[roofInNorth][13] = radTranCoef(emissivitySheathing, tempOld[roofInNorth], tempOld[13], viewFactor[1][13], area[1]/(area[13]/3));
 		
-		} else {
-			rtCoef[roofInNorth][10] = radTranCoef(emissivityWood, tempOld[roofInNorth], tempOld[10], viewFactor[1][10], area[1]/(area[10]/3));
-			rtCoef[roofInNorth][13] = radTranCoef(emissivityWood, tempOld[roofInNorth], tempOld[13], viewFactor[1][13], area[1]/(area[13]/3));
-			// South Sheathing
-			rtCoef[roofInSouth][10] = radTranCoef(emissivityWood, tempOld[roofInSouth], tempOld[10], viewFactor[3][10], area[3]/(area[10]/3));
-			rtCoef[roofInSouth][13] = radTranCoef(emissivityWood, tempOld[roofInSouth], tempOld[13], viewFactor[3][13], area[3]/(area[13]/3));
-		}
+		// South Sheathing
+		rtCoef[roofInSouth][10] = radTranCoef(emissivitySheathing, tempOld[roofInSouth], tempOld[10], viewFactor[3][10], area[3]/(area[10]/3));
+		rtCoef[roofInSouth][13] = radTranCoef(emissivitySheathing, tempOld[roofInSouth], tempOld[13], viewFactor[3][13], area[3]/(area[13]/3));
+
 
 		// Return Ducts (note, No radiative exchange w/ supply ducts)
 		rtCoef[10][roofInSouth] = radTranCoef(emissivityWood, tempOld[10], tempOld[roofInSouth], viewFactor[10][3], area[10]/area[3]);
@@ -676,24 +677,15 @@ void sub_heat (
 		rtCoef[13][roofInNorth] = radTranCoef(emissivityWood, tempOld[13], tempOld[roofInNorth], viewFactor[13][1], area[13]/area[1]);
 	}
 	
+
+	// North Sheathing
+	rtCoef[roofInNorth][roofInSouth] = radTranCoef(emissivitySheathing, tempOld[roofInNorth], tempOld[roofInSouth], viewFactor[1][3], area[1]/area[3]);
+	rtCoef[roofInNorth][7] = radTranCoef(emissivitySheathing, tempOld[roofInNorth], tempOld[7], viewFactor[1][7], area[1]/area[7]);
 	
-	if(radiantBarrier == 1){
-		// North Sheathing
-		rtCoef[roofInNorth][roofInSouth] = radTranCoef(emissivityRadiantBarrier, tempOld[roofInNorth], tempOld[roofInSouth], viewFactor[1][3], area[1]/area[3]);
-		rtCoef[roofInNorth][7] = radTranCoef(emissivityRadiantBarrier, tempOld[roofInNorth], tempOld[7], viewFactor[1][7], area[1]/area[7]);
-		// South Sheathing
-		rtCoef[roofInSouth][roofInNorth] = radTranCoef(emissivityRadiantBarrier, tempOld[roofInSouth], tempOld[roofInNorth], viewFactor[3][1], area[3]/area[1]);
-		rtCoef[roofInSouth][7] = radTranCoef(emissivityRadiantBarrier, tempOld[roofInSouth], tempOld[7], viewFactor[3][7], area[3]/area[7]);
-	
-	} else {
-		// North Sheathing
-		rtCoef[roofInNorth][roofInSouth] = radTranCoef(emissivityWood, tempOld[roofInNorth], tempOld[roofInSouth], viewFactor[1][3], area[1]/area[3]);
-		rtCoef[roofInNorth][7] = radTranCoef(emissivityWood, tempOld[roofInNorth], tempOld[7], viewFactor[1][7], area[1]/area[7]);
-		// South Sheathing
-		rtCoef[roofInSouth][roofInNorth] = radTranCoef(emissivityWood, tempOld[roofInSouth], tempOld[roofInNorth], viewFactor[3][1], area[3]/area[1]);
-		rtCoef[roofInSouth][7] = radTranCoef(emissivityWood, tempOld[roofInSouth], tempOld[7], viewFactor[3][7], area[3]/area[7]);
-	}
-	
+	// South Sheathing
+	rtCoef[roofInSouth][roofInNorth] = radTranCoef(emissivitySheathing, tempOld[roofInSouth], tempOld[roofInNorth], viewFactor[3][1], area[3]/area[1]);
+	rtCoef[roofInSouth][7] = radTranCoef(emissivitySheathing, tempOld[roofInSouth], tempOld[7], viewFactor[3][7], area[3]/area[7]);
+
 	// Attic Floor
 	rtCoef[7][roofInSouth] = radTranCoef(emissivityWood, tempOld[7], tempOld[roofInSouth], viewFactor[7][3], area[7]/area[3]);
 	rtCoef[7][roofInNorth] = radTranCoef(emissivityWood, tempOld[7], tempOld[roofInNorth], viewFactor[7][1], area[7]/area[1]);
