@@ -702,6 +702,8 @@ void sub_heat (
 		A[0][10] = -htCoef[10] * area[10] / 2;
 		A[0][13] = -htCoef[13] * area[13] / 2;
 
+//cout << "mRetLeak:" << mRetLeak << " matticenvout:" << matticenvout << " matticenvin:" << matticenvin << " mCeiling:" << mCeiling;
+//cout << "  mSupAHoff:" << mSupAHoff << " mRetAHoff:" << mRetAHoff << " mSupLeak:" << mSupLeak << endl;
 		// NODE 1 IS INSIDE NORTH SHEATHING
    	if(roofIntRval > 0) {
          A[1][1] = heatCap[1] / dtau + uVal[14] * area[1] + area[1] * uVal[1];

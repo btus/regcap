@@ -2384,6 +2384,8 @@ int main(int argc, char *argv[], char* envp[])
 
 					if(minuteYear > (365 * 1440))
 						break;
+					//if(minuteYear > 9323)
+					//	exit(0);
 				}     // end of minute loop
 				if (weatherFile.eof())
 					break;
