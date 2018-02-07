@@ -614,7 +614,6 @@ int main(int argc, char *argv[], char* envp[])
 		double qAHcorr = 1.62 - .62 * qAH_cfm / (400 * capacityraw) + .647 * log(qAH_cfm / (400 * capacityraw));	
 
 		// For RIVEC calculations
-		int peakFlag = 0;						// Peak flag (0 or 1) prevents two periods during same day
 		int rivecFlag = 0;					// Dose controlled ventilation (RIVEC) flag 0 = off, 1 = use rivec (mainly for HRV/ERV control)
 		double qRivec = 1.0;					// Airflow rate of RIVEC fan for max allowed dose and exposure [L/s]
 		// int numFluesActual = numFlues;	// numFluesActual used to remember the number of flues for when RIVEC blocks them off as part of a hybrid ventilation strategy
@@ -1085,7 +1084,6 @@ int main(int argc, char *argv[], char* envp[])
 		// =================================================================
 		for(int day = 1; day <= 365; day++) {
 			cout << "\rDay = " << day << flush;
-			peakFlag = 0;
 
 			dailyAverageTemp = dailyCumulativeTemp / 1440;
 			averageTemp.push_back (dailyAverageTemp); //provides the prior day's average temperature...need to do something for day one
@@ -1119,42 +1117,19 @@ int main(int argc, char *argv[], char* envp[])
 			double timeCorrection = equationOfTime / 60 + (longitude - 15 * timeZone) / 15.0;
 			// month used for humidity control.
 			int month;
-			if(day <= 31) {
-				month = 1;
-			}
-			if(day > 31 && day <= 59) {
-				month = 2;
-			}
-			if(day > 60 && day <= 90) {
-				month = 3;
-			}
-			if(day > 91 && day <= 120) {
-				month = 4;
-			}
-			if(day > 121 && day <= 151) {
-				month = 5;
-			}
-			if(day > 152 && day <= 181) {
-				month = 6;
-			}
-			if(day > 182 && day <= 212) {
-				month = 7;
-			}
-			if(day > 213 && day <= 243) {
-				month = 8;
-			}
-			if(day > 244 && day <= 273) {
-				month = 9;
-			}
-			if(day > 274 && day <= 304) {
-				month = 10;
-			}
-			if(day > 305 && day <= 334) {
-				month = 11;
-			}
-			if(day > 335) {
-				month = 12;
-			}
+			if(day <= 31)       month = 1;
+			else if(day <= 59)  month = 2;
+			else if(day <= 90)  month = 3;
+			else if(day <= 120) month = 4;
+			else if(day <= 151) month = 5;
+			else if(day <= 181) month = 6;
+			else if(day <= 212) month = 7;
+			else if(day <= 243) month = 8;
+			else if(day <= 273) month = 9;
+			else if(day <= 304) month = 10;
+			else if(day <= 334) month = 11;
+			else month = 12;
+
 			// =================================== HOUR LOOP ================================	
 			for(int hour = 0; hour < 24; hour++) {
 				AHminutes = 0;					// Resetting air handler operation minutes for this hour
@@ -1690,12 +1665,12 @@ int main(int argc, char *argv[], char* envp[])
 								}
 							}
 						}
-					}
+					//}
 
 
 					// [START] HRV's and ERV's===================================================================================================================================
 					// (Can be RIVEC controlled so after RIVEC algorithm decision)
-					for(int i=0; i < numFans; i++) {
+					//for(int i=0; i < numFans; i++) {
 
 						//Brennan. Stand-alone ERV MUST be entered two times in the input files, with half the fan power attributed to each. Same airflow, but one positive and one negative.
 
@@ -1789,13 +1764,13 @@ int main(int argc, char *argv[], char* envp[])
 								mERV_AH = 0;
 							}
 						}
-					}
+					//}
 					// [END] HRV's and ERV's =================================================================================================================================
 
 
 					// [START] Auxiliary Fan Controls ============================================================================================================
 
-					for(int i = 0; i < numFans; i++) {
+					//for(int i = 0; i < numFans; i++) {
 
 						if(fan[i].oper == 1 && OccContType > 1) {		// RIVEC controlled exhaust fan.
 							if(rivecOn == 1){
@@ -1995,13 +1970,16 @@ int main(int argc, char *argv[], char* envp[])
 
 							} 
 							
+						
+						}
+
+						// Moved this out of the fan loop above
 						if(nonRivecVentSumIN > nonRivecVentSumOUT){						//ventSum based on largest of inflow or outflow
 							nonRivecVentSum = nonRivecVentSumIN;
 						} else{
 							nonRivecVentSum = nonRivecVentSumOUT;			
 						}	
-						
-						}
+
 					//}
 					// [END] Auxiliary Fan Controls ========================================================================================================
 
