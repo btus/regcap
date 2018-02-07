@@ -125,22 +125,11 @@ int main(int argc, char *argv[], char* envp[])
 		string filterFileName = outPath + simName + ".fil";
 		string summaryFileName = outPath + simName + ".rc2";
 
-		// Declare structures
-		winDoor_struct winDoor[10] = {0};
-		fan_struct fan[10] = {0};
-		fan_struct atticFan[10] = {0};
-		pipe_struct Pipe[10] = {0};		
-		atticVent_struct atticVent[10] = {0};
-		soffit_struct soffit[4] = {0};
-		flue_struct flue[6] = {0};
 
 		//Declare arrays
 		double Sw[4];
-		double floorFraction[4]; 		// Fraction of leak in floor below wall 1, 2, 3 and 4
-		double wallFraction[4]; 		// Fraction of leak in wall 1, 2, 3 and 4
 		double Swinit[4][361];		
 		double mFloor[4] = {0,0,0,0};
-		double soffitFraction[5];
 		double wallCp[4] = {0,0,0,0};
 		double mechVentPower;
 		double b[ATTIC_NODES];
@@ -158,15 +147,19 @@ int main(int argc, char *argv[], char* envp[])
 		double envC;					// Envelope leakage coefficient
 		double envPressureExp;		// Envelope Pressure Exponent
 		double windSpeedMultiplier; //Wind speed multiplier (G), for 62.2-2016 infiltration calcs
-		double shelterFactor; 			//Shelter Factor, for 62.2-2016 infiltration calcs
-		double stackCoef; 				//Stack coefficient, for 62.2-2016 infiltration calcs
+		double shelterFactor; 		//Shelter Factor, for 62.2-2016 infiltration calcs
+		double stackCoef; 			//Stack coefficient, for 62.2-2016 infiltration calcs
 		double windCoef; 				//Wind coefficient, for 62.2-2016 infiltration calcs
 		double eaveHeight;			// Eave Height [m]
 		double R;						// Ceiling Floor Leakage Sum
 		double X;						// Ceiling Floor Leakage Difference
 		int numFlues;					// Number of flues/chimneys/passive stacks
+		flue_struct flue[6] = {0}; // Flue data structure
+		double wallFraction[4]; 	// Fraction of leak in wall 1, 2, 3 and 4
+		double floorFraction[4]; 	// Fraction of leak in floor below wall 1, 2, 3 and 4
 		double flueShelterFactor;	// Shelter factor at the top of the flue (1 if the flue is higher than surrounding obstacles
 		int numPipes;					// Number of passive vents but appears to do much the same as flues
+		pipe_struct Pipe[10] = {0};	// Pipe data structure	
 		double Hfloor;
 		string rowOrIsolated;		// House in a row (R) or isolated (any string other than R)
 		bool rowHouse;					// Flag that house is in a row
@@ -174,13 +167,13 @@ int main(int argc, char *argv[], char* envp[])
 		double floorArea;				// Conditioned floor area (m2)
 		double planArea;				// Footprint of house (m2)
 		double storyHeight;			// Story height (m)
-		//double houseLength;			// Long side of house (m) NOT USED IN CODE
-		//double houseWidth;			// Short side of house (m) NOT USED IN CODE
 		double uaWall;					// UA of opaque wall elements (walls and doors) (W/K)
 		double uaFloor;				// UA of floor or slab (no solar gain, not used for cooling load) (W/K)
 		double uaWindow;				// UA of windows for conductive gain (W/K)
 		int numWinDoor;
+		winDoor_struct winDoor[10] = {0}; // Window and Door data structure
 		int numFans;
+		fan_struct fan[10] = {0};	// Fan data structure
 		double windowWE;
 		double windowN;
 		double windowS;
@@ -191,14 +184,19 @@ int main(int argc, char *argv[], char* envp[])
 		double atticVolume;
 		double atticC;
 		double atticPressureExp;
+		double soffitFraction[5];
+		soffit_struct soffit[4] = {0};	// Soffit data structure
 		int numAtticVents;
+		atticVent_struct atticVent[10] = {0};	// Attic vent data structure
 		double roofPitch;
 		string roofPeakOrient;		// Roof peak orientation, D = perpendicular to front of house (Wall 1), P = parrallel to front of house
 		bool roofPeakPerpendicular;
 		double roofPeakHeight;
 		int numAtticFans;
+		fan_struct atticFan[10] = {0};	// Attic fan data structure
+		double roofIntRval;
+		double roofIntThick;
 		double roofExtRval;
-		double roofIntRval, roofIntThick;
 		double gableEndRval;
 		int roofType;
 		double ductLocation;			
@@ -218,7 +216,6 @@ int main(int argc, char *argv[], char* envp[])
 		double retn;
 		double supC;					// Supply leak flow coefficient
 		double retC;					// Return leak flow coefficient
-		//double buried;
 		double capacityraw;
 		double capacityari;
 		double EERari;
@@ -227,17 +224,16 @@ int main(int argc, char *argv[], char* envp[])
 		double fanPower_cooling0;	// Cooling fan power [W]
 		double charge;
 		double AFUE;				// Annual Fuel Utilization Efficiency for the furnace
-		//int bathroomSchedule;	// Bathroom schedule file to use (1, 2 or 3)
 		int numBedrooms;			// Number of bedrooms (for 62.2 target ventilation calculation)
 		int numStories;			// Number of stories in the building (for Nomalized Leakage calculation)
 		double weatherFactor;	// Weather Factor (w) (for infiltration calculation from ASHRAE 136)
 		int terrain;				// 1 = large city centres, 2 = urban and suburban, 3 = open terrain, 4 = open sea
+		double Aeq;					// 62.2-2016 Total Ventilation Rate, hr-1. 
+		int InfCalc; 				// Index value, 0 = Annual infiltration rate for exposure calcs, 1 = Real-time infiltration estimates for exposure calcs.
 		int Crawl;					// Is there a crawlspace - 1=crawlspace (use first floorFraction), 0=not a crawlspace (use all floorFractions)
 		double HRV_ASE;			// Apparent Sensible Effectiveness of HRV unit
 		double ERV_SRE;			// Sensible Recovery Efficiency of ERV unit. SRE and TRE based upon averages from ERV units in HVI directory, as of 5/2015.
 		double ERV_TRE;			// Total Recovery Efficiency of ERV unit, includes humidity transfer for moisture subroutine		
-		double Aeq;				// 62.2-2016 Total Ventilation Rate, hr-1. 
-		int InfCalc; 		//Index value, 0 = Annual infiltration rate for exposure calcs, 1 = Real-time infiltration estimates for exposure calcs.
 		// Inputs to set filter type and loading rate
 		int filterLoadingFlag;	// Filter loading flag = 0 (OFF) or 1 (ON)
 		int MERV;					// MERV rating of filter (may currently be set to 5, 8, 11 or 16)
@@ -326,15 +322,10 @@ int main(int argc, char *argv[], char* envp[])
 		}
 
 		buildingFile >> weatherFileName;
-		weatherFileName = weatherPath + weatherFileName;
 		buildingFile >> fanScheduleFileName;
-		fanScheduleFileName = schedulePath + fanScheduleFileName;
 		buildingFile >> tstatFileName;
-		tstatFileName = schedulePath + tstatFileName;
 		buildingFile >> occupancyFileName;
-		occupancyFileName = schedulePath + occupancyFileName;
 		buildingFile >> shelterFileName;
-		shelterFileName = schedulePath + shelterFileName;
 
 		buildingFile >> envC;
 		buildingFile >> envPressureExp;
@@ -378,8 +369,6 @@ int main(int argc, char *argv[], char* envp[])
 		buildingFile >> floorArea;
 		buildingFile >> planArea;
 		buildingFile >> storyHeight;
-		//buildingFile >> houseLength;
-		//buildingFile >> houseWidth;
 		buildingFile >> uaWall;
 		buildingFile >> uaFloor;
 		buildingFile >> uaWindow;
@@ -387,14 +376,13 @@ int main(int argc, char *argv[], char* envp[])
 		// ====================== Venting Inputs (Windows/Doors)====================
 		buildingFile >> numWinDoor;
 		// These are not currently used in the Excel input generating spreadsheet
-		// Add them back in if needed
-		/*for(int i=0; i < numWinDoor; i++) {
+		for(int i=0; i < numWinDoor; i++) {
 			buildingFile >> winDoor[i].wall;
 			buildingFile >> winDoor[i].High;
 			buildingFile >> winDoor[i].Wide;
 			buildingFile >> winDoor[i].Top;
 			buildingFile >> winDoor[i].Bottom;
-		}*/
+		}
 
 		// ================== Mechanical Venting Inputs (Fans etc) =================
 		buildingFile >> numFans;
@@ -468,7 +456,6 @@ int main(int argc, char *argv[], char* envp[])
 		buildingFile >> retn;
 		buildingFile >> supC;
 		buildingFile >> retC;
-		//buildingFile >> buried; // NOTE: The buried variable is not used but left in code to continue proper file navigation
 
 		// =========================== Equipment Inputs ============================
 		buildingFile >> capacityraw;
@@ -479,7 +466,6 @@ int main(int argc, char *argv[], char* envp[])
 		buildingFile >> fanPower_cooling0;
 		buildingFile >> charge;
 		buildingFile >> AFUE;
-		//buildingFile >> bathroomSchedule;
 		buildingFile >> numBedrooms;
 		buildingFile >> numStories;
 		buildingFile >> weatherFactor;
@@ -495,8 +481,8 @@ int main(int argc, char *argv[], char* envp[])
 		buildingFile >> MERV;
 		buildingFile >> loadingRate;
 		buildingFile >> AHMotorType;
-		buildingFile >> rivecFlagInd;
 		//The variable from here down were added by Brennan as part of the Smart Ventilation Humidity Control project
+		buildingFile >> rivecFlagInd;
 		buildingFile >> OccContType; //Now the OccContType for SVC_Occupancy.
 		buildingFile >> AuxFanIndex; //Index value that determines if auxiliary fans (dryer, kitchen and bath fans) are counted towards RIVEC relative exposure calculations
 // 		if(HumContType > 0) {
@@ -532,6 +518,12 @@ int main(int argc, char *argv[], char* envp[])
 		buildingFile.close();
 
 		// [END] Read in Building Inputs ============================================================================================================================================
+
+		weatherFileName = weatherPath + weatherFileName;
+		fanScheduleFileName = schedulePath + fanScheduleFileName;
+		tstatFileName = schedulePath + tstatFileName;
+		occupancyFileName = schedulePath + occupancyFileName;
+		shelterFileName = schedulePath + shelterFileName;
 
 		// Read in Thermostat Settings ==================================================================
 		ifstream tstatFile(tstatFileName); 
@@ -813,15 +805,6 @@ int main(int argc, char *argv[], char* envp[])
 		double tempReturn = tempOld[11];
 		double tempSupply = tempOld[14];
 		double tempHouse = tempOld[15];
-
-		// The following are defined for RIVEC ==============================================================================================================
-		// Start and end times for the RIVEC base, peak and recovery periods [h]
-		int baseStart = 0;
-		int baseEnd = 0;
-		int peakStart = 0;
-		int peakEnd = 0;
-		int recoveryStart = 0;
-		int recoveryEnd = 0;
 
 		double ELA = envC * sqrt(airDensityRef / 2) * pow(4, (envPressureExp - .5));			// Effective Leakage Area
 		double NL = 1000 * (ELA / floorArea) * pow((eaveHeight-Hfloor)/2.5, 0.4);				// Normalized Leakage Calculation 62.2-2016 Equation 4.4. 
@@ -1170,9 +1153,7 @@ int main(int argc, char *argv[], char* envp[])
 			// =================================== HOUR LOOP ================================	
 			for(int hour = 0; hour < 24; hour++) {
 				AHminutes = 0;					// Resetting air handler operation minutes for this hour
-				mFanCycler = 0;					// Fan cycler?
-				if (hour == peakEnd)
-					peakFlag = 1;			// Prevents two peak periods in the same day when there is heating and cooling
+				mFanCycler = 0;				// Fan cycler?
 
 				// ============================== MINUTE LOOP ================================	
 				for(int minute = 0; minute < 60; minute++) {
@@ -1393,6 +1374,15 @@ int main(int argc, char *argv[], char* envp[])
 
 
 					// [START] RIVEC Decision ==================================================================================================================
+		// The following are defined for RIVEC ==============================================================================================================
+		// Start and end times for the RIVEC base, peak and recovery periods [h]
+		int baseStart;
+		int baseEnd;
+		int peakStart;
+		int peakEnd;
+		int recoveryStart;
+		int recoveryEnd;
+
 
 					// Choose RIVEC time periods depending on heating or cooling
 					switch (hcFlag) {

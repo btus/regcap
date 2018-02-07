@@ -17,6 +17,10 @@ humidity_control_constructor()
 		//double HiMonthDose;
 		//double LowMonthDose;
 
+// This was in the hour loop. Better to do the hcFlag decision once per day
+				if (hour == peakEnd)
+					peakFlag = 1;			// Prevents two peak periods in the same day when there is heating and cooling
+
 
 int humidity_control(double HROut, double HRHouse, double RHhouse, double relExp, double relDose, int hour, int month, int AHflag, double& occupied) {
 	int rivecOn;
