@@ -518,12 +518,24 @@ int main(int argc, char *argv[], char* envp[])
 		buildingFile.close();
 
 		// [END] Read in Building Inputs ============================================================================================================================================
-
+		// Input variable conversions
 		weatherFileName = weatherPath + weatherFileName;
 		fanScheduleFileName = schedulePath + fanScheduleFileName;
 		tstatFileName = schedulePath + tstatFileName;
 		occupancyFileName = schedulePath + occupancyFileName;
 		shelterFileName = schedulePath + shelterFileName;
+
+		// Leakage fractions
+		double leakFracCeil = (R + X) / 2 ;					// Fraction of leakage in the ceiling
+		double leakFracFloor = (R - X) / 2;					// Fraction of leakage in the floor
+		double leakFracWall = 1 - leakFracFloor - leakFracCeil;	// Fraction of leakage in the walls
+
+		rowHouse = (rowOrIsolated.compare("R") == 0);
+		roofPeakPerpendicular = (roofPeakOrient.compare("D") == 0);
+
+		double bulkArea = planArea * 1;  // Area of bulk wood in the attic (m2) - based on W trusses, 24oc, 60x36 house w/ 4/12 attic
+		double sheathArea = planArea / 2 / cos(roofPitch * M_PI / 180);         // Area of roof sheathing (m2)
+		hcapacity = hcapacity * .29307107 * 1000 * AFUE;			// Heating capacity of furnace converted from kBtu/hr to Watts and with AFUE adjustment
 
 		// Read in Thermostat Settings ==================================================================
 		ifstream tstatFile(tstatFileName); 
@@ -555,17 +567,6 @@ int main(int argc, char *argv[], char* envp[])
 		occupancyFile.close();
 		
 
-		// Leakage fractions
-		double leakFracCeil = (R + X) / 2 ;					// Fraction of leakage in the ceiling
-		double leakFracFloor = (R - X) / 2;					// Fraction of leakage in the floor
-		double leakFracWall = 1 - leakFracFloor - leakFracCeil;	// Fraction of leakage in the walls
-
-		rowHouse = (rowOrIsolated.compare("R") == 0);
-		roofPeakPerpendicular = (roofPeakOrient.compare("D") == 0);
-
-		double bulkArea = planArea * 1;  // Area of bulk wood in the attic (m2) - based on W trusses, 24oc, 60x36 house w/ 4/12 attic
-		double sheathArea = planArea / 2 / cos(roofPitch * M_PI / 180);         // Area of roof sheathing (m2)
-		hcapacity = hcapacity * .29307107 * 1000 * AFUE;			// Heating capacity of furnace converted from kBtu/hr to Watts and with AFUE adjustment
 					
 		// [START] Filter Loading ==================================================================================
 
@@ -1082,7 +1083,6 @@ int main(int argc, char *argv[], char* envp[])
 		// =================================================================
 		// ||				 THE SIMULATION LOOPS START HERE:					   ||
 		// =================================================================
-		//hcFlag = 1;					// Start with HEATING (simulations start in January)
 		for(int day = 1; day <= 365; day++) {
 			cout << "\rDay = " << day << flush;
 			peakFlag = 0;
@@ -1099,6 +1099,11 @@ int main(int argc, char *argv[], char* envp[])
 				}
 				runningAverageTemp = runningAverageTemp/7;
 			}
+			//  If <= 60F we're heating. If > 60F we're cooling
+			if(runningAverageTemp <= (60 - 32) * 5.0 / 9.0)
+				hcFlag = 1;					// Heating
+			else
+				hcFlag = 2;					// Cooling
 
 			// Day 1 of simulation is a Sunday then weekend = 1 every Saturday and Sunday, equals 0 rest of the time
 			if(day % 7 <= 1)
@@ -1279,11 +1284,6 @@ int main(int argc, char *argv[], char* envp[])
 						solgain = winShadingCoef * (windowS * incsolar[0] + windowWE / 2 * incsolar[1] + windowN * incsolar[2] + windowWE / 2 * incsolar[3]);
 						tsolair = totalSolar / 4 * .03 + weather.dryBulb;		// the .03 is from 1993 AHSRAE Fund. SI 26.5
 					}
-					// 7 day outdoor temperature running average. If <= 60F we're heating. If > 60F we're cooling
-					if(runningAverageTemp <= (60 - 32) * 5.0 / 9.0)
-						hcFlag = 1;					// Heating
-					else
-						hcFlag = 2;					// Cooling
 			
 					// ====================== HEATING THERMOSTAT CALCULATIONS ============================
 					if(hcFlag == 1) {
@@ -1374,6 +1374,7 @@ int main(int argc, char *argv[], char* envp[])
 
 
 					// [START] RIVEC Decision ==================================================================================================================
+/*
 		// The following are defined for RIVEC ==============================================================================================================
 		// Start and end times for the RIVEC base, peak and recovery periods [h]
 		int baseStart;
@@ -1405,7 +1406,7 @@ int main(int argc, char *argv[], char* envp[])
 						recoveryEnd		= 22;
 						break;
 					}
-
+*/
 
 					if(minute == 0 || minute == 10 || minute == 20 || minute == 30 || minute == 40 || minute == 50) {
 // 						for(int i=0; i < numFans; i++) {
