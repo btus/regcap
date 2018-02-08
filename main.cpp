@@ -125,7 +125,6 @@ int main(int argc, char *argv[], char* envp[])
 		string filterFileName = outPath + simName + ".fil";
 		string summaryFileName = outPath + simName + ".rc2";
 
-
 		//Declare arrays
 		double Sw[4];
 		double Swinit[4][361];		
@@ -262,7 +261,7 @@ int main(int argc, char *argv[], char* envp[])
 		double dhCapacity;		// Dehumidifier capacity (pints/day)
 		double dhEnergyFactor;	// Dehumidifier energy factor (L/kWh)
 		double dhSetPoint;		// Dehumidifier set point (%RH)
-		int radiantBarrier; 	//Radiant barrier on roof sheathing, yes / no (1 / 0).
+		int radiantBarrier; 		//Radiant barrier on roof sheathing, yes / no (1 / 0).
 		string endOfFile;
 		
 		// Zeroing the variables to create the sums for the .ou2 file
@@ -281,38 +280,17 @@ int main(int argc, char *argv[], char* envp[])
 		double mechVent_kWh = 0;
 		double furnace_kWh = 0;
 		double dehumidifier_kWh = 0;
-		double RHind60 = 0; //index value (0 or 1) if RHhouse > 60 
-		double RHtot60 = 0; //cumulative sum of index value (0 or 1) if RHhouse > 60 
-		double RHexcAnnual60 = 0; //annual fraction of the year where RHhouse > 60
-		double RHind70 = 0; //index value (0 or 1) if RHhouse > 70 
-		double RHtot70 = 0; //cumulative sum of index value (0 or 1) if RHhouse > 70
-		double RHexcAnnual70 = 0; //annual fraction of the year where RHhouse > 70
+		double RHind60 = 0; 			//index value (0 or 1) if RHhouse > 60 
+		double RHtot60 = 0; 			//cumulative sum of index value (0 or 1) if RHhouse > 60 
+		double RHexcAnnual60 = 0; 	//annual fraction of the year where RHhouse > 60
+		double RHind70 = 0; 			//index value (0 or 1) if RHhouse > 70 
+		double RHtot70 = 0; 			//cumulative sum of index value (0 or 1) if RHhouse > 70
+		double RHexcAnnual70 = 0; 	//annual fraction of the year where RHhouse > 70
 		double RHHouse = 50, RHAttic = 50;  
 		double latitude;
 		double longitude;
 		int timeZone;
 		double altitude;
-
-		// Open moisture output file
-		ofstream moistureFile;
-		if(printMoistureFile) {
-			moistureFile.open(moistureFileName);
-			if(!moistureFile) { 
-				cout << "Cannot open moisture file: " << moistureFileName << endl;
-				return 1; 
-			}
-
-			moistureFile << "RHOut\tTempOut";
-			for(int i=0; i<6; i++) {
-				moistureFile << "\t" << "MC" << i <<"\tVP" << i << "\tMassCond" << i << "\tTemp" << i;
-				}
-			for(int i=6; i<MOISTURE_NODES; i++) {
-				moistureFile << "\t" << "RH" << i << "\tVP" << i << "\tTemp" << i;
-				}
-			moistureFile << endl;
-			//moistureFile << "HROut\tHRHouse\tHRAttic\tHRSupply\tHRReturn\t";
-			//moistureFile << "RHHouse\tRHAttic\tTempHouse\ttempAttic" << endl;
-		}
 
 		// [START] Read in Building Inputs =========================================================================================================================
 		ifstream buildingFile(inputFileName); 
@@ -518,26 +496,15 @@ int main(int argc, char *argv[], char* envp[])
 		buildingFile.close();
 
 		// [END] Read in Building Inputs ============================================================================================================================================
-		// Input variable conversions
+
+		// ================= READ IN OTHER INPUT FILES =================================================
 		weatherFileName = weatherPath + weatherFileName;
 		fanScheduleFileName = schedulePath + fanScheduleFileName;
 		tstatFileName = schedulePath + tstatFileName;
 		occupancyFileName = schedulePath + occupancyFileName;
 		shelterFileName = schedulePath + shelterFileName;
 
-		// Leakage fractions
-		double leakFracCeil = (R + X) / 2 ;					// Fraction of leakage in the ceiling
-		double leakFracFloor = (R - X) / 2;					// Fraction of leakage in the floor
-		double leakFracWall = 1 - leakFracFloor - leakFracCeil;	// Fraction of leakage in the walls
-
-		rowHouse = (rowOrIsolated.compare("R") == 0);
-		roofPeakPerpendicular = (roofPeakOrient.compare("D") == 0);
-
-		double bulkArea = planArea * 1;  // Area of bulk wood in the attic (m2) - based on W trusses, 24oc, 60x36 house w/ 4/12 attic
-		double sheathArea = planArea / 2 / cos(roofPitch * M_PI / 180);         // Area of roof sheathing (m2)
-		hcapacity = hcapacity * .29307107 * 1000 * AFUE;			// Heating capacity of furnace converted from kBtu/hr to Watts and with AFUE adjustment
-
-		// Read in Thermostat Settings ==================================================================
+		// Thermostat Settings ==================================================================
 		ifstream tstatFile(tstatFileName); 
 		if(!tstatFile) { 
 			cout << "Cannot open thermostat file: " << tstatFileName << endl;
@@ -554,7 +521,7 @@ int main(int argc, char *argv[], char* envp[])
 		}
 		tstatFile.close();
 
-		// Read in Occupancy Settings ==================================================================
+		// Occupancy Settings ==================================================================
 		ifstream occupancyFile(occupancyFileName); 
 		if(!occupancyFile) { 
 			cout << "Cannot open occupancy file: " << occupancyFileName << endl;
@@ -566,6 +533,73 @@ int main(int argc, char *argv[], char* envp[])
 		}
 		occupancyFile.close();
 		
+		// Shelter Values ================================================================================================
+		// (reading urban shelter values from a data file: Bshelter.dat)
+		// Computed for the houses at AHHRF for every degree of wind angle
+		ifstream shelterFile(shelterFileName); 
+		if(!shelterFile) { 
+			cout << "Cannot open shelter file: " << shelterFileName << endl;
+			return 1; 
+		}
+		// FF: This angle variable is being overwritten to read Swinit in proper ductLocation per FOR iteration. Not used in code.
+		double angle;
+		for(int i=0; i < 361; i++) {
+			shelterFile >> angle >> Swinit[0][i] >> Swinit[1][i] >> Swinit[2][i] >> Swinit[3][i];
+		}
+		shelterFile.close();
+
+		// Fan Schedule Inputs =========================================================================================
+		// Read in fan schedule (lists of 1s and 0s, 1 = fan ON, 0 = fan OFF, for every minute of the year)
+		// Different schedule file depending on number of bathrooms
+		ifstream fanScheduleFile;
+		fanScheduleFile.open(fanScheduleFileName); 
+		if(!fanScheduleFile) { 
+			cout << "Cannot open fan schedule: " << fanScheduleFileName << endl;
+			return 1; 		
+		}
+
+		// ================= CREATE OUTPUT FILES =================================================
+		ofstream outputFile;
+		if(printOutputFile) {
+			outputFile.open(outputFileName); 
+			if(!outputFile) { 
+				cout << "Cannot open output file: " << outputFileName << endl;
+				return 1; 
+			}
+			outputFile << "Time\tMin\twindSpeed\ttempOut\ttempHouse\tsetpoint\ttempAttic\ttempSupply\ttempReturn\tAHflag\tAHpower\tcompressPower\tmechVentPower\tHR\tSHR\tMcoil\thousePress\tQhouse\tACH\tACHflue\tventSum\tnonRivecVentSum\tfan1\tfan2\tfan3\tfan4\tfan5\tfan6\tfan7\trivecOn\trelExp\trelDose\toccupied\tHROUT\tHRattic\tHRreturn\tHRsupply\tHRhouse\tRHhouse\tRHind60\tRHind70\tHumidityIndex\tDHcondensate\tPollutantConc\tmoldIndex_South\tmoldIndex_North\tmoldIndex_BulkFraming\tmHouseIN\tmHouseOUT\tmCeilingAll\tmatticenvin\tmatticenvout\tmSupReg\tmRetReg\tqHouseIN\tqHouseOUT\tqCeilingAll\tqAtticIN\tqAtticOUT\tqSupReg\tqRetReg" << endl; 
+		}
+
+		// Moisture output file
+		ofstream moistureFile;
+		if(printMoistureFile) {
+			moistureFile.open(moistureFileName);
+			if(!moistureFile) { 
+				cout << "Cannot open moisture file: " << moistureFileName << endl;
+				return 1; 
+			}
+
+			moistureFile << "RHOut\tTempOut";
+			for(int i=0; i<6; i++) {
+				moistureFile << "\t" << "MC" << i <<"\tVP" << i << "\tMassCond" << i << "\tTemp" << i;
+				}
+			for(int i=6; i<MOISTURE_NODES; i++) {
+				moistureFile << "\t" << "RH" << i << "\tVP" << i << "\tTemp" << i;
+				}
+			moistureFile << endl;
+			//moistureFile << "HROut\tHRHouse\tHRAttic\tHRSupply\tHRReturn\t";
+			//moistureFile << "RHHouse\tRHAttic\tTempHouse\ttempAttic" << endl;
+		}
+
+		// Filter loading file
+		ofstream filterFile;
+		if(printFilterFile) {
+			filterFile.open(filterFileName);
+			if(!filterFile) { 
+				cout << "Cannot open filter file: " << filterFileName << endl;
+				return 1; 
+			}
+			filterFile << "mAH_cumu\tqAH\twAH\tretLF" << endl;
+		}
 
 					
 		// [START] Filter Loading ==================================================================================
@@ -593,25 +627,33 @@ int main(int argc, char *argv[], char* envp[])
 		double k_wAH = 0;				// Gradual change in AH power from filter loading [% per 10^6kg of air mass through filter]
 		double k_DL = 0;				// Gradual change in return duct leakage from filter loading [% per 10^6kg of air mass through filter]
 		
-		// Open filter loading file
-		ofstream filterFile;
-		if(printFilterFile) {
-			filterFile.open(filterFileName);
-			if(!filterFile) { 
-				cout << "Cannot open filter file: " << filterFileName << endl;
-				return 1; 
-			}
-			filterFile << "mAH_cumu\tqAH\twAH\tretLF" << endl;
-		}
 		
 		// Filter loading coefficients are in the sub_filterLoading sub routine
 		if(filterLoadingFlag == 1)
 			sub_filterLoading(MERV, loadingRate, AHMotorType, A_qAH_heat, A_qAH_cool, A_wAH_heat, A_wAH_cool, A_DL, k_qAH, k_wAH, k_DL, qAH_heat0, qAH_cool0, qAH_low);
 		// [END] Filter Loading ====================================================================================
 
+		// Input variable conversions
+		// Leakage fractions
+		double leakFracCeil = (R + X) / 2 ;					// Fraction of leakage in the ceiling
+		double leakFracFloor = (R - X) / 2;					// Fraction of leakage in the floor
+		double leakFracWall = 1 - leakFracFloor - leakFracCeil;	// Fraction of leakage in the walls
+
+		rowHouse = (rowOrIsolated.compare("R") == 0);
+		roofPeakPerpendicular = (roofPeakOrient.compare("D") == 0);
+
+		double bulkArea = planArea * 1;  // Area of bulk wood in the attic (m2) - based on W trusses, 24oc, 60x36 house w/ 4/12 attic
+		double sheathArea = planArea / 2 / cos(roofPitch * M_PI / 180);         // Area of roof sheathing (m2)
+		hcapacity = hcapacity * .29307107 * 1000 * AFUE;			// Heating capacity of furnace converted from kBtu/hr to Watts and with AFUE adjustment
 		// Cooling capacity air flow correction term (using CFM)
 		double qAH_cfm = qAH_cool / .0004719;
 		double qAHcorr = 1.62 - .62 * qAH_cfm / (400 * capacityraw) + .647 * log(qAH_cfm / (400 * capacityraw));	
+
+		// AL4 is used to estimate flow velocities in the attic
+		double AL4 = atticC * sqrt(airDensityRef / 2) * pow(4, (atticPressureExp - .5));
+		// New char velocity for unvented attics
+		if(AL4 == 0)
+			AL4 = envC * leakFracCeil * sqrt(airDensityRef / 2) * pow(4, (atticPressureExp - .5));
 
 		// For RIVEC calculations
 		int rivecFlag = 0;					// Dose controlled ventilation (RIVEC) flag 0 = off, 1 = use rivec (mainly for HRV/ERV control)
@@ -632,9 +674,6 @@ int main(int argc, char *argv[], char* envp[])
 				qRivec = -1 * fan[i].q	* 1000;
 				rivecFlag = 1;
 			}
-		}
-
-		for(int i=0; i < numFans; i++) {
 			if(fan[i].oper == 5 || fan[i].oper == 16) {	// If using an HRV (5 or 16) with RIVEC. Avoids a divide by zero
 				qRivec = -1 * fan[i].q * 1000;
 			}
@@ -655,25 +694,6 @@ int main(int argc, char *argv[], char* envp[])
 				Ceconomizer = 1 * ELAeconomizer * sqrt(2 / airDensityRef) * pow(4, (.5 - .65));
 			}
 		}
-
-		// [START] Read in Shelter Values ================================================================================================
-		// (reading urban shelter values from a data file: Bshelter.dat)
-		// Computed for the houses at AHHRF for every degree of wind angle
-
-		ifstream shelterFile(shelterFileName); 
-		if(!shelterFile) { 
-			cout << "Cannot open shelter file: " << shelterFileName << endl;
-			return 1; 
-		}
-
-		// FF: This angle variable is being overwritten to read Swinit in proper ductLocation per FOR iteration. Not used in code.
-		double angle;
-		for(int i=0; i < 361; i++) {
-			shelterFile >> angle >> Swinit[0][i] >> Swinit[1][i] >> Swinit[2][i] >> Swinit[3][i];
-		}
-
-		shelterFile.close();
-		// [END] Read in Shelter Values ================================================================================================
 
 		// [START] Terrain ============================================================================================
 		// Terrain where the house is located (for wind shelter etc.) See ASHRAE Fundamentals 2009 F24.3
@@ -712,24 +732,6 @@ int main(int argc, char *argv[], char* envp[])
 		double windSpeedCorrection = pow((metThickness / metHeight), metExponent) * pow((eaveHeight / layerThickness), windPressureExp);
 		//double windSpeedCorrection = pow((80/ 10), .15) * pow((h / 80), .3);		// The old wind speed correction
 		// [END] Terrain ============================================================================================
-
-		// AL4 is used to estimate flow velocities in the attic
-		double AL4 = atticC * sqrt(airDensityRef / 2) * pow(4, (atticPressureExp - .5));
-
-		// New char velocity for unvented attics
-		if(AL4 == 0)
-			AL4 = envC * leakFracCeil * sqrt(airDensityRef / 2) * pow(4, (atticPressureExp - .5));
-
-		// ================= CREATE OUTPUT FILE =================================================
-		ofstream outputFile;
-		if(printOutputFile) {
-			outputFile.open(outputFileName); 
-			if(!outputFile) { 
-				cout << "Cannot open output file: " << outputFileName << endl;
-				return 1; 
-			}
-			outputFile << "Time\tMin\twindSpeed\ttempOut\ttempHouse\tsetpoint\ttempAttic\ttempSupply\ttempReturn\tAHflag\tAHpower\tcompressPower\tmechVentPower\tHR\tSHR\tMcoil\thousePress\tQhouse\tACH\tACHflue\tventSum\tnonRivecVentSum\tfan1\tfan2\tfan3\tfan4\tfan5\tfan6\tfan7\trivecOn\trelExp\trelDose\toccupied\tHROUT\tHRattic\tHRreturn\tHRsupply\tHRhouse\tRHhouse\tRHind60\tRHind70\tHumidityIndex\tDHcondensate\tPollutantConc\tmoldIndex_South\tmoldIndex_North\tmoldIndex_BulkFraming\tmHouseIN\tmHouseOUT\tmCeilingAll\tmatticenvin\tmatticenvout\tmSupReg\tmRetReg\tqHouseIN\tqHouseOUT\tqCeilingAll\tqAtticIN\tqAtticOUT\tqSupReg\tqRetReg" << endl; 
-		}
 		
 		// ================== OPEN WEATHER FILE FOR INPUT ========================================
 		ifstream weatherFile(weatherFileName);
@@ -786,6 +788,7 @@ int main(int argc, char *argv[], char* envp[])
 			cout << "Using REGCAP weather data file." << endl;
 		}
 		latitude = M_PI * latitude / 180.0;					// convert to radians
+
 		// set 1 = air handler off, and house air temp below setpoint minus 0.5 degrees
 		// set 0 = air handler off, but house air temp above setpoint minus 0.5 degrees
 		int set = 0;
@@ -881,8 +884,6 @@ int main(int argc, char *argv[], char* envp[])
 
 		// for calculating the dose and exposure based on the hours of occupancy
 		
-		
-		
 // 		double meanRelExp = 0;						// Mean relative exposure over the year, used as a cumulative sum and then ultimately annual average value	
 // 		double meanRelDose = 0;						// Mean relative dose over the year, used as a cumulative sum and then ultimately annual average value
 // 
@@ -894,10 +895,6 @@ int main(int argc, char *argv[], char* envp[])
 // 
 // 		double totalOccupiedDoseReal = 0;		// Cumulative sum for "real" calculations. total dose and exp over the occupied time period
 // 		double meanOccupiedDoseReal = 0;			// Mean for "real" calculations. total dose and exp over the occupied time period
-
-
-
-
 
 // 		double turnoverRealOld = 0;
 // 		double relDoseRealOld = 0;
@@ -921,17 +918,6 @@ int main(int argc, char *argv[], char* envp[])
 // 		double rivecdt; //RIVCEC timestep, currently defaults to 60/3600, sec. 
 // 		double houseVolume; //House volume, m3
 
-
-		// [START] Fan Schedule Inputs =========================================================================================
-		// Read in fan schedule (lists of 1s and 0s, 1 = fan ON, 0 = fan OFF, for every minute of the year)
-		// Different schedule file depending on number of bathrooms
-		ifstream fanScheduleFile;
-		fanScheduleFile.open(fanScheduleFileName); 
-		if(!fanScheduleFile) { 
-			cout << "Cannot open fan schedule: " << fanScheduleFileName << endl;
-			return 1; 		
-		}
-		// [END] Fan Schedule Inputs =======================================================================================
 
 		int AHminutes;
 		int target;
