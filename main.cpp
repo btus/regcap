@@ -932,6 +932,7 @@ int main(int argc, char *argv[], char* envp[])
 		int compTimeCount = 0;
 		int rivecOn = 0;		   // 0 (off) or 1 (on) for RIVEC devices
 		int hcFlag = 1;         // Start with HEATING (simulations start in January)
+		double setpoint;			// Thermostat setpoint
 
 		weatherData weather;		// current minute of weather data
 		double mFanCycler;
@@ -1087,10 +1088,16 @@ int main(int argc, char *argv[], char* envp[])
 					runningAverageTemp = runningAverageTemp/7;
 				}
 				//  If <= 60F we're heating. If > 60F we're cooling
-				if(runningAverageTemp <= (60 - 32) * 5.0 / 9.0)
+				if(runningAverageTemp <= (60 - 32) * 5.0 / 9.0) {
 					hcFlag = 1;					// Heating
-				else
+					uaSolAir = uaWall;
+					uaTOut = uaFloor + uaWindow;
+					}
+				else {
 					hcFlag = 2;					// Cooling
+					uaSolAir = uaWall;
+					uaTOut = uaWindow;
+					}
 
 				// Day 1 of simulation is a Sunday then weekend = 1 every Saturday and Sunday, equals 0 rest of the time
 				if(day % 7 <= 1)
@@ -1123,6 +1130,12 @@ int main(int argc, char *argv[], char* envp[])
 				for(int hour = 0; hour < 24; hour++) {
 					AHminutes = 0;					// Resetting air handler operation minutes for this hour
 					mFanCycler = 0;				// Fan cycler?
+					if(hcFlag == 1) {
+						setpoint = heatThermostat[hour];
+						}
+					else {
+						setpoint = coolThermostat[hour];
+						}
 
 					// ============================== MINUTE LOOP ================================	
 					for(int minute = 0; minute < 60; minute++) {
@@ -1252,23 +1265,21 @@ int main(int argc, char *argv[], char* envp[])
 						// ====================== HEATING THERMOSTAT CALCULATIONS ============================
 						if(hcFlag == 1) {
 							qAH = qAH_heat;            // Heating Air Flow Rate [m3/s]
-							uaSolAir = uaWall;
-							uaTOut = uaFloor + uaWindow;
 
-							if(tempOld[15] > (heatThermostat[hour] + .5))
+							if(tempOld[15] > (setpoint + .5))
 								AHflag = 0;					// Heat off if building air temp above setpoint
 
 							if(AHflag == 0 || AHflag == 100) {
-								if(tempOld[15] <= (heatThermostat[hour] - .5))
+								if(tempOld[15] <= (setpoint - .5))
 									set = 1;					// Air handler off, and tin below setpoint - 0.5 degrees
 								else
 									set = 0;					// Air handler off, but tin above setpoint - 0.5 degrees
 							}
 
-							if(tempOld[15] < (heatThermostat[hour] - .5))
+							if(tempOld[15] < (setpoint - .5))
 								AHflag = 1;					// turn on air handler/heat
 
-							if(tempOld[15] >= (heatThermostat[hour] - .5) && tempOld[15] <= (heatThermostat[hour] + .5)) {
+							if(tempOld[15] >= (setpoint - .5) && tempOld[15] <= (setpoint + .5)) {
 								if(set == 1)
 									AHflag = 1;
 								else
@@ -1283,27 +1294,24 @@ int main(int argc, char *argv[], char* envp[])
 
 							// ====================== COOLING THERMOSTAT CALCULATIONS ========================
 						} else {
-							hcap = 0;
 							qAH = qAH_cool;						// Cooling Air Flow Rate
-							uaSolAir = uaWall;
-							uaTOut = uaWindow;
 							endrunon = 0;
 
-							if(tempOld[15] < (coolThermostat[hour] - .5))
+							if(tempOld[15] < (setpoint - .5))
 								AHflag = 0;
 
 							if(AHflag == 0 || AHflag == 100) {
-								if(tempOld[15] >= (coolThermostat[hour] + .5))
+								if(tempOld[15] >= (setpoint + .5))
 									set = 1;				// 1 = AH OFF and house temp below thermostat setpoint - 0.5
 								else
 									set = 0;				// 0 = AH OFF and house temp above thermostat setpoint - 0.5
 							}
 
-							if(tempOld[15] >= (coolThermostat[hour] + .5)) {
+							if(tempOld[15] >= (setpoint + .5)) {
 								AHflag = 2;
 							}
 
-							if(tempOld[15] < (coolThermostat[hour] + .5) && tempOld[15] >= (coolThermostat[hour] - .5)) {
+							if(tempOld[15] < (setpoint + .5) && tempOld[15] >= (setpoint - .5)) {
 								if(set == 1)
 									AHflag = 2;
 								else
@@ -2723,10 +2731,6 @@ int main(int argc, char *argv[], char* envp[])
 	// 						relDose = relExp * (1 - exp(-rivecdt / 24)) + relDoseOld * exp(-rivecdt / 24);
 	// 						relDoseReal = relExpReal * (1 - exp(-rivecdt / 24)) + relDoseRealOld * exp(-rivecdt / 24);
 	// 					}
-
-
-					
-					
 			
 						//occupiedDose = relDose * occupied[weekend][hour];				// For annual average calculation, occupiedDose = 0 when unoccupied. 
 						//occupiedExp = relExp * occupied[weekend][hour];					// For annual average calculation, occupiedExp = 0 when unoccupied. 
@@ -2746,12 +2750,8 @@ int main(int argc, char *argv[], char* envp[])
 	// 					meanRelDoseReal = meanRelDoseReal + relDoseReal; //Brennan, added these to include REAL calculations.
 	// 					meanRelExpReal = meanRelExpReal + relExpReal;
 
-		
-
-
-
-
 						// [END] IAQ calculations =======================================================================================================================================
+
 						if(RHHouse >= 60){ //RHind60 and 70 count the minutes where high RH occurs
 							RHind60 = 1;
 							HumidityIndex = (RHHouse - 60) * (1.0 / (100 - 60));
@@ -2770,15 +2770,6 @@ int main(int argc, char *argv[], char* envp[])
 						RHtot60 = RHtot60 + RHind60; //These are summed for the year and summarized in the output file. 
 						RHtot70 = RHtot70 + RHind70;
 						HumidityIndex_Sum = HumidityIndex_Sum + HumidityIndex;
-			
-
-						// Writing results to a csv file
-						double setpoint;
-
-						if(hcFlag == 1)
-							setpoint = heatThermostat[hour];
-						else
-							setpoint = coolThermostat[hour];
 
 						// ================================= WRITING RCO DATA FILE =================================
 
