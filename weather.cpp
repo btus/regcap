@@ -24,7 +24,36 @@ std::istream& operator>>(std::istream& str,CSVRow& data)
  * Weather - Weather file class constructor
  * @param fileName - name of weather file to open
  */
-Weather::Weather() {
+Weather::Weather(int terrain, double eaveHeight) {
+	// Terrain where the house is located (for wind shelter etc.) See ASHRAE Fundamentals 2009 F24.3
+	double layerThickness;		// Atmospheric boundary layer thickness [m]
+
+	switch (terrain) {
+	case 1:		// Large city centres, at least 50% of buildings are higher than 25m
+		windPressureExp = 0.33;
+		layerThickness = 460;
+		break;
+	case 2:		// Urban and suburban areas, wooded areas
+		windPressureExp = 0.22;
+		layerThickness = 370;
+		break;
+	case 3:		// Open terrain with scattered obsructions e.g. meteorlogical stations
+		windPressureExp = 0.14;
+		layerThickness = 270;
+		break;
+	case 4:		// Completely flat e.g. open water
+		windPressureExp = 0.10;
+		layerThickness = 210;
+		break;
+	}
+
+	// Wind speed correction to adjust met wind speed to that at building eaves height
+	const double metExponent = 0.14;		// Power law exponent of the wind speed profile at the met station
+	const double metThickness = 270;		// Atmospheric boundary layer thickness at met station [m]
+	const double metHeight = 10;			// Height of met station wind measurements [m]
+	windSpeedCorrection = pow((metThickness / metHeight), metExponent) * pow((eaveHeight / layerThickness), windPressureExp);
+	cout << "WSPDC= " << windSpeedCorrection << endl;
+	//double windSpeedCorrection = pow((80/ 10), .15) * pow((h / 80), .3);		// The old wind speed correction
 	}
 
 void Weather::open(string fileName) {
@@ -134,7 +163,7 @@ weatherData Weather::readTMY3() {
 		result.dryBulb = row[31] + C_TO_K;		// convert from C to K
 		result.dewPoint = row[34] + C_TO_K;		// convert from C to K
 		result.relativeHumidity = row[37];
-		result.windSpeed = row[46];
+		result.windSpeedUnCor = row[46];
 		result.windDirection = row[43];
 		result.pressure = row[40] * 100;			// convert from mbar to Pa
 		result.skyCover = row[25] / 10;			// convert to decimal fraction
@@ -153,7 +182,7 @@ weatherData Weather::readEPW() {
 		result.dryBulb = row[6] + C_TO_K;		// convert from C to K
 		result.dewPoint = row[7] + C_TO_K;		// convert from C to K
 		result.relativeHumidity = row[8];
-		result.windSpeed = row[21];
+		result.windSpeedUnCor = row[21];
 		result.windDirection = row[20];
 		result.pressure = row[9];			
 		result.skyCover = row[22] / 10.;			// convert to decimal fraction
@@ -171,7 +200,7 @@ weatherData Weather::readOneMinuteWeather() {
 		>> result.globalHorizontal
 		>> result.dryBulb
 		>> result.humidityRatio
-		>> result.windSpeed
+		>> result.windSpeedUnCor
 		>> wd
 		>> result.pressure
 		>> result.skyCover;
@@ -185,14 +214,19 @@ weatherData Weather::readOneMinuteWeather() {
 }
 
 weatherData Weather::readMinute(int minute) {
+weatherData current;
 
 	// Read in or interpolate weather data
 	if(type == 0) {  // minute
-		return readOneMinuteWeather();
+		current = readOneMinuteWeather();
 		}
 	else {
-		return interpWeather(minute);
+		current = interpWeather(minute);
 		}
+	current.windSpeed = current.windSpeedUnCor * windSpeedCorrection;		// Correct met wind speed to speed at building eaves height [m/s]
+	if(current.windSpeed < 1)							// Minimum wind velocity allowed is 1 m/s to account for non-zero start up velocity of anenometers
+		current.windSpeed = 1;							// Wind speed is never zero
+	return current;
 	}
 
 void Weather::nextHour() {

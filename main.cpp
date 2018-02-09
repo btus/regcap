@@ -692,46 +692,9 @@ int main(int argc, char *argv[], char* envp[])
 			}
 		}
 
-		// [START] Terrain ============================================================================================
-		// Terrain where the house is located (for wind shelter etc.) See ASHRAE Fundamentals 2009 F24.3
-		double windPressureExp;		// Power law exponent of the wind speed profile at the building site
-		double layerThickness;		// Atmospheric boundary layer thickness [m]
-
-		switch (terrain) {
-		case 1:
-			// 1. Large city centres, at least 50% of buildings are higher than 25m
-			windPressureExp = 0.33;
-			layerThickness = 460;
-			break;
-
-		case 2:
-			// 2. Urban and suburban areas, wooded areas
-			windPressureExp = 0.22;
-			layerThickness = 370;
-			break;
-
-		case 3:
-			// 3. Open terrain with scattered obsructions e.g. meteorlogical stations
-			windPressureExp = 0.14;
-			layerThickness = 270;
-			break;
-		case 4:
-			// 4. Completely flat e.g. open water
-			windPressureExp = 0.10;
-			layerThickness = 210;
-			break;
-		}
-
-		// Wind speed correction to adjust met wind speed to that at building eaves height
-		const double metExponent = 0.14;		// Power law exponent of the wind speed profile at the met station
-		const double metThickness = 270;		// Atmospheric boundary layer thickness at met station [m]
-		const double metHeight = 10;			// Height of met station wind measurements [m]
-		double windSpeedCorrection = pow((metThickness / metHeight), metExponent) * pow((eaveHeight / layerThickness), windPressureExp);
-		//double windSpeedCorrection = pow((80/ 10), .15) * pow((h / 80), .3);		// The old wind speed correction
-		// [END] Terrain ============================================================================================
 		
 		// ================== OPEN WEATHER FILE FOR INPUT ========================================
-		Weather weatherFile;
+		Weather weatherFile(terrain, eaveHeight);	// instantiate weatherFile object
 		try {
 			weatherFile.open(weatherFileName);
 		}
@@ -854,25 +817,6 @@ int main(int argc, char *argv[], char* envp[])
 // 		double turnoverRealOld = 0;
 // 		double relDoseRealOld = 0;
 		
-
-// 		double envC; //Envelope leakage coefficient, m3/s/Pa^n
-// 		double envPressureExp; //Envelope pressure exponent
-// 		double G; //Wind speed multiplier
-// 		double s; //Shelter Factor
-// 		double Cs; //Stack coefficient
-// 		double Cw; //Wind coefficient
-// 		double windSpeed; //Wind speed, corrected for site conditions in main.cpp, m/s
-// 		double dryBulb; //Outside temp, K
-// 		double ventSum; //Sum of the larger of the mechanical inflows and outflows, ACH
-// 		double houseVolume; //House volume, m3
-// 		double windSpeedCorrection; //Correction factor used in main.cpp for windspeed
-// 	
-// 		double Aeq; //Qtot calculated according to 62.2-2016 without infiltration factor, ACH. 
-// 		double Q_total; //Total airflow combined infiltration and mechanical, L/s
-// 		double relExp_old; //Relative exposure from the prior time-step.
-// 		double rivecdt; //RIVCEC timestep, currently defaults to 60/3600, sec. 
-// 		double houseVolume; //House volume, m3
-
 
 		int AHminutes;
 		int target;
@@ -1164,9 +1108,6 @@ int main(int argc, char *argv[], char* envp[])
 						nonRivecVentSumOUT = 0;				// Setting sum of non-RIVEC exhaust mechanical ventilation to zero
 
 						cur_weather = weatherFile.readMinute(minute);
-						cur_weather.windSpeed *= windSpeedCorrection;		// Correct met wind speed to speed at building eaves height [m/s]
-						if(cur_weather.windSpeed < 1)					// Minimum wind velocity allowed is 1 m/s to account for non-zero start up velocity of anenometers
-							cur_weather.windSpeed = 1;					// Wind speed is never zero
 						dailyCumulativeTemp = dailyCumulativeTemp + cur_weather.dryBulb - C_TO_K;
 						tsolair = cur_weather.dryBulb;
 
@@ -2443,7 +2384,7 @@ int main(int argc, char *argv[], char* envp[])
 									leakFracCeil, leakFracFloor, leakFracWall, numFlues, flue, wallFraction, floorFraction, Sw, flueShelterFactor, numWinDoor, winDoor, numFans, fan, numPipes,
 									Pipe, mIN, mOUT, Pint, mFlue, mCeiling, mFloor, atticC, dPflue, Crawl,
 									Hfloor, rowHouse, soffitFraction, Patticint, wallCp, mSupReg, mAH, mRetLeak, mSupLeak,
-									mRetReg, mHouseIN, mHouseOUT, supC, supn, retC, retn, mSupAHoff, mRetAHoff, airDensityIN, airDensityOUT, airDensityATTIC, houseVolume, windPressureExp);
+									mRetReg, mHouseIN, mHouseOUT, supC, supn, retC, retn, mSupAHoff, mRetAHoff, airDensityIN, airDensityOUT, airDensityATTIC, houseVolume, weatherFile.windPressureExp);
 								//Yihuan : put the mCeilingIN on comment 
 								leakIterations = leakIterations + 1;
 
@@ -2589,8 +2530,8 @@ int main(int argc, char *argv[], char* envp[])
 						if(ventSum <= 0)
 							ventSum = .000001;
 						
-						sub_infiltrationModel(envC, envPressureExp, windSpeedMultiplier, shelterFactor, stackCoef, windCoef, cur_weather.windSpeed, 	
-							cur_weather.dryBulb, ventSum, houseVolume, windSpeedCorrection, Q_wind, 
+						sub_infiltrationModel(envC, envPressureExp, windSpeedMultiplier, shelterFactor, stackCoef, windCoef, cur_weather.windSpeedUnCor, 	
+							cur_weather.dryBulb, ventSum, houseVolume, Q_wind, 
 							Q_stack, Q_infiltration, Q_total, wInfil, InfCalc);
 					
 						relExpOld = relExp;

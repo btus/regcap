@@ -76,7 +76,6 @@ void sub_infiltrationModel (
 	double& dryBulb, //Outside temp, K
 	double& ventSum, //Sum of the larger of the mechanical inflows and outflows, ACH
 	double& houseVolume, //House volume, m3
-	double& windSpeedCorrection, //Correction factor used in main.cpp for windspeed
 	double& Q_wind, //Wind driven airflow, L/s
 	double& Q_stack, //Stack pressure driven airflow, L/s
 	double& Q_infiltration, //Total infiltration airflow, combined wind and stack airflows, L/s

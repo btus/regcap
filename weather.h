@@ -12,6 +12,7 @@ struct weatherData {
 	double relativeHumidity;	// Relative humidity (%)
 	double humidityRatio;		// Humidity Ratio (g/g)
 	double windSpeed;				// Wind speed (m/s)
+	double windSpeedUnCor;		// Un-corrected wind speed (m/s)
 	int windDirection;			// wind direction (degrees from North)
 	int pressure;					// Station pressure (Pa)
 	double skyCover;				// Total sky cover (fraction)
@@ -53,6 +54,7 @@ class Weather {
 		weatherData begin;		// first hour weather data
 		weatherData end;			// second hour weather data
 		ifstream weatherFile;	// weather file
+		double windSpeedCorrection;
 
 		double interpolate(double b, double e, int step);
 		weatherData interpolateWind(int step);
@@ -68,8 +70,9 @@ class Weather {
 		double longitude;
 		int timeZone;
 		double elevation;
+		double windPressureExp;		// Power law exponent of the wind speed profile at the building site
 		
-		Weather();
+		Weather(int terrain, double eaveHeight);
 		void open(string fileName);
 		weatherData readMinute(int minute);
 		void nextHour();

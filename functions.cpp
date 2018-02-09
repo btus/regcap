@@ -67,11 +67,10 @@ void sub_infiltrationModel(
 	double& s, //Shelter Factor
 	double& Cs, //Stack coefficient
 	double& Cw, //Wind coefficient
-	double& windSpeed, //Wind speed, corrected for site conditions in main.cpp, m/s
+	double& TMYwindSpeed, //Wind speed, un-corrected for site conditions, m/s
 	double& dryBulb, //Outside temp, K
 	double& ventSum, //Sum of the larger of the mechanical inflows and outflows, ACH
 	double& houseVolume, //House volume, m3
-	double& windSpeedCorrection, //Correction factor used in main.cpp for windspeed
 	double& Q_wind, //Wind driven airflow, L/s
 	double& Q_stack, //Stack pressure driven airflow, L/s
 	double& Q_infiltration, //Total infiltration airflow, combined wind and stack airflows, L/s
@@ -83,32 +82,23 @@ void sub_infiltrationModel(
 	
 	{
 	
-	double TMYwindSpeed; //Un-corrected wind speed, so we can adjust wind speed based on 62.2-2016, m/s.
 	double U; //Wind speed adjusted according to 62.2-2016, m/s
 	double phi; //Additivity coefficient
 	double ventSum_flow; //Mechanical airflow, L/s
 	double envC_LitersPerSec; //Envelope leakage coefficient, L/s/Pa^n
 	
-	TMYwindSpeed = windSpeed / windSpeedCorrection;
-	
 	U = G * TMYwindSpeed;
-	
 	envC_LitersPerSec = envC * 1000; // [L/s/Pa^n] 
-	
 	ventSum_flow = 1000 * ventSum * houseVolume / 3600; // Calculate ventSum in airflow (not ACH), L/s
-
 	Q_wind = envC_LitersPerSec * Cw * pow( s * U, 2 * envPressureExp); //Calculate wind driven airflow, L/s
-	
 	Q_stack = envC_LitersPerSec * Cs * pow(abs((C_TO_K + 20) - dryBulb), envPressureExp); //Calculation stack airflow, assumes 68F (20C indoor temp), L/s.
-	
-	if(InfCalc == 0){ //Use annual infiltration estimate from 62.2-2016.
+	if(InfCalc == 0) { //Use annual infiltration estimate from 62.2-2016.
 		Q_infiltration = wInfil;
 	} else { //Use real-time infiltration calculation.
 		Q_infiltration = sqrt(pow(Q_wind, 2) + pow(Q_stack, 2)); //Calculate combined infiltration airflow using quadrature, L/s.
 	}
 	
 	phi = Q_infiltration / (Q_infiltration + ventSum_flow); // Calculate the additivity coefficient
-	
 	Q_total = ventSum_flow + phi * Q_infiltration; //Calculate total airflow combined mechanical and natural, L/s.
 	
 	}
