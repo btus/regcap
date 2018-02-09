@@ -20,11 +20,67 @@ std::istream& operator>>(std::istream& str,CSVRow& data)
     return str;
 }   
 
-double interpolate(double begin, double end, int step) {
-	return begin + (end - begin) / 60 * step;
+/*
+ * Weather - Weather file class constructor
+ * @param fileName - name of weather file to open
+ */
+Weather::Weather() {
+	}
+
+void Weather::open(string fileName) {
+	weatherFile.open(fileName);
+	if(!weatherFile) { 
+		throw fileName; 
+	}
+
+	// Determine weather file type and read in header
+	CSVRow row;					// row of data to read from TMY3 csv
+
+	weatherFile >> row;
+	if(row.size() > 2 && row.size() < 10) {			//TMY3, was >2
+		siteID = row[0];
+		//string siteName = row[1];
+		//string State = row[2];
+		timeZone = row[3];
+		latitude = row[4];
+		longitude = row[5];
+		elevation = row[6];
+		weatherFile >> row;					// drop header
+		begin = readTMY3();	// duplicate first hour for interpolation of 0->1
+		end = begin;
+		type = 1;
+	}
+	
+	else if(row.size() == 10) {			//EnergyPlus weather file EPW
+		siteID = row[5];
+		timeZone = row[8];
+		latitude = row[6];
+		longitude = row[7];
+		elevation = row[9];
+		for(int i = 0; i < 7; ++i) {	// drop rest of header lines
+			weatherFile >> row;
+			}
+		begin = readEPW();	// duplicate first hour for interpolation of 0->1
+		end = begin;
+		type = 2;
+	}
+	
+	else {							// 1 minute data
+		weatherFile.close();
+		weatherFile.open(fileName);
+		weatherFile >> latitude >> longitude >> timeZone >> elevation;
+		siteID = 0;
+		type = 0;
+	}
+
 }
 
-weatherData interpolateWind(weatherData begin, weatherData end, int step) {
+
+double Weather::interpolate(double b, double e, int step) {
+	return b + (e - b) / 60 * step;
+}
+
+weatherData Weather::interpolateWind(int step) {
 	weatherData result;
 	
 	if(begin.windSpeed == 0) {
@@ -52,10 +108,10 @@ weatherData interpolateWind(weatherData begin, weatherData end, int step) {
 	return result;
 }
 
-weatherData interpWeather(weatherData begin, weatherData end, int minute) {
+weatherData Weather::interpWeather(int minute) {
 	weatherData result;
 	
-	result = interpolateWind(begin, end, minute);
+	result = interpolateWind(minute);
 	result.directNormal = interpolate(begin.directNormal, end.directNormal, minute);
 	result.globalHorizontal = interpolate(begin.globalHorizontal, end.globalHorizontal, minute);
 	result.dryBulb = interpolate(begin.dryBulb, end.dryBulb, minute);
@@ -68,10 +124,10 @@ weatherData interpWeather(weatherData begin, weatherData end, int minute) {
 	return result;
 }
 
-weatherData readTMY3(ifstream& file) {
+weatherData Weather::readTMY3() {
 	CSVRow row;
 	weatherData result;
-	file >> row;
+	weatherFile >> row;
 	if(row.size() >= 68) {							// don't set if at EOF
 		result.directNormal = row[7];
 		result.globalHorizontal = row[4];
@@ -87,10 +143,10 @@ weatherData readTMY3(ifstream& file) {
 	return result;
 }	
 
-weatherData readEPW(ifstream& file) {
+weatherData Weather::readEPW() {
 	CSVRow row;
 	weatherData result;
-	file >> row;
+	weatherFile >> row;
 	if(row.size() >= 35) {							// hourly entry rows each have 35 columns. 10 is the header row. 
 		result.directNormal = row[14];
 		result.globalHorizontal = row[13];
@@ -106,11 +162,11 @@ weatherData readEPW(ifstream& file) {
 	return result;
 }	
 
-weatherData readOneMinuteWeather(ifstream& file) {
+weatherData Weather::readOneMinuteWeather() {
 	int day;
 	weatherData result;
 	double wd;
-	file >> day
+	weatherFile >> day
 		>> result.directNormal
 		>> result.globalHorizontal
 		>> result.dryBulb
@@ -128,6 +184,33 @@ weatherData readOneMinuteWeather(ifstream& file) {
 	return result;
 }
 
+weatherData Weather::readMinute(int minute) {
+
+	// Read in or interpolate weather data
+	if(type == 0) {  // minute
+		return readOneMinuteWeather();
+		}
+	else {
+		return interpWeather(minute);
+		}
+	}
+
+void Weather::nextHour() {
+	begin = end;
+	switch (type) {
+	case 1:
+		end = readTMY3();
+		break;
+	case 2:
+		end = readEPW();
+		break;
+		}
+	}
+
+void Weather::close() {
+	weatherFile.close();
+	}
+		
 /*
 * surfaceInsolation()
 *

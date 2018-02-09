@@ -288,10 +288,6 @@ int main(int argc, char *argv[], char* envp[])
 		double RHtot70 = 0; 			//cumulative sum of index value (0 or 1) if RHhouse > 70
 		double RHexcAnnual70 = 0; 	//annual fraction of the year where RHhouse > 70
 		double RHHouse = 50, RHAttic = 50;  
-		double latitude;
-		double longitude;
-		int timeZone;
-		double altitude;
 
 		// [START] Read in Building Inputs =========================================================================================================================
 		ifstream buildingFile(inputFileName); 
@@ -735,60 +731,18 @@ int main(int argc, char *argv[], char* envp[])
 		// [END] Terrain ============================================================================================
 		
 		// ================== OPEN WEATHER FILE FOR INPUT ========================================
-		ifstream weatherFile(weatherFileName);
-		if(!weatherFile) { 
-			cout << "Cannot open weather file: " << weatherFileName << endl;
-			return 1; 
-		}
-
-		// Determine weather file type and read in header
-		CSVRow row;					// row of data to read from TMY3 csv
-		weatherData begin, end;	// hourly weather data
-		int weatherFileType;
-		weatherFile >> row;
-		if(row.size() > 2 && row.size() < 10) {			//TMY3, was >2
-			//double siteID = row[0];
-			//string siteName = row[1];
-			//string State = row[2];
-			timeZone = row[3];
-			latitude = row[4];
-			longitude = row[5];
-			altitude = row[6];
-			cout << "ID=" << row[0] << " TZ=" << timeZone << " lat=" << latitude << " long=" << longitude << " alt=" << altitude << endl;
-			cout << "Using TMY3 weather data file." << endl;
-			weatherFile >> row;					// drop header
-			begin = readTMY3(weatherFile);	// duplicate first hour for interpolation of 0->1
-			end = begin;
-			weatherFileType = 1;
-		}
-		
-		else if(row.size() == 10) {			//EnergyPlus weather file EPW
-			//double siteID = row[0];
-			//string siteName = row[1];
-			//string State = row[2];
-			timeZone = row[8];
-			latitude = row[6];
-			longitude = row[7];
-			altitude = row[9];
-			cout << "ID=" << row[5] << " TZ=" << timeZone << " lat=" << latitude << " long=" << longitude << " alt=" << altitude << endl;
-			cout << "Using Energy Plus weather data file." << endl;
- 			for(int i = 0; i < 7; ++i) {	// drop rest of header lines
-			   weatherFile >> row;
-			   }
-			begin = readEPW(weatherFile);	// duplicate first hour for interpolation of 0->1
-			end = begin;
-			weatherFileType = 2;
-		}
-		
-		else {							// 1 minute data
-			weatherFile.close();
+		Weather weatherFile;
+		try {
 			weatherFile.open(weatherFileName);
-			weatherFile >> latitude >> longitude >> timeZone >> altitude;
-			weatherFileType = 0;
-			cout << "1 minute:" << "Lat:" << latitude << " Alt:" << altitude << endl;
-			cout << "Using REGCAP weather data file." << endl;
 		}
-		latitude = M_PI * latitude / 180.0;					// convert to radians
+		catch(string fileName) {
+			cerr << "Could not open weather file: " << fileName << endl;
+			return 1;
+			}
+		cout << "Weather file type=" << weatherFile.type << " ID=" << weatherFile.siteID << " TZ=" << weatherFile.timeZone;
+		cout << " lat=" << weatherFile.latitude << " long=" << weatherFile.longitude << " elev=" << weatherFile.elevation << endl;
+		
+		weatherFile.latitude = M_PI * weatherFile.latitude / 180.0;					// convert to radians
 
 		// set 1 = air handler off, and house air temp below setpoint minus 0.5 degrees
 		// set 0 = air handler off, but house air temp above setpoint minus 0.5 degrees
@@ -934,7 +888,7 @@ int main(int argc, char *argv[], char* envp[])
 		int hcFlag = 1;         // Start with HEATING (simulations start in January)
 		double setpoint;			// Thermostat setpoint
 
-		weatherData weather;		// current minute of weather data
+		weatherData cur_weather;		// current minute of weather data
 		double mFanCycler;
 		double hcap;				// Heating capacity of furnace (or gas burned by furnace)
 		double mHRV =0;			// Mass flow of stand-alone HRV unit
@@ -1110,7 +1064,7 @@ int main(int argc, char *argv[], char* envp[])
 				double gamma = 360.0 * (day - 1) / 365.0 * M_PI / 180;
 				double equationOfTime = 2.2918 * (0.0075 + 0.1868 * cos(gamma) - 3.2077 * sin(gamma)
 											 - 1.4615 * cos(2 * gamma) - 4.089 * sin(2 * gamma));
-				double timeCorrection = equationOfTime / 60 + (longitude - 15 * timeZone) / 15.0;
+				double timeCorrection = equationOfTime / 60 + (weatherFile.longitude - 15 * weatherFile.timeZone) / 15.0;
 				// month used for humidity control.
 				int month;
 				if(day <= 31)       month = 1;
@@ -1209,28 +1163,22 @@ int main(int argc, char *argv[], char* envp[])
 						nonRivecVentSumIN = 0;				// Setting sum of non-RIVEC supply mechanical ventilation to zero
 						nonRivecVentSumOUT = 0;				// Setting sum of non-RIVEC exhaust mechanical ventilation to zero
 
-						// Read in or interpolate weather data
-						if(weatherFileType == 0) {  // minute
-							weather = readOneMinuteWeather(weatherFile);
-						}
-						else {
-							weather = interpWeather(begin, end, minute);
-						}
-						weather.windSpeed *= windSpeedCorrection;		// Correct met wind speed to speed at building eaves height [m/s]
-						if(weather.windSpeed < 1)					// Minimum wind velocity allowed is 1 m/s to account for non-zero start up velocity of anenometers
-							weather.windSpeed = 1;					// Wind speed is never zero
-						dailyCumulativeTemp = dailyCumulativeTemp + weather.dryBulb - C_TO_K;
-						tsolair = weather.dryBulb;
+						cur_weather = weatherFile.readMinute(minute);
+						cur_weather.windSpeed *= windSpeedCorrection;		// Correct met wind speed to speed at building eaves height [m/s]
+						if(cur_weather.windSpeed < 1)					// Minimum wind velocity allowed is 1 m/s to account for non-zero start up velocity of anenometers
+							cur_weather.windSpeed = 1;					// Wind speed is never zero
+						dailyCumulativeTemp = dailyCumulativeTemp + cur_weather.dryBulb - C_TO_K;
+						tsolair = cur_weather.dryBulb;
 
 						for(int k=0; k < 4; k++)			// Wind direction as a compass direction?
-							Sw[k] = pow(Swinit[k][weather.windDirection],2);		// store square of Sw to pass to attic_leak and house_leak
+							Sw[k] = pow(Swinit[k][cur_weather.windDirection],2);		// store square of Sw to pass to attic_leak and house_leak
 
 						// Fan Schedule Inputs
 						// Assumes operation of dryer and kitchen fans, then 1 - 3 bathroom fans
 						fanScheduleFile >> dryerFan >> kitchenFan >> bathOneFan >> bathTwoFan >> bathThreeFan;
 
 						// Calculate air densities
-						airDensityOUT = airDensityRef * airTempRef / weather.dryBulb;		// Outside Air Density
+						airDensityOUT = airDensityRef * airTempRef / cur_weather.dryBulb;		// Outside Air Density
 						airDensityIN = airDensityRef * airTempRef / tempHouse;		// Inside Air Density
 						airDensityATTIC = airDensityRef * airTempRef / tempAttic;	// Attic Air Density
 						airDensitySUP = airDensityRef * airTempRef / tempSupply;		// Supply Duct Air Density
@@ -1238,28 +1186,28 @@ int main(int argc, char *argv[], char* envp[])
 
 						// Solar calculations
 						hourAngle = 15 * (hour + minute / 60.0 + timeCorrection - 12) * M_PI / 180;
-						sinBeta = cos(latitude) * cos(dec) * cos(hourAngle) + sin(latitude) * sin(dec);
+						sinBeta = cos(weatherFile.latitude) * cos(dec) * cos(hourAngle) + sin(weatherFile.latitude) * sin(dec);
 						if(sinBeta > 0) {			// sun is up
 							beta = asin(sinBeta);
-							phi = copysign(acos((sinBeta * sin(latitude) - sin(dec)) / (cos(beta) * cos(latitude))),hourAngle);
-							double hdirect = sinBeta * weather.directNormal;
-							diffuse = max(0.0,weather.globalHorizontal - hdirect);
+							phi = copysign(acos((sinBeta * sin(weatherFile.latitude) - sin(dec)) / (cos(beta) * cos(weatherFile.latitude))),hourAngle);
+							double hdirect = sinBeta * cur_weather.directNormal;
+							diffuse = max(0.0,cur_weather.globalHorizontal - hdirect);
 
 							// Roof solar gain
 							double sigma = M_PI * roofPitch / 180;				// roof tilt in radians
-							ssolrad = surfaceInsolation(weather.directNormal, diffuse, beta, sigma, phi - 0);
-							nsolrad = surfaceInsolation(weather.directNormal, diffuse, beta, sigma, phi - M_PI);
+							ssolrad = surfaceInsolation(cur_weather.directNormal, diffuse, beta, sigma, phi - 0);
+							nsolrad = surfaceInsolation(cur_weather.directNormal, diffuse, beta, sigma, phi - M_PI);
 					
 							// Wall and window solar gain
 							double totalSolar = 0;
 							double incsolar[4];
 							double psi[4] = {0, M_PI/2, M_PI, -M_PI/2};
 							for(int i=0; i < 4; i++) {
-								incsolar[i] = surfaceInsolation(weather.directNormal, diffuse, beta, M_PI/2, phi - psi[i]);
+								incsolar[i] = surfaceInsolation(cur_weather.directNormal, diffuse, beta, M_PI/2, phi - psi[i]);
 								totalSolar += incsolar[i];
 							}
 							solgain = winShadingCoef * (windowS * incsolar[0] + windowWE / 2 * incsolar[1] + windowN * incsolar[2] + windowWE / 2 * incsolar[3]);
-							tsolair = totalSolar / 4 * .03 + weather.dryBulb;		// the .03 is from 1993 AHSRAE Fund. SI 26.5
+							tsolair = totalSolar / 4 * .03 + cur_weather.dryBulb;		// the .03 is from 1993 AHSRAE Fund. SI 26.5
 						}
 			
 						// ====================== HEATING THERMOSTAT CALCULATIONS ============================
@@ -1331,7 +1279,7 @@ int main(int argc, char *argv[], char* envp[])
 							}
 
 							// [START] ====================== ECONOMIZER RATIONALE ===============================
-							econodt = tempHouse - weather.dryBulb;			// 3.333K = 6F
+							econodt = tempHouse - cur_weather.dryBulb;			// 3.333K = 6F
 
 							// No cooling, 6F dt (internal/external) and tempHouse > 21C for economizer operation. 294.15 = 21C
 								//if(AHflag == 0 && econodt >= 3.333 && tempHouse > 294.15 && economizerUsed == 1) {
@@ -1433,7 +1381,7 @@ int main(int argc, char *argv[], char* envp[])
 
 						// ==========================  Humidity Control Logic ================================
 						// following function is in humidity_control.cpp, but has NOT been compiled or tested
-						// rivecOn = humidity_control(weather.humidityRatio, HRHouse, RHhouse, relExp, relDose, hour, month, AHflag, occupied)
+						// rivecOn = humidity_control(cur_weather.humidityRatio, HRHouse, RHhouse, relExp, relDose, hour, month, AHflag, occupied)
 
 						AHflagPrev = AHflag;
 						if(AHflag != 0)
@@ -2367,7 +2315,7 @@ int main(int argc, char *argv[], char* envp[])
 							capacityh = hcapacity + AHfanHeat;					// include fan heat in furnace capacity (converted to W in main program)
 							capacityc = 0;
 						} else {												// we have cooling
-							double Toutf = KtoF(weather.dryBulb);
+							double Toutf = KtoF(cur_weather.dryBulb);
 
 							// the following corrections are for TXV only
 							// test for wet/dry coil using SHR calculation
@@ -2491,7 +2439,7 @@ int main(int argc, char *argv[], char* envp[])
 
 							while(1) {
 								// Call houseleak subroutine to calculate air flow. Brennan added the variable mCeilingIN to be passed to the subroutine. Re-add between mHouseIN and mHouseOUT
-								sub_houseLeak(AHflag, leakIterations, weather.windSpeed, weather.windDirection, tempHouse, tempAttic, weather.dryBulb, envC, envPressureExp, eaveHeight,
+								sub_houseLeak(AHflag, leakIterations, cur_weather.windSpeed, cur_weather.windDirection, tempHouse, tempAttic, cur_weather.dryBulb, envC, envPressureExp, eaveHeight,
 									leakFracCeil, leakFracFloor, leakFracWall, numFlues, flue, wallFraction, floorFraction, Sw, flueShelterFactor, numWinDoor, winDoor, numFans, fan, numPipes,
 									Pipe, mIN, mOUT, Pint, mFlue, mCeiling, mFloor, atticC, dPflue, Crawl,
 									Hfloor, rowHouse, soffitFraction, Patticint, wallCp, mSupReg, mAH, mRetLeak, mSupLeak,
@@ -2505,7 +2453,7 @@ int main(int argc, char *argv[], char* envp[])
 									mCeilingOld = mCeiling;
 
 								// call atticleak subroutine to calculate air flow to/from the attic
-								sub_atticLeak(leakIterations, weather.windSpeed, weather.windDirection, tempHouse, weather.dryBulb, tempAttic, atticC, atticPressureExp, eaveHeight, roofPeakHeight,
+								sub_atticLeak(leakIterations, cur_weather.windSpeed, cur_weather.windDirection, tempHouse, cur_weather.dryBulb, tempAttic, atticC, atticPressureExp, eaveHeight, roofPeakHeight,
 									flueShelterFactor, Sw, numAtticVents, atticVent, soffit, mAtticIN, mAtticOUT, Patticint, mCeiling, rowHouse,
 									soffitFraction, roofPitch, roofPeakPerpendicular, numAtticFans, atticFan, mSupReg, mRetLeak, mSupLeak, matticenvin,
 									matticenvout, mSupAHoff, mRetAHoff, airDensityIN, airDensityOUT, airDensityATTIC);
@@ -2517,10 +2465,10 @@ int main(int argc, char *argv[], char* envp[])
 							//bsize = sizeof(b)/sizeof(b[0]);
 
 							// Call heat subroutine to calculate heat exchange
-							sub_heat(weather.dryBulb, mCeiling, AL4, weather.windSpeed, ssolrad, nsolrad, tempOld, atticVolume, houseVolume, weather.skyCover, b,
+							sub_heat(cur_weather.dryBulb, mCeiling, AL4, cur_weather.windSpeed, ssolrad, nsolrad, tempOld, atticVolume, houseVolume, cur_weather.skyCover, b,
 								floorArea, roofPitch, ductLocation, mSupReg, mRetReg, mRetLeak, mSupLeak, mAH, supRval, retRval, supDiameter,
 								retDiameter, supThickness, retThickness, supVel, retVel, 
-								weather.pressure, weather.humidityRatio, uaSolAir, uaTOut, matticenvin, matticenvout, mHouseIN, mHouseOUT, planArea, mSupAHoff,
+								cur_weather.pressure, cur_weather.humidityRatio, uaSolAir, uaTOut, matticenvin, matticenvout, mHouseIN, mHouseOUT, planArea, mSupAHoff,
 								mRetAHoff, solgain, tsolair, mFanCycler, roofPeakHeight, retLength, supLength,
 								roofType, roofExtRval, roofIntRval, ceilRval, gableEndRval, AHflag, mERV_AH, ERV_SRE, mHRV, HRV_ASE, mHRV_AH,
 								capacityc, capacityh, evapcap, internalGains, airDensityIN, airDensityOUT, airDensityATTIC, airDensitySUP, airDensityRET, numStories, storyHeight,
@@ -2543,16 +2491,16 @@ int main(int argc, char *argv[], char* envp[])
 
 						// Call moisture balance
 						double mRetOut = mFanCycler + mHRV_AH + mERV_AH * (1 - ERV_TRE);
-						moisture_nodes.mass_cond_bal(b, weather.dryBulb, weather.relativeHumidity,
+						moisture_nodes.mass_cond_bal(b, cur_weather.dryBulb, cur_weather.relativeHumidity,
 							airDensityOUT, airDensityATTIC, airDensityIN, airDensitySUP, airDensityRET,
-							weather.pressure, H4, H2, H6, matticenvin, matticenvout, mCeiling, mHouseIN, mHouseOUT,
+							cur_weather.pressure, H4, H2, H6, matticenvin, matticenvout, mCeiling, mHouseIN, mHouseOUT,
 							mAH, mRetAHoff, mRetLeak, mRetReg, mRetOut, mERV_AH * ERV_TRE, mSupAHoff, mSupLeak, mSupReg,
 							latcap, dh.condensate, latentLoad);
 
-						HRAttic = calcHumidityRatio(moisture_nodes.PW[6],weather.pressure);
-						HRReturn = calcHumidityRatio(moisture_nodes.PW[7],weather.pressure);  
-						HRSupply = calcHumidityRatio(moisture_nodes.PW[8],weather.pressure);
-						HRHouse = calcHumidityRatio(moisture_nodes.PW[9],weather.pressure);  
+						HRAttic = calcHumidityRatio(moisture_nodes.PW[6],cur_weather.pressure);
+						HRReturn = calcHumidityRatio(moisture_nodes.PW[7],cur_weather.pressure);  
+						HRSupply = calcHumidityRatio(moisture_nodes.PW[8],cur_weather.pressure);
+						HRHouse = calcHumidityRatio(moisture_nodes.PW[9],cur_weather.pressure);  
 						RHHouse = moisture_nodes.moistureContent[9];
 						RHAttic = moisture_nodes.moistureContent[6];
 
@@ -2602,9 +2550,9 @@ int main(int argc, char *argv[], char* envp[])
 					} //Yihuan:add these calculation for mCeilingIN calculation 
 
 						//Calculation of dry and moist air ventilation loads. Currently all values are positive, ie don't differentiate between heat gains and losses. Load doens't necessarily mean energy use...
-						Dhda = 1.006 * abs(tempHouse - weather.dryBulb); // dry air enthalpy difference across non-ceiling envelope elements [kJ/kg].
+						Dhda = 1.006 * abs(tempHouse - cur_weather.dryBulb); // dry air enthalpy difference across non-ceiling envelope elements [kJ/kg].
 						ceilingDhda = 1.006 * abs(tempHouse - tempAttic); //Dry air enthalpy difference across ceiling [kJ/kg]
-						Dhma = abs((1.006 * (tempHouse - weather.dryBulb)) + ((HRHouse * (2501 + 1.86 * (tempHouse - C_TO_K)))-(weather.humidityRatio * (2501 + 1.86 * (weather.dryBulb - C_TO_K))))); //moist air enthalpy difference across non-ceiling envelope elements [kJ/kg]
+						Dhma = abs((1.006 * (tempHouse - cur_weather.dryBulb)) + ((HRHouse * (2501 + 1.86 * (tempHouse - C_TO_K)))-(cur_weather.humidityRatio * (2501 + 1.86 * (cur_weather.dryBulb - C_TO_K))))); //moist air enthalpy difference across non-ceiling envelope elements [kJ/kg]
 						ceilingDhma = abs((1.006 * (tempHouse - tempAttic)) + ((HRHouse * (2501 + 1.86 * (tempHouse - C_TO_K))) - (HRAttic * (2501 + 1.86 * (tempAttic - C_TO_K))))); //moist air enthalpy difference across ceiling [kJ/kg]
 
 
@@ -2641,8 +2589,8 @@ int main(int argc, char *argv[], char* envp[])
 						if(ventSum <= 0)
 							ventSum = .000001;
 						
-						sub_infiltrationModel(envC, envPressureExp, windSpeedMultiplier, shelterFactor, stackCoef, windCoef, weather.windSpeed, 	
-							weather.dryBulb, ventSum, houseVolume, windSpeedCorrection, Q_wind, 
+						sub_infiltrationModel(envC, envPressureExp, windSpeedMultiplier, shelterFactor, stackCoef, windCoef, cur_weather.windSpeed, 	
+							cur_weather.dryBulb, ventSum, houseVolume, windSpeedCorrection, Q_wind, 
 							Q_stack, Q_infiltration, Q_total, wInfil, InfCalc);
 					
 						relExpOld = relExp;
@@ -2778,14 +2726,14 @@ int main(int argc, char *argv[], char* envp[])
 
 						// tab separated instead of commas- makes output files smaller
 						if(printOutputFile) {
-							outputFile << hour << "\t" << minuteYear << "\t" << weather.windSpeed << "\t" << weather.dryBulb << "\t" << tempHouse << "\t" << setpoint << "\t";
+							outputFile << hour << "\t" << minuteYear << "\t" << cur_weather.windSpeed << "\t" << cur_weather.dryBulb << "\t" << tempHouse << "\t" << setpoint << "\t";
 							outputFile << tempAttic << "\t" << tempSupply << "\t" << tempReturn << "\t" << AHflag << "\t" << AHfanPower << "\t";
 							outputFile << compressorPower << "\t" << mechVentPower << "\t" << HRHouse * 1000 << "\t" << SHR << "\t" << Mcoil << "\t";
 							outputFile << Pint << "\t"<< qHouse << "\t" << houseACH << "\t" << flueACH << "\t" << ventSum << "\t" << nonRivecVentSum << "\t";
 							outputFile << fan[0].on << "\t" << fan[1].on << "\t" << fan[2].on << "\t" << fan[3].on << "\t" << fan[4].on << "\t" << fan[5].on << "\t" << fan[6].on << "\t";
 							outputFile << rivecOn << "\t" << relExp << "\t" << relDose << "\t";
 							outputFile << occupied[weekend][hour] << "\t"; 
-							outputFile << weather.humidityRatio << "\t" << HRAttic << "\t" << HRReturn << "\t" << HRSupply << "\t" << HRHouse << "\t" << RHHouse << "\t" << RHind60 << "\t" << RHind70 << "\t" << HumidityIndex << "\t" << dh.condensate << "\t" << indoorConc << "\t" << moldIndex_South << "\t" << moldIndex_North << "\t" << moldIndex_BulkFraming << "\t";
+							outputFile << cur_weather.humidityRatio << "\t" << HRAttic << "\t" << HRReturn << "\t" << HRSupply << "\t" << HRHouse << "\t" << RHHouse << "\t" << RHind60 << "\t" << RHind70 << "\t" << HumidityIndex << "\t" << dh.condensate << "\t" << indoorConc << "\t" << moldIndex_South << "\t" << moldIndex_North << "\t" << moldIndex_BulkFraming << "\t";
 							outputFile << mHouseIN << "\t" << mHouseOUT << "\t" << (mCeiling + mSupAHoff + mRetAHoff) << "\t" << matticenvin << "\t" << matticenvout << "\t" << mSupReg << "\t" << mRetReg << "\t";
 							outputFile << qHouseIN << "\t" << qHouseOUT << "\t" << qCeiling << "\t" << qAtticIN << "\t" << qAtticOUT << "\t" << qSupReg << "\t" << qRetReg << endl;
 							//outputFile << mHouse << "\t" << mHouseIN << "\t" << mHouseOUT << mCeiling << "\t" << mHouseIN << "\t" << mHouseOUT << "\t" << mSupReg << "\t" << mRetReg << "\t" << mSupAHoff << "\t" ;
@@ -2794,7 +2742,7 @@ int main(int argc, char *argv[], char* envp[])
 
 						// ================================= WRITING MOISTURE DATA FILE =================================
 						if(printMoistureFile) {
-							moistureFile << weather.relativeHumidity << "\t" << weather.dryBulb - C_TO_K;
+							moistureFile << cur_weather.relativeHumidity << "\t" << cur_weather.dryBulb - C_TO_K;
 							for(int i=0; i<6; i++) {   // humidity model wood nodes
 								moistureFile << "\t" << moisture_nodes.moistureContent[i] << "\t" << moisture_nodes.PW[i] << "\t" << moisture_nodes.mTotal[i] << "\t" << moisture_nodes.temperature[i] - C_TO_K;
 								}
@@ -2802,7 +2750,7 @@ int main(int argc, char *argv[], char* envp[])
 								moistureFile << "\t" << moisture_nodes.moistureContent[i] << "\t" << moisture_nodes.PW[i] << "\t" << moisture_nodes.temperature[i] - C_TO_K;
 								}
 							moistureFile << endl;
-							//moistureFile << weather.humidityRatio << "\t" << HRHouse << "\t" << HRAttic << "\t" << HRSupply << "\t" << HRReturn << "\t";
+							//moistureFile << cur_weather.humidityRatio << "\t" << HRHouse << "\t" << HRAttic << "\t" << HRSupply << "\t" << HRReturn << "\t";
 							//moistureFile << RHHouse << "\t" << RHAttic << "\t" << tempHouse - C_TO_K << "\t" << tempAttic - C_TO_K << endl;
 						}
 			
@@ -2829,7 +2777,7 @@ int main(int argc, char *argv[], char* envp[])
 						//heatingLoad += capacityh / 60000;
 
 						// Average temperatures and airflows
-						meanOutsideTemp = meanOutsideTemp + (weather.dryBulb - 273.15);		// Average external temperature over the simulation
+						meanOutsideTemp = meanOutsideTemp + (cur_weather.dryBulb - 273.15);		// Average external temperature over the simulation
 						meanAtticTemp = meanAtticTemp + (tempAttic -273.15);		// Average attic temperatire over the simulation
 						meanHouseTemp = meanHouseTemp + (tempHouse - 273.15);		// Average internal house temperature over the simulation
 						meanHouseACH = meanHouseACH + houseACH;						// Average ACH for the house
@@ -2841,15 +2789,7 @@ int main(int argc, char *argv[], char* envp[])
 						if(minuteYear > (365 * 1440))
 							break;
 					}     // end of minute loop
-					begin = end;
-					switch (weatherFileType) {
-					case 1:
-						end = readTMY3(weatherFile);
-						break;
-					case 2:
-						end = readEPW(weatherFile);
-						break;
-					}
+					weatherFile.nextHour();
 
 					// Mold Index Calculations per ASHRAE 160, BDL 12/2016
 				

@@ -48,14 +48,36 @@ class CSVRow
         std::vector<double>    m_data;
 };
 
-std::istream& operator>>(std::istream& str,CSVRow& data);
-double interpolate(double begin, double end, int step);
-weatherData interpolateWind(weatherData begin, weatherData end, int step);
-weatherData interpWeather(weatherData begin, weatherData end, int minute);
-weatherData readTMY3(ifstream& file);
-weatherData readEPW(ifstream& file);
-weatherData readOneMinuteWeather(ifstream& file);
+class Weather {
+	private:
+		weatherData begin;		// first hour weather data
+		weatherData end;			// second hour weather data
+		ifstream weatherFile;	// weather file
+
+		double interpolate(double b, double e, int step);
+		weatherData interpolateWind(int step);
+		weatherData readTMY3();
+		weatherData readEPW();
+		weatherData readOneMinuteWeather();
+		weatherData interpWeather(int minute);
+		
+	public:
+		int type;					// type of weather file (0 - 1 minute, 1 - TMY3 , 2 - EPW)
+		double siteID;
+		double latitude;
+		double longitude;
+		int timeZone;
+		double elevation;
+		
+		Weather();
+		void open(string fileName);
+		weatherData readMinute(int minute);
+		void nextHour();
+		void close();
+};
+
 double surfaceInsolation(double direct, double diffuse, double beta, double sigma, double gamma);
+std::istream& operator>>(std::istream& str,CSVRow& data);
 
 #endif
 
