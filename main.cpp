@@ -2380,7 +2380,7 @@ int main(int argc, char *argv[], char* envp[])
 
 							while(1) {
 								// Call houseleak subroutine to calculate air flow. Brennan added the variable mCeilingIN to be passed to the subroutine. Re-add between mHouseIN and mHouseOUT
-								sub_houseLeak(AHflag, leakIterations, cur_weather.windSpeed, cur_weather.windDirection, tempHouse, tempAttic, cur_weather.dryBulb, envC, envPressureExp, eaveHeight,
+								sub_houseLeak(AHflag, leakIterations, cur_weather.windSpeedLocal, cur_weather.windDirection, tempHouse, tempAttic, cur_weather.dryBulb, envC, envPressureExp, eaveHeight,
 									leakFracCeil, leakFracFloor, leakFracWall, numFlues, flue, wallFraction, floorFraction, Sw, flueShelterFactor, numWinDoor, winDoor, numFans, fan, numPipes,
 									Pipe, mIN, mOUT, Pint, mFlue, mCeiling, mFloor, atticC, dPflue, Crawl,
 									Hfloor, rowHouse, soffitFraction, Patticint, wallCp, mSupReg, mAH, mRetLeak, mSupLeak,
@@ -2394,7 +2394,7 @@ int main(int argc, char *argv[], char* envp[])
 									mCeilingOld = mCeiling;
 
 								// call atticleak subroutine to calculate air flow to/from the attic
-								sub_atticLeak(leakIterations, cur_weather.windSpeed, cur_weather.windDirection, tempHouse, cur_weather.dryBulb, tempAttic, atticC, atticPressureExp, eaveHeight, roofPeakHeight,
+								sub_atticLeak(leakIterations, cur_weather.windSpeedLocal, cur_weather.windDirection, tempHouse, cur_weather.dryBulb, tempAttic, atticC, atticPressureExp, eaveHeight, roofPeakHeight,
 									flueShelterFactor, Sw, numAtticVents, atticVent, soffit, mAtticIN, mAtticOUT, Patticint, mCeiling, rowHouse,
 									soffitFraction, roofPitch, roofPeakPerpendicular, numAtticFans, atticFan, mSupReg, mRetLeak, mSupLeak, matticenvin,
 									matticenvout, mSupAHoff, mRetAHoff, airDensityIN, airDensityOUT, airDensityATTIC);
@@ -2406,7 +2406,7 @@ int main(int argc, char *argv[], char* envp[])
 							//bsize = sizeof(b)/sizeof(b[0]);
 
 							// Call heat subroutine to calculate heat exchange
-							sub_heat(cur_weather.dryBulb, mCeiling, AL4, cur_weather.windSpeed, ssolrad, nsolrad, tempOld, atticVolume, houseVolume, cur_weather.skyCover, b,
+							sub_heat(cur_weather.dryBulb, mCeiling, AL4, cur_weather.windSpeedLocal, ssolrad, nsolrad, tempOld, atticVolume, houseVolume, cur_weather.skyCover, b,
 								floorArea, roofPitch, ductLocation, mSupReg, mRetReg, mRetLeak, mSupLeak, mAH, supRval, retRval, supDiameter,
 								retDiameter, supThickness, retThickness, supVel, retVel, 
 								cur_weather.pressure, cur_weather.humidityRatio, uaSolAir, uaTOut, matticenvin, matticenvout, mHouseIN, mHouseOUT, planArea, mSupAHoff,
@@ -2530,7 +2530,7 @@ int main(int argc, char *argv[], char* envp[])
 						if(ventSum <= 0)
 							ventSum = .000001;
 						
-						sub_infiltrationModel(envC, envPressureExp, windSpeedMultiplier, shelterFactor, stackCoef, windCoef, cur_weather.windSpeedUnCor, 	
+						sub_infiltrationModel(envC, envPressureExp, windSpeedMultiplier, shelterFactor, stackCoef, windCoef, cur_weather.windSpeed, 	
 							cur_weather.dryBulb, ventSum, houseVolume, Q_wind, 
 							Q_stack, Q_infiltration, Q_total, wInfil, InfCalc);
 					
@@ -2667,7 +2667,7 @@ int main(int argc, char *argv[], char* envp[])
 
 						// tab separated instead of commas- makes output files smaller
 						if(printOutputFile) {
-							outputFile << hour << "\t" << minuteYear << "\t" << cur_weather.windSpeed << "\t" << cur_weather.dryBulb << "\t" << tempHouse << "\t" << setpoint << "\t";
+							outputFile << hour << "\t" << minuteYear << "\t" << cur_weather.windSpeedLocal << "\t" << cur_weather.dryBulb << "\t" << tempHouse << "\t" << setpoint << "\t";
 							outputFile << tempAttic << "\t" << tempSupply << "\t" << tempReturn << "\t" << AHflag << "\t" << AHfanPower << "\t";
 							outputFile << compressorPower << "\t" << mechVentPower << "\t" << HRHouse * 1000 << "\t" << SHR << "\t" << Mcoil << "\t";
 							outputFile << Pint << "\t"<< qHouse << "\t" << houseACH << "\t" << flueACH << "\t" << ventSum << "\t" << nonRivecVentSum << "\t";
