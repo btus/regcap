@@ -222,9 +222,9 @@ weatherData current;
 	else {
 		current = interpWeather(minute);
 		}
+	if(current.windSpeed < 1)							// Minimum wind velocity allowed is 1 m/s to account for non-zero start up velocity of anenometers
+		current.windSpeed = 1;							// Wind speed is never zero
 	current.windSpeedLocal = current.windSpeed * windSpeedCorrection;		// Correct met wind speed to speed at building eaves height [m/s]
-	if(current.windSpeedLocal < 1)							// Minimum wind velocity allowed is 1 m/s to account for non-zero start up velocity of anenometers
-		current.windSpeedLocal = 1;							// Wind speed is never zero
 	return current;
 	}
 
