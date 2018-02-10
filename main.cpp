@@ -693,19 +693,6 @@ int main(int argc, char *argv[], char* envp[])
 		}
 
 		
-		// ================== OPEN WEATHER FILE FOR INPUT ========================================
-		Weather weatherFile(terrain, eaveHeight);	// instantiate weatherFile object
-		try {
-			weatherFile.open(weatherFileName);
-		}
-		catch(string fileName) {
-			cerr << "Could not open weather file: " << fileName << endl;
-			return 1;
-			}
-		cout << "Weather file type=" << weatherFile.type << " ID=" << weatherFile.siteID << " TZ=" << weatherFile.timeZone;
-		cout << " lat=" << weatherFile.latitude << " long=" << weatherFile.longitude << " elev=" << weatherFile.elevation << endl;
-		
-		weatherFile.latitude = M_PI * weatherFile.latitude / 180.0;					// convert to radians
 
 		// set 1 = air handler off, and house air temp below setpoint minus 0.5 degrees
 		// set 0 = air handler off, but house air temp above setpoint minus 0.5 degrees
@@ -953,9 +940,10 @@ int main(int argc, char *argv[], char* envp[])
 		//double FanP = fan[0].power; //Brennan's attempt to fix the fan power outside of the if() structures in the fan.oper section.
 
 		// Call class constructors
-		Dehumidifier dh(dhCapacity, dhEnergyFactor, dhSetPoint, dhDeadBand);	// Initialize Dehumidifier 
+		Dehumidifier dh(dhCapacity, dhEnergyFactor, dhSetPoint, dhDeadBand);	// instantiate Dehumidifier 
 		Moisture moisture_nodes(atticVolume, retDiameter, retLength, supDiameter, supLength,
-			 houseVolume, floorArea, sheathArea, bulkArea, roofIntThick, roofExtRval, atticMCInit);   // initialize moisture model
+			 houseVolume, floorArea, sheathArea, bulkArea, roofIntThick, roofExtRval, atticMCInit);   // instantiate moisture model
+		Weather weatherFile(terrain, eaveHeight);	// instantiate weatherFile object
 
 		cout << endl;
 		cout << "Simulation: " << simNum << endl;
@@ -969,7 +957,19 @@ int main(int argc, char *argv[], char* envp[])
 		// ||				 THE SIMULATION LOOPS START HERE:					   ||
 		// =================================================================
 		for(int year = 0; year <= warmupYears; year++) {
-		cout << "Year:\t " << year << endl;
+			cout << "Year:\t " << year << endl;
+			// ================== OPEN WEATHER FILE FOR INPUT ========================================
+			try {
+				weatherFile.open(weatherFileName);
+			}
+			catch(string fileName) {
+				cerr << "Could not open weather file: " << fileName << endl;
+				return 1;
+				}
+			cout << "Weather file type=" << weatherFile.type << " ID=" << weatherFile.siteID << " TZ=" << weatherFile.timeZone;
+			cout << " lat=" << weatherFile.latitude << " long=" << weatherFile.longitude << " elev=" << weatherFile.elevation << endl;
+			weatherFile.latitude = M_PI * weatherFile.latitude / 180.0;					// convert to radians
+
 			for(int day = 1; day <= 365; day++) {
 				cout << "\rDay = " << day << flush;
 
@@ -2747,13 +2747,13 @@ int main(int argc, char *argv[], char* envp[])
 
 				}      // end of hour loop
 			}    // end of day loop
+			weatherFile.close();
 		}	// end of year loop
 		//} while (weatherFile);			// Run until end of weather file
 
 		//[END] Main Simulation Loop ==============================================================================================================================================
 
 		// Close files
-		weatherFile.close();
 		if(printOutputFile)
 			outputFile.close();
 		if(printMoistureFile) 
