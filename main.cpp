@@ -266,7 +266,7 @@ int main(int argc, char *argv[], char* envp[])
 		string endOfFile;
 		
 		// Zeroing the variables to create the sums for the .ou2 file
-		long int minuteYear = 1;
+		long int minuteYear;
 		int endrunon = 0;
 		double Mcoil = 0;
 		double SHR = 0;		
@@ -545,16 +545,6 @@ int main(int argc, char *argv[], char* envp[])
 		}
 		shelterFile.close();
 
-		// Fan Schedule Inputs =========================================================================================
-		// Read in fan schedule (lists of 1s and 0s, 1 = fan ON, 0 = fan OFF, for every minute of the year)
-		// Different schedule file depending on number of bathrooms
-		ifstream fanScheduleFile;
-		fanScheduleFile.open(fanScheduleFileName); 
-		if(!fanScheduleFile) { 
-			cout << "Cannot open fan schedule: " << fanScheduleFileName << endl;
-			return 1; 		
-		}
-
 		// ================= CREATE OUTPUT FILES =================================================
 		ofstream outputFile;
 		if(printOutputFile) {
@@ -597,7 +587,6 @@ int main(int argc, char *argv[], char* envp[])
 			}
 			filterFile << "mAH_cumu\tqAH\twAH\tretLF" << endl;
 		}
-
 					
 		// [START] Filter Loading ==================================================================================
 
@@ -660,13 +649,23 @@ int main(int argc, char *argv[], char* envp[])
 		// For Economizer calculations
 		int economizerUsed = 0;			// 1 = use economizer and change C (house leakage) for pressure relief while economizer is running (changes automatically)
 		double Coriginal = 0;			// House leakage before pressure relief opens for economizer
-		double ELAeconomizer = 0;		// Size of leakage increase for economizer pressure relief
 		double Ceconomizer = 0;			// Total leakage of house inncluding extra economizer pressure relief (only while economizer is running)
 
 		for(int i=0; i < numFans; i++) {
-			if(fan[i].oper == 21 || fan[i].oper == 22)
+			if(fan[i].oper == 21 || fan[i].oper == 22) {
 				economizerUsed = 1;		// Lets REGCAP know that an economizer is being used
-				//economizerUsed = 0;		// Force economizer to be off
+				// Presure Relief for Economizer, increase envelope leakage C while economizer is operating
+				double ELAeconomizer;		// Size of leakage increase for economizer pressure relief
+				Coriginal = envC;
+				if(qAH_cool >= qAH_heat) {			// Dependent on the largest of the heating/cooling AH fan power
+					// sized to 2Pa of pressure while economizer running
+					ELAeconomizer = qAH_cool * (sqrt(airDensityRef / (2 * 2)) / 1);
+					}
+					else {
+					ELAeconomizer = qAH_heat * (sqrt(airDensityRef / (2 * 2)) / 1);
+					}
+				Ceconomizer = 1 * ELAeconomizer * sqrt(2 / airDensityRef) * pow(4, (.5 - .65));
+				}
 			if(fan[i].oper == 30 || fan[i].oper == 31 || fan[i].oper == 50 || fan[i].oper == 51) { // RIVEC fans
 				qRivec = -1 * fan[i].q	* 1000;
 				rivecFlag = 1;
@@ -679,25 +678,9 @@ int main(int argc, char *argv[], char* envp[])
 			}
 		}
 
-		// Presure Relief for Economizer, increase envelope leakage C while economizer is operating
-		if(economizerUsed == 1) {
-			Coriginal = envC;
-			if(qAH_cool >= qAH_heat) {			// Dependent on the largest of the heating/cooling AH fan power
-				// sized to 2Pa of pressure while economizer running
-				ELAeconomizer = qAH_cool * (sqrt(airDensityRef / (2 * 2)) / 1);
-				Ceconomizer = 1 * ELAeconomizer * sqrt(2 / airDensityRef) * pow(4, (.5 - .65));
-			} else {
-				ELAeconomizer = qAH_heat * (sqrt(airDensityRef / (2 * 2)) / 1);
-				Ceconomizer = 1 * ELAeconomizer * sqrt(2 / airDensityRef) * pow(4, (.5 - .65));
-			}
-		}
-
-		
-
 		// set 1 = air handler off, and house air temp below setpoint minus 0.5 degrees
 		// set 0 = air handler off, but house air temp above setpoint minus 0.5 degrees
 		int set = 0;
-
 		int AHflag = 0;			// Air Handler Flag (0/1/2 = OFF/HEATING MODE/COOLING MODE, 100 = fan on for venting, 102 = heating cool down for 1 minute at end of heating cycle)
 		int AHflagPrev = 0;
 		int econoFlag = 0;		// Economizer Flag (0/1 = OFF/ON)
@@ -871,11 +854,9 @@ int main(int argc, char *argv[], char* envp[])
 		double chargeeerw = 0;
 		double Mcoilprevious = 0;
 		double mCeiling = 0;
-		//double mretahaoff;
 		double mHouseIN = 0;
 		double mCeilingIN = 0; //Ceiling mass flows, not including register flows. Brennan added for ventilation load calculations.
 		double mHouseOUT = 0;
-		//double RHOATTIC;
 		double internalGains;
 		double mIN = 0;
 		double mOUT = 0;
@@ -958,6 +939,7 @@ int main(int argc, char *argv[], char* envp[])
 		// =================================================================
 		for(int year = 0; year <= warmupYears; year++) {
 			cout << "Year:\t " << year << endl;
+			minuteYear = 1;
 			// ================== OPEN WEATHER FILE FOR INPUT ========================================
 			try {
 				weatherFile.open(weatherFileName);
@@ -969,6 +951,16 @@ int main(int argc, char *argv[], char* envp[])
 			cout << "Weather file type=" << weatherFile.type << " ID=" << weatherFile.siteID << " TZ=" << weatherFile.timeZone;
 			cout << " lat=" << weatherFile.latitude << " long=" << weatherFile.longitude << " elev=" << weatherFile.elevation << endl;
 			weatherFile.latitude = M_PI * weatherFile.latitude / 180.0;					// convert to radians
+
+			// Fan Schedule Inputs =========================================================================================
+			// Read in fan schedule (lists of 1s and 0s, 1 = fan ON, 0 = fan OFF, for every minute of the year)
+			// Different schedule file depending on number of bathrooms
+			ifstream fanScheduleFile;
+			fanScheduleFile.open(fanScheduleFileName); 
+			if(!fanScheduleFile) { 
+				cout << "Cannot open fan schedule: " << fanScheduleFileName << endl;
+				return 1; 		
+			}
 
 			for(int day = 1; day <= 365; day++) {
 				cout << "\rDay = " << day << flush;
@@ -2727,8 +2719,8 @@ int main(int argc, char *argv[], char* envp[])
 						// Time keeping
 						minuteYear++;													// Minute count of year
 
-						if(minuteYear > (365 * 1440))
-							break;
+						//if(minuteYear > (365 * 1440))
+						//	break;
 					}     // end of minute loop
 					weatherFile.nextHour();
 
@@ -2748,6 +2740,7 @@ int main(int argc, char *argv[], char* envp[])
 				}      // end of hour loop
 			}    // end of day loop
 			weatherFile.close();
+			fanScheduleFile.close();
 		}	// end of year loop
 		//} while (weatherFile);			// Run until end of weather file
 
@@ -2761,7 +2754,6 @@ int main(int argc, char *argv[], char* envp[])
 		if(printFilterFile)
 			filterFile.close();
 
-		fanScheduleFile.close();
 
 		double total_kWh = AH_kWh + furnace_kWh + compressor_kWh + mechVent_kWh + dehumidifier_kWh;
 
