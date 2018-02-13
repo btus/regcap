@@ -97,16 +97,20 @@ int main(int argc, char *argv[], char* envp[])
 	string schedulePath = config.pString("schedulePath");
 	
 	// output file control
-	bool printMoistureFile = config.pBool("printMoistureFile");
-	bool printFilterFile = config.pBool("printFilterFile");
-	bool printOutputFile = config.pBool("printOutputFile");
-	
+	bool printMoistureFileCfg = config.pBool("printMoistureFile");
+	bool printFilterFileCfg = config.pBool("printFilterFile");
+	bool printOutputFileCfg = config.pBool("printOutputFile");
+	bool printAllYears = config.pBool("printAllYears");
+	bool printMoistureFile = printMoistureFileCfg;
+	bool printFilterFile = printFilterFileCfg;
+	bool printOutputFile = printOutputFileCfg;
+
 	// configuration vars
 	double atticMCInit = config.pDouble("atticMCInit");			// Initial moisture content of attic wood (fraction)
 	double dhDeadBand = config.pDouble("dhDeadBand");				// Dehumidifier dead band (+/- %RH)
 	double cCapAdjustTime = config.pDouble("cCapAdjustTime");	// First minute adjustment of cooling capacity (fraction)
 	int warmupYears = config.pInt("warmupYears");					// Number of years to run for warmup
-
+	
 	// Simulation Batch Timing
 	time_t startTime, endTime;
 	time(&startTime);
@@ -238,11 +242,11 @@ int main(int argc, char *argv[], char* envp[])
 		int filterLoadingFlag;	// Filter loading flag = 0 (OFF) or 1 (ON)
 		int MERV;					// MERV rating of filter (may currently be set to 5, 8, 11 or 16)
 		int loadingRate;			// loading rate of filter, f (0,1,2) = (low,med,high)
-		int AHMotorType;				// BPM (1) or PSC (0) air handler motor
+		int AHMotorType;			// BPM (1) or PSC (0) air handler motor
 		// Inputs to set humidity control
-		int rivecFlagInd;		// Indicator variable that instructs a fan code 13 or 17 to be run by RIVEC controls. 1= yes, 0=no. Brennan.
-		int OccContType;		// Type of occupancy control to be used in the RIVEC calculations. 1,2,...n Brennan.
-		int AuxFanIndex; 	// //Index value that determines if auxiliary fans (dryer, kitchen and bath fans) are counted towards RIVEC relative exposure calculations
+		int rivecFlagInd;			// Indicator variable that instructs a fan code 13 or 17 to be run by RIVEC controls. 1= yes, 0=no. Brennan.
+		int OccContType;			// Type of occupancy control to be used in the RIVEC calculations. 1,2,...n Brennan.
+		int AuxFanIndex; 			// Index value that determines if auxiliary fans (dryer, kitchen and bath fans) are counted towards RIVEC relative exposure calculations
 
 		// Following are for humidity control logic
 		//double wCutoff;			// Humidity Ratio cut-off calculated as some percentile value for the climate zone. Brennan.
@@ -262,11 +266,11 @@ int main(int argc, char *argv[], char* envp[])
 		double dhCapacity;		// Dehumidifier capacity (pints/day)
 		double dhEnergyFactor;	// Dehumidifier energy factor (L/kWh)
 		double dhSetPoint;		// Dehumidifier set point (%RH)
-		int radiantBarrier; 		//Radiant barrier on roof sheathing, yes / no (1 / 0).
+		int radiantBarrier; 		// Radiant barrier on roof sheathing, yes / no (1 / 0).
 		string endOfFile;
 		
 		// Zeroing the variables to create the sums for the .ou2 file
-		long int minuteYear;
+		long int minuteTotal = 1;
 		int endrunon = 0;
 		double Mcoil = 0;
 		double SHR = 0;		
@@ -281,11 +285,9 @@ int main(int argc, char *argv[], char* envp[])
 		double mechVent_kWh = 0;
 		double furnace_kWh = 0;
 		double dehumidifier_kWh = 0;
-		double RHind60 = 0; 			//index value (0 or 1) if RHhouse > 60 
-		double RHtot60 = 0; 			//cumulative sum of index value (0 or 1) if RHhouse > 60 
+		double RHtot60 = 0; 			// Total minutes RHhouse > 60 
 		double RHexcAnnual60 = 0; 	//annual fraction of the year where RHhouse > 60
-		double RHind70 = 0; 			//index value (0 or 1) if RHhouse > 70 
-		double RHtot70 = 0; 			//cumulative sum of index value (0 or 1) if RHhouse > 70
+		double RHtot70 = 0; 			// Total minutes RHhouse > 70
 		double RHexcAnnual70 = 0; 	//annual fraction of the year where RHhouse > 70
 		double RHHouse = 50, RHAttic = 50;  
 
@@ -553,7 +555,7 @@ int main(int argc, char *argv[], char* envp[])
 				cout << "Cannot open output file: " << outputFileName << endl;
 				return 1; 
 			}
-			outputFile << "Time\tMin\twindSpeed\ttempOut\ttempHouse\tsetpoint\ttempAttic\ttempSupply\ttempReturn\tAHflag\tAHpower\tcompressPower\tmechVentPower\tHR\tSHR\tMcoil\thousePress\tQhouse\tACH\tACHflue\tventSum\tnonRivecVentSum\tfan1\tfan2\tfan3\tfan4\tfan5\tfan6\tfan7\trivecOn\trelExp\trelDose\toccupied\tHROUT\tHRattic\tHRreturn\tHRsupply\tHRhouse\tRHhouse\tRHind60\tRHind70\tHumidityIndex\tDHcondensate\tPollutantConc\tmoldIndex_South\tmoldIndex_North\tmoldIndex_BulkFraming\tmHouseIN\tmHouseOUT\tmCeilingAll\tmatticenvin\tmatticenvout\tmSupReg\tmRetReg\tqHouseIN\tqHouseOUT\tqCeilingAll\tqAtticIN\tqAtticOUT\tqSupReg\tqRetReg" << endl; 
+			outputFile << "Time\tMin\twindSpeed\ttempOut\ttempHouse\tsetpoint\ttempAttic\ttempSupply\ttempReturn\tAHflag\tAHpower\tcompressPower\tmechVentPower\tHR\tSHR\tMcoil\thousePress\tQhouse\tACH\tACHflue\tventSum\tnonRivecVentSum\tfan1\tfan2\tfan3\tfan4\tfan5\tfan6\tfan7\trivecOn\trelExp\trelDose\toccupied\tHROUT\tHRattic\tHRreturn\tHRsupply\tHRhouse\tRHhouse\tHumidityIndex\tDHcondensate\tPollutantConc\tmoldIndex_South\tmoldIndex_North\tmoldIndex_BulkFraming\tmHouseIN\tmHouseOUT\tmCeilingAll\tmatticenvin\tmatticenvout\tmSupReg\tmRetReg\tqHouseIN\tqHouseOUT\tqCeilingAll\tqAtticIN\tqAtticOUT\tqSupReg\tqRetReg" << endl; 
 		}
 
 		// Moisture output file
@@ -599,8 +601,8 @@ int main(int argc, char *argv[], char* envp[])
 		double fanPower_heating = fanPower_heating0;
 		double fanPower_cooling = fanPower_cooling0;
 
-		double massFilter_cumulative = 0;	// Cumulative mass that has flown through the filter
-		double massAH_cumulative = 0;			// Cumulative mass that has flown through the AH
+		double massFilter_cumulative = 0;	// Cumulative mass that has flowed through the filter
+		double massAH_cumulative = 0;			// Cumulative mass that has flowed through the AH
 
 		// Filter loading coefficients (initialization- attributed values in sub_filterLoading)
 		double A_qAH_heat = 0;		// Initial AH airflow change (in heating mode) from installing filter [%]
@@ -748,7 +750,6 @@ int main(int argc, char *argv[], char* envp[])
 // 		double occupiedExp = 1;						// When occupied, this equals relExp, when unoccupied, this equals 0. 
 // 		double totalOccupiedExp = 0;				//Cumulative sum for occupiedExp
 // 		double meanOccupiedExp = 1;					// Mean occupied relative exposure over the year
-		double relExpOld = 1;						//Initial value for prior minute's relative exposure.
 		
 		//double turnover = 1 / Aeq;					// Initial value for turnover time (hrs) used in the RIVEC algorithm. Turnover is calculated the same for occupied and unoccupied minutes.					
 		double Q_total = 0;							//Total airflow (infiltration + mechanical) (L/s), 62.2-2016
@@ -938,8 +939,6 @@ int main(int argc, char *argv[], char* envp[])
 		// ||				 THE SIMULATION LOOPS START HERE:					   ||
 		// =================================================================
 		for(int year = 0; year <= warmupYears; year++) {
-			cout << "Year:\t " << year << endl;
-			minuteYear = 1;
 			// ================== OPEN WEATHER FILE FOR INPUT ========================================
 			try {
 				weatherFile.open(weatherFileName);
@@ -948,7 +947,8 @@ int main(int argc, char *argv[], char* envp[])
 				cerr << "Could not open weather file: " << fileName << endl;
 				return 1;
 				}
-			cout << "Weather file type=" << weatherFile.type << " ID=" << weatherFile.siteID << " TZ=" << weatherFile.timeZone;
+			cout << endl;
+			cout << "Year " << year << ": Weather file type=" << weatherFile.type << " ID=" << weatherFile.siteID << " TZ=" << weatherFile.timeZone;
 			cout << " lat=" << weatherFile.latitude << " long=" << weatherFile.longitude << " elev=" << weatherFile.elevation << endl;
 			weatherFile.latitude = M_PI * weatherFile.latitude / 180.0;					// convert to radians
 
@@ -962,6 +962,38 @@ int main(int argc, char *argv[], char* envp[])
 				return 1; 		
 			}
 
+			if(year == warmupYears || printAllYears) {
+				printMoistureFile = printMoistureFileCfg;
+				printFilterFile = printFilterFileCfg;
+				printOutputFile = printOutputFileCfg;
+				}
+
+			if(!printAllYears) {	// Reset if only printing summary of final year
+				// counters
+				minuteTotal = 1;
+				occupiedMinCount = 0;
+				rivecMinutes = 0;
+				filterChanges = 0;
+				
+				// annual variables
+				AH_kWh = 0;
+				compressor_kWh = 0;
+				mechVent_kWh = 0;
+				gasTherm = 0;
+				furnace_kWh = 0;
+				dehumidifier_kWh = 0;
+				meanOutsideTemp = 0;
+				meanAtticTemp = 0;
+				meanHouseTemp = 0;
+				meanHouseACH = 0;
+				meanFlueACH = 0;
+				meanRelExp = 0;
+				meanRelDose = 0;
+				RHtot60 = 0;
+				RHtot70 = 0;
+				HumidityIndex_Sum = 0;
+				}
+				
 			for(int day = 1; day <= 365; day++) {
 				cout << "\rDay = " << day << flush;
 
@@ -1168,7 +1200,7 @@ int main(int argc, char *argv[], char* envp[])
 							}
 
 							if(AHflag == 0 && AHflag != AHflagPrev)
-								endrunon = minuteYear + 1;		// Adding 1 minute runon during which heat from beginning of cycle is put into air stream
+								endrunon = minuteTotal + 1;		// Adding 1 minute runon during which heat from beginning of cycle is put into air stream
 
 							if(AHflag == 1)
 								hcap = hcapacity / AFUE;	// hcap is gas consumed so needs to divide output (hcapacity) by AFUE
@@ -1293,16 +1325,16 @@ int main(int argc, char *argv[], char* envp[])
 								}
 							}
 					
-							else if(OccContType == 3 || OccContType == 4){ //Occupancy control only (3) or Aux Fans + Occupancy control (4). Aux fans are accounted for with the AuxFanIndex variable. 
-								if(occupied[weekend][hour] == 1){ //occupied
-									if(relExp >= 1.0 || relDose > 1.0){
+							else if(OccContType == 3 || OccContType == 4) { //Occupancy control only (3) or Aux Fans + Occupancy control (4). Aux fans are accounted for with the AuxFanIndex variable. 
+								if(occupied[weekend][hour] == 1) { //occupied
+									if(relExp >= 1.0 || relDose > 1.0) {
 										rivecOn = 1;
 									} else {
 										rivecOn = 0;
 									}
 								
 								} else{ //unoccupied
-									if(relExp > expLimit){ //expLimit defaults to 5, based on ASHRAE 62.2-2016 Addendum C. 
+									if(relExp > expLimit) { //expLimit defaults to 5, based on ASHRAE 62.2-2016 Addendum C. 
 										rivecOn = 1;
 									} else{
 										rivecOn = 0;
@@ -1337,7 +1369,7 @@ int main(int argc, char *argv[], char* envp[])
 
 						if(AHflag == 0) {			// AH OFF
 							// the 0 at the end of these terms means that the AH is off
-							if(minuteYear >= endrunon) {  // endrunon is the end of the heating cycle + 1 minutes
+							if(minuteTotal >= endrunon) {  // endrunon is the end of the heating cycle + 1 minutes
 								mSupReg = 0;
 								mAH = 0;
 								mRetLeak = 0;
@@ -2492,9 +2524,6 @@ int main(int argc, char *argv[], char* envp[])
 						DAventLoad = (mHouseIN * Dhda) + (mCeilingIN * ceilingDhda); //[kJ/min], I prevoiusly used mHouseIN, but changed to mHouse. This is super simplified, in that it does not account for differing dT across ducts, ceiling, walls, etc. these assume balanced mass flow (mHouseIN=mHouseOUT), I had assumed a need to multiply by 60 to convert kg/s kg/m, but that was not necessary once results were available, so I removed it.
 						MAventLoad = (mHouseIN * Dhma) + (mCeilingIN * ceilingDhma); //[kJ/min]. Brennan, mHouseIN needs to be a new variable that we create in the functions.cpp tab.
 
-						TotalDAventLoad = TotalDAventLoad + DAventLoad; //sums the dry air loads
-						TotalMAventLoad = TotalMAventLoad + MAventLoad; //sums the moist air loads
-
 						// [END] Heat and Mass Transport ==================================================================================================================================
 
 						// [START] IAQ Calculations =======================================================================================================================================
@@ -2526,30 +2555,19 @@ int main(int argc, char *argv[], char* envp[])
 							cur_weather.dryBulb, ventSum, houseVolume, Q_wind, 
 							Q_stack, Q_infiltration, Q_total, wInfil, InfCalc);
 					
-						relExpOld = relExp;
-						relDoseOld = relDose;
-					
 						//relExp and relDose are calculated and summed for every minute of the year.
-					
-						relExp = sub_relativeExposure(Aeq, Q_total, relExpOld, dtau, houseVolume);
-						relDose = relExp * (1 - exp(-rivecdt / 24)) + relDoseOld * exp(-rivecdt / 24);
-						totalRelExp = totalRelExp + relExp;
-						totalRelDose = totalRelDose + relDose;
-
-						if(OccContType > 2 && occupied[weekend][hour] == 0){ //unoccupied period AND occupancy SVC
-							totalRelExp = totalRelExp - relExp; //undo the addition.	
-							relDose = relDoseOld; //revert to prior time step value of relDose. relExp keeps being calculated in real-time.
-							totalRelDose = totalRelDose - relDose; //undo the addition
-						}
+						relExp = sub_relativeExposure(Aeq, Q_total, relExp, dtau, houseVolume);
+						if(OccContType < 3 || occupied[weekend][hour] == 1) {  // occupied period or occupancy ?
+							relDose = relExp * (1 - exp(-rivecdt / 24)) + relDose * exp(-rivecdt / 24);
+							}
 					
 						if(occupied[weekend][hour] == 1) { //house is occupied, then increment counter. 
 							occupiedMinCount += 1; // counts number of minutes while house is occupied
-						}
+							}
 					
 
 						indoorConc = sub_Pollutant(outdoorConc, indoorConc, indoorSource, houseVolume, qHouse, qDeposition, penetrationFactor, qAH, AHflag, filterEfficiency);
 
-					
 						//occupiedExp and occupiedDose are calculated and running summed only for occupied minutes of the year. Their values are otherwise remain fixed at the prior time step value. 
 						//Occupancy-based controls use relExp and occupiedDose.
 					
@@ -2633,40 +2651,61 @@ int main(int argc, char *argv[], char* envp[])
 
 						// [END] IAQ calculations =======================================================================================================================================
 
-						if(RHHouse >= 60){ //RHind60 and 70 count the minutes where high RH occurs
-							RHind60 = 1;
+						// Cumulative Yearly Variables
+						// Count the minutes where high RH occurs
+						if(RHHouse >= 60) { 
+							RHtot60++; //These are summed for the year and summarized in the output file. 
 							HumidityIndex = (RHHouse - 60) * (1.0 / (100 - 60));
-						} else {
-							RHind60 = 0;
+							HumidityIndex_Sum = HumidityIndex_Sum + HumidityIndex;
+							}
+						else {
 							HumidityIndex = 0;
-						}
-					
-						if(RHHouse >= 70){
-							RHind70 = 1;
-						} else {
-							RHind70 = 0;
-						}	
-						
+							}
+						if(RHHouse >= 70) {
+							RHtot70++;
+							}
+			
+						// Calculating sums for electrical and gas energy use
+						AH_kWh = AH_kWh + AHfanPower;								// Total air Handler energy for the simulation in kWh
+						compressor_kWh = compressor_kWh + compressorPower;	// Total cooling/compressor energy for the simulation in kWh
+						mechVent_kWh = mechVent_kWh + mechVentPower;			// Total mechanical ventilation energy for over the simulation in kWh
+						gasTherm = gasTherm + hcap;								// Total Heating energy for the simulation in therms
+						dehumidifier_kWh += dh.power;
+						//coolingLoad += capacityc / 60000;
+						//latLoad += latcap / 60000;
+						//heatingLoad += capacityh / 60000;
 
-						RHtot60 = RHtot60 + RHind60; //These are summed for the year and summarized in the output file. 
-						RHtot70 = RHtot70 + RHind70;
-						HumidityIndex_Sum = HumidityIndex_Sum + HumidityIndex;
+						// Average temperatures and airflows
+						meanOutsideTemp = meanOutsideTemp + cur_weather.dryBulb;	// Average external temperature over the simulation
+						meanAtticTemp = meanAtticTemp + tempAttic;					// Average attic temperatire over the simulation
+						meanHouseTemp = meanHouseTemp + tempHouse;					// Average internal house temperature over the simulation
+						meanHouseACH = meanHouseACH + houseACH;						// Average ACH for the house
+						meanFlueACH = meanFlueACH + abs(flueACH);						// Average ACH for the flue (-ve and +ve flow considered useful)
+
+						if(OccContType < 3 || occupied[weekend][hour] == 1) {		// occupied period OR occupancy 
+							totalRelExp = totalRelExp + relExp;	
+							totalRelDose = totalRelDose + relDose;
+							}
+
+						TotalDAventLoad = TotalDAventLoad + DAventLoad; 			//sums the dry air loads
+						TotalMAventLoad = TotalMAventLoad + MAventLoad; 			//sums the moist air loads
+
 
 						// ================================= WRITING RCO DATA FILE =================================
 
 						//File column names, for reference.
-						//outputFile << "Time\tMin\twindSpeed\ttempOut\ttempHouse\tsetpoint\ttempAttic\ttempSupply\ttempReturn\tAHflag\tAHpower\tHcap\tcompressPower\tCcap\tmechVentPower\tHR\tSHR\tMcoil\thousePress\tQhouse\tACH\tACHflue\tventSum\tnonRivecVentSum\tfan1\tfan2\tfan3\tfan4\tfan5\tfan6\tfan7\trivecOn\tturnover\trelExpRIVEC\trelDoseRIVEC\toccupiedExpReal\toccupiedDoseReal\toccupied\toccupiedExp\toccupiedDose\tDAventLoad\tMAventLoad\tHROUT\tHRhouse\tRH%house\tRHind60\tRHind70" << endl; 
+						//outputFile << "Time\tMin\twindSpeed\ttempOut\ttempHouse\tsetpoint\ttempAttic\ttempSupply\ttempReturn\tAHflag\tAHpower\tHcap\tcompressPower\tCcap\tmechVentPower\tHR\tSHR\tMcoil\thousePress\tQhouse\tACH\tACHflue\tventSum\tnonRivecVentSum\tfan1\tfan2\tfan3\tfan4\tfan5\tfan6\tfan7\trivecOn\tturnover\trelExpRIVEC\trelDoseRIVEC\toccupiedExpReal\toccupiedDoseReal\toccupied\toccupiedExp\toccupiedDose\tDAventLoad\tMAventLoad\tHROUT\tHRhouse\tRH%house\" << endl; 
 
 						// tab separated instead of commas- makes output files smaller
 						if(printOutputFile) {
-							outputFile << hour << "\t" << minuteYear << "\t" << cur_weather.windSpeedLocal << "\t" << cur_weather.dryBulb << "\t" << tempHouse << "\t" << setpoint << "\t";
+							outputFile << year << "\t" << hour << "\t" << minuteTotal << "\t" << cur_weather.windSpeedLocal << "\t" << cur_weather.dryBulb << "\t" << tempHouse << "\t" << setpoint << "\t";
 							outputFile << tempAttic << "\t" << tempSupply << "\t" << tempReturn << "\t" << AHflag << "\t" << AHfanPower << "\t";
 							outputFile << compressorPower << "\t" << mechVentPower << "\t" << HRHouse * 1000 << "\t" << SHR << "\t" << Mcoil << "\t";
 							outputFile << Pint << "\t"<< qHouse << "\t" << houseACH << "\t" << flueACH << "\t" << ventSum << "\t" << nonRivecVentSum << "\t";
 							outputFile << fan[0].on << "\t" << fan[1].on << "\t" << fan[2].on << "\t" << fan[3].on << "\t" << fan[4].on << "\t" << fan[5].on << "\t" << fan[6].on << "\t";
 							outputFile << rivecOn << "\t" << relExp << "\t" << relDose << "\t";
 							outputFile << occupied[weekend][hour] << "\t"; 
-							outputFile << cur_weather.humidityRatio << "\t" << HRAttic << "\t" << HRReturn << "\t" << HRSupply << "\t" << HRHouse << "\t" << RHHouse << "\t" << RHind60 << "\t" << RHind70 << "\t" << HumidityIndex << "\t" << dh.condensate << "\t" << indoorConc << "\t" << moldIndex_South << "\t" << moldIndex_North << "\t" << moldIndex_BulkFraming << "\t";
+							outputFile << cur_weather.humidityRatio << "\t" << HRAttic << "\t" << HRReturn << "\t" << HRSupply << "\t" << HRHouse << "\t" << RHHouse << "\t" << HumidityIndex << "\t" << dh.condensate << "\t" << indoorConc << "\t" << moldIndex_South << "\t" << moldIndex_North << "\t" << moldIndex_BulkFraming << "\t";
 							outputFile << mHouseIN << "\t" << mHouseOUT << "\t" << (mCeiling + mSupAHoff + mRetAHoff) << "\t" << matticenvin << "\t" << matticenvout << "\t" << mSupReg << "\t" << mRetReg << "\t";
 							outputFile << qHouseIN << "\t" << qHouseOUT << "\t" << qCeiling << "\t" << qAtticIN << "\t" << qAtticOUT << "\t" << qSupReg << "\t" << qRetReg << endl;
 							//outputFile << mHouse << "\t" << mHouseIN << "\t" << mHouseOUT << mCeiling << "\t" << mHouseIN << "\t" << mHouseOUT << "\t" << mSupReg << "\t" << mRetReg << "\t" << mSupAHoff << "\t" ;
@@ -2688,38 +2727,17 @@ int main(int argc, char *argv[], char* envp[])
 						}
 			
 						// ================================= WRITING Filter Loading DATA FILE =================================
-			
 						massFilter_cumulative = massFilter_cumulative + (mAH * 60);	// Time steps are every minute and mAH is in [kg/s]
 						massAH_cumulative = massAH_cumulative + (mAH * 60);			// Time steps are every minute and mAH is in [kg/s]
-			
-
 						// Filter loading output file
 						if(printFilterFile) {
 							filterFile << massAH_cumulative << "\t"  << qAH << "\t" << AHfanPower << "\t" << retLF << endl;
-						}
-			
-						// Calculating sums for electrical and gas energy use
-						AH_kWh = AH_kWh + AHfanPower / 60000;						// Total air Handler energy for the simulation in kWh
-						compressor_kWh = compressor_kWh + compressorPower / 60000;	// Total cooling/compressor energy for the simulation in kWh
-						mechVent_kWh = mechVent_kWh + mechVentPower / 60000;		// Total mechanical ventilation energy for over the simulation in kWh
-						gasTherm = gasTherm + hcap * 60 / 1000000 / 105.5;			// Total Heating energy for the simulation in therms
-						furnace_kWh = gasTherm * 29.3;								// Total heating/furnace energy for the simulation in kWh
-						dehumidifier_kWh += dh.power / 60000;
-						//coolingLoad += capacityc / 60000;
-						//latLoad += latcap / 60000;
-						//heatingLoad += capacityh / 60000;
-
-						// Average temperatures and airflows
-						meanOutsideTemp = meanOutsideTemp + (cur_weather.dryBulb - 273.15);		// Average external temperature over the simulation
-						meanAtticTemp = meanAtticTemp + (tempAttic -273.15);		// Average attic temperatire over the simulation
-						meanHouseTemp = meanHouseTemp + (tempHouse - 273.15);		// Average internal house temperature over the simulation
-						meanHouseACH = meanHouseACH + houseACH;						// Average ACH for the house
-						meanFlueACH = meanFlueACH + abs(flueACH);					// Average ACH for the flue (-ve and +ve flow considered useful)
+							}
 
 						// Time keeping
-						minuteYear++;													// Minute count of year
+						minuteTotal++;													// Minute count of year
 
-						//if(minuteYear > (365 * 1440))
+						//if(minuteTotal > (365 * 1440))
 						//	break;
 					}     // end of minute loop
 					weatherFile.nextHour();
@@ -2755,23 +2773,32 @@ int main(int argc, char *argv[], char* envp[])
 			filterFile.close();
 
 
+		// Calculating total electrical and gas energy use
+		AH_kWh = AH_kWh / 60 / 1000;						// Total air Handler energy for the simulation in kWh
+		compressor_kWh = compressor_kWh / 60 / 1000;	// Total cooling/compressor energy for the simulation in kWh
+		mechVent_kWh = mechVent_kWh / 60 / 1000;		// Total mechanical ventilation energy for over the simulation in kWh
+		gasTherm = gasTherm * 60 / 1000000 / 105.5;	// Total Heating energy for the simulation in therms
+		furnace_kWh = gasTherm * 29.3;					// Total heating/furnace energy for the simulation in kWh
+		dehumidifier_kWh = dehumidifier_kWh / 60 / 1000;
 		double total_kWh = AH_kWh + furnace_kWh + compressor_kWh + mechVent_kWh + dehumidifier_kWh;
 
-		meanOutsideTemp = meanOutsideTemp / minuteYear;
-		meanAtticTemp = meanAtticTemp / minuteYear;
-		meanHouseTemp = meanHouseTemp / minuteYear;
-		meanHouseACH = meanHouseACH / minuteYear;
-		meanFlueACH = meanFlueACH / minuteYear;
-// 		meanRelDose = meanRelDose / minuteYear;
-// 		meanRelExp = meanRelExp / minuteYear;
-// 		meanRelDoseReal = meanRelDoseReal / minuteYear;				//Brennan. Added these and need to define in the definitions area. 
-// 		meanRelExpReal = meanRelExpReal / minuteYear;
+		meanOutsideTemp = meanOutsideTemp / minuteTotal - C_TO_K;
+		meanAtticTemp = meanAtticTemp / minuteTotal - C_TO_K;
+		meanHouseTemp = meanHouseTemp / minuteTotal - C_TO_K;
+		meanHouseACH = meanHouseACH / minuteTotal;
+		meanFlueACH = meanFlueACH / minuteTotal;
+// 		meanRelDose = meanRelDose / minuteTotal;
+// 		meanRelExp = meanRelExp / minuteTotal;
+// 		meanRelDoseReal = meanRelDoseReal / minuteTotal;				//Brennan. Added these and need to define in the definitions area. 
+// 		meanRelExpReal = meanRelExpReal / minuteTotal;
 
-		meanRelExp = totalRelExp / minuteYear;
-		meanRelDose = totalRelDose / minuteYear;
 		if(OccContType > 2){
 			meanRelExp = totalRelExp / occupiedMinCount;
 			meanRelDose = totalRelDose / occupiedMinCount;
+			}
+		else {
+			meanRelExp = totalRelExp / minuteTotal;
+			meanRelDose = totalRelDose / minuteTotal;
 		}
 		//meanOccupiedDose = totalOccupiedDose / occupiedMinCount; //Annual average relDose
 		//meanOccupiedExp = totalOccupiedExp / occupiedMinCount; //Annual average relExp; occupiedMinCount = 525,600 for continuous occupancy.
@@ -2779,9 +2806,9 @@ int main(int argc, char *argv[], char* envp[])
 // 		meanOccupiedDoseReal = totalOccupiedDoseReal / occupiedMinCount;
 // 		meanOccupiedExpReal = totalOccupiedExpReal / occupiedMinCount;
 
-		RHexcAnnual60 = RHtot60 / minuteYear;
-		RHexcAnnual70 = RHtot70 / minuteYear;
-		HumidityIndex_Avg = HumidityIndex_Sum / minuteYear;
+		RHexcAnnual60 = RHtot60 / minuteTotal;
+		RHexcAnnual70 = RHtot70 / minuteTotal;
+		HumidityIndex_Avg = HumidityIndex_Sum / minuteTotal;
 		
 		// Write summary output file (RC2 file)
 		ofstream ou2File(summaryFileName); 
@@ -2790,7 +2817,7 @@ int main(int argc, char *argv[], char* envp[])
 			return 1; 
 		}
 
-			// ================================= WRITING ANNUAL SUMMAR (.RC2) DATA FILE =================================
+			// ================================= WRITING ANNUAL SUMMARY (.RC2) DATA FILE =================================
 
 		//Column header names
 		ou2File << "Temp_out\tTemp_attic\tTemp_house";
