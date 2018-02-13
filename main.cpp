@@ -101,9 +101,9 @@ int main(int argc, char *argv[], char* envp[])
 	bool printFilterFileCfg = config.pBool("printFilterFile");
 	bool printOutputFileCfg = config.pBool("printOutputFile");
 	bool printAllYears = config.pBool("printAllYears");
-	bool printMoistureFile = printMoistureFileCfg;
-	bool printFilterFile = printFilterFileCfg;
-	bool printOutputFile = printOutputFileCfg;
+	bool printMoistureFile = false;
+	bool printFilterFile = false;
+	bool printOutputFile = false;
 
 	// configuration vars
 	double atticMCInit = config.pDouble("atticMCInit");			// Initial moisture content of attic wood (fraction)
@@ -549,7 +549,7 @@ int main(int argc, char *argv[], char* envp[])
 
 		// ================= CREATE OUTPUT FILES =================================================
 		ofstream outputFile;
-		if(printOutputFile) {
+		if(printOutputFileCfg) {
 			outputFile.open(outputFileName); 
 			if(!outputFile) { 
 				cout << "Cannot open output file: " << outputFileName << endl;
@@ -560,7 +560,7 @@ int main(int argc, char *argv[], char* envp[])
 
 		// Moisture output file
 		ofstream moistureFile;
-		if(printMoistureFile) {
+		if(printMoistureFileCfg) {
 			moistureFile.open(moistureFileName);
 			if(!moistureFile) { 
 				cout << "Cannot open moisture file: " << moistureFileName << endl;
@@ -581,7 +581,7 @@ int main(int argc, char *argv[], char* envp[])
 
 		// Filter loading file
 		ofstream filterFile;
-		if(printFilterFile) {
+		if(printFilterFileCfg) {
 			filterFile.open(filterFileName);
 			if(!filterFile) { 
 				cout << "Cannot open filter file: " << filterFileName << endl;
@@ -738,15 +738,15 @@ int main(int argc, char *argv[], char* envp[])
 		
 		double relDose = 1;							// Initial value for relative dose used in the RIVEC algorithm
 		//double occupiedDose = 1;					// When occupied, this equals relDose, when unoccupied, this equals 0. 
-		double totalRelDose = 1;
+		double totalRelDose;
 		//double totalOccupiedDose = 0;				//Cumulative sum for occupiedDose
 		//double meanOccupiedDose = 1;				// Mean occupied relative dose over the year
-		double meanRelDose = 1;
+		double meanRelDose;
 		double relDoseOld = 1;							// Relative Dose from the previous time step
 		
 		double relExp = 1;							// Initial value for relative exposure used in the RIVEC algorithm
-		double totalRelExp = 1;
-		double meanRelExp = 1;
+		double totalRelExp;
+		double meanRelExp;
 // 		double occupiedExp = 1;						// When occupied, this equals relExp, when unoccupied, this equals 0. 
 // 		double totalOccupiedExp = 0;				//Cumulative sum for occupiedExp
 // 		double meanOccupiedExp = 1;					// Mean occupied relative exposure over the year
@@ -987,8 +987,10 @@ int main(int argc, char *argv[], char* envp[])
 				meanHouseTemp = 0;
 				meanHouseACH = 0;
 				meanFlueACH = 0;
-				meanRelExp = 0;
-				meanRelDose = 0;
+				totalRelExp = 0;
+				totalRelDose = 0;
+				TotalDAventLoad = 0;
+				TotalMAventLoad = 0;
 				RHtot60 = 0;
 				RHtot70 = 0;
 				HumidityIndex_Sum = 0;
@@ -2787,10 +2789,6 @@ int main(int argc, char *argv[], char* envp[])
 		meanHouseTemp = meanHouseTemp / minuteTotal - C_TO_K;
 		meanHouseACH = meanHouseACH / minuteTotal;
 		meanFlueACH = meanFlueACH / minuteTotal;
-// 		meanRelDose = meanRelDose / minuteTotal;
-// 		meanRelExp = meanRelExp / minuteTotal;
-// 		meanRelDoseReal = meanRelDoseReal / minuteTotal;				//Brennan. Added these and need to define in the definitions area. 
-// 		meanRelExpReal = meanRelExpReal / minuteTotal;
 
 		if(OccContType > 2){
 			meanRelExp = totalRelExp / occupiedMinCount;
@@ -2800,11 +2798,6 @@ int main(int argc, char *argv[], char* envp[])
 			meanRelExp = totalRelExp / minuteTotal;
 			meanRelDose = totalRelDose / minuteTotal;
 		}
-		//meanOccupiedDose = totalOccupiedDose / occupiedMinCount; //Annual average relDose
-		//meanOccupiedExp = totalOccupiedExp / occupiedMinCount; //Annual average relExp; occupiedMinCount = 525,600 for continuous occupancy.
-
-// 		meanOccupiedDoseReal = totalOccupiedDoseReal / occupiedMinCount;
-// 		meanOccupiedExpReal = totalOccupiedExpReal / occupiedMinCount;
 
 		RHexcAnnual60 = RHtot60 / minuteTotal;
 		RHexcAnnual70 = RHtot70 / minuteTotal;
