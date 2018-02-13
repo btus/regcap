@@ -82,7 +82,7 @@ int main(int argc, char *argv[], char* envp[])
 	// Open batch File ============================================================================================
 	ifstream batchFile(batchFileName); 
 	if(!batchFile) { 
-		cout << "Cannot open batch file: " << batchFileName << endl;
+		cerr << "Cannot open batch file: " << batchFileName << endl;
 		return 1; 
 	}
 
@@ -294,7 +294,7 @@ int main(int argc, char *argv[], char* envp[])
 		// [START] Read in Building Inputs =========================================================================================================================
 		ifstream buildingFile(inputFileName); 
 		if(!buildingFile) { 
-			cout << "Cannot open input file: " << inputFileName << endl;
+			cerr << "Cannot open input file: " << inputFileName << endl;
 			return 1; 
 		}
 
@@ -488,7 +488,7 @@ int main(int argc, char *argv[], char* envp[])
 		
 		buildingFile >> endOfFile;
 		if(endOfFile != "E_O_F") {
-			cout << "Error in input file. Last line: >>" << endOfFile << "<<" << endl;
+			cerr << "Error in input file. Last line: >>" << endOfFile << "<<" << endl;
 			return 1;
 		}	
 
@@ -506,7 +506,7 @@ int main(int argc, char *argv[], char* envp[])
 		// Thermostat Settings ==================================================================
 		ifstream tstatFile(tstatFileName); 
 		if(!tstatFile) { 
-			cout << "Cannot open thermostat file: " << tstatFileName << endl;
+			cerr << "Cannot open thermostat file: " << tstatFileName << endl;
 			return 1; 
 		}
 		string header;
@@ -523,7 +523,7 @@ int main(int argc, char *argv[], char* envp[])
 		// Occupancy Settings ==================================================================
 		ifstream occupancyFile(occupancyFileName); 
 		if(!occupancyFile) { 
-			cout << "Cannot open occupancy file: " << occupancyFileName << endl;
+			cerr << "Cannot open occupancy file: " << occupancyFileName << endl;
 			return 1; 
 		}
 		getline(occupancyFile,header);
@@ -537,7 +537,7 @@ int main(int argc, char *argv[], char* envp[])
 		// Computed for the houses at AHHRF for every degree of wind angle
 		ifstream shelterFile(shelterFileName); 
 		if(!shelterFile) { 
-			cout << "Cannot open shelter file: " << shelterFileName << endl;
+			cerr << "Cannot open shelter file: " << shelterFileName << endl;
 			return 1; 
 		}
 		// FF: This angle variable is being overwritten to read Swinit in proper ductLocation per FOR iteration. Not used in code.
@@ -552,7 +552,7 @@ int main(int argc, char *argv[], char* envp[])
 		if(printOutputFileCfg) {
 			outputFile.open(outputFileName); 
 			if(!outputFile) { 
-				cout << "Cannot open output file: " << outputFileName << endl;
+				cerr << "Cannot open output file: " << outputFileName << endl;
 				return 1; 
 			}
 			outputFile << "Time\tMin\twindSpeed\ttempOut\ttempHouse\tsetpoint\ttempAttic\ttempSupply\ttempReturn\tAHflag\tAHpower\tcompressPower\tmechVentPower\tHR\tSHR\tMcoil\thousePress\tQhouse\tACH\tACHflue\tventSum\tnonRivecVentSum\tfan1\tfan2\tfan3\tfan4\tfan5\tfan6\tfan7\trivecOn\trelExp\trelDose\toccupied\tHROUT\tHRattic\tHRreturn\tHRsupply\tHRhouse\tRHhouse\tHumidityIndex\tDHcondensate\tPollutantConc\tmoldIndex_South\tmoldIndex_North\tmoldIndex_BulkFraming\tmHouseIN\tmHouseOUT\tmCeilingAll\tmatticenvin\tmatticenvout\tmSupReg\tmRetReg\tqHouseIN\tqHouseOUT\tqCeilingAll\tqAtticIN\tqAtticOUT\tqSupReg\tqRetReg" << endl; 
@@ -563,7 +563,7 @@ int main(int argc, char *argv[], char* envp[])
 		if(printMoistureFileCfg) {
 			moistureFile.open(moistureFileName);
 			if(!moistureFile) { 
-				cout << "Cannot open moisture file: " << moistureFileName << endl;
+				cerr << "Cannot open moisture file: " << moistureFileName << endl;
 				return 1; 
 			}
 
@@ -584,7 +584,7 @@ int main(int argc, char *argv[], char* envp[])
 		if(printFilterFileCfg) {
 			filterFile.open(filterFileName);
 			if(!filterFile) { 
-				cout << "Cannot open filter file: " << filterFileName << endl;
+				cerr << "Cannot open filter file: " << filterFileName << endl;
 				return 1; 
 			}
 			filterFile << "mAH_cumu\tqAH\twAH\tretLF" << endl;
@@ -737,12 +737,12 @@ int main(int argc, char *argv[], char* envp[])
 		long int occupiedMinCount = 0;			// Counts the number of minutes in a year that the house is occupied
 		
 		double relDose = 1;							// Initial value for relative dose used in the RIVEC algorithm
-		//double occupiedDose = 1;					// When occupied, this equals relDose, when unoccupied, this equals 0. 
 		double totalRelDose;
+		double meanRelDose;
+		//double occupiedDose = 1;					// When occupied, this equals relDose, when unoccupied, this equals 0. 
 		//double totalOccupiedDose = 0;				//Cumulative sum for occupiedDose
 		//double meanOccupiedDose = 1;				// Mean occupied relative dose over the year
-		double meanRelDose;
-		double relDoseOld = 1;							// Relative Dose from the previous time step
+		//double relDoseOld = 1;							// Relative Dose from the previous time step
 		
 		double relExp = 1;							// Initial value for relative exposure used in the RIVEC algorithm
 		double totalRelExp;
@@ -922,10 +922,10 @@ int main(int argc, char *argv[], char* envp[])
 		//double FanP = fan[0].power; //Brennan's attempt to fix the fan power outside of the if() structures in the fan.oper section.
 
 		// Call class constructors
-		Dehumidifier dh(dhCapacity, dhEnergyFactor, dhSetPoint, dhDeadBand);	// instantiate Dehumidifier 
+		Dehumidifier dh(dhCapacity, dhEnergyFactor, dhSetPoint, dhDeadBand);									// instantiate Dehumidifier 
 		Moisture moisture_nodes(atticVolume, retDiameter, retLength, supDiameter, supLength,
 			 houseVolume, floorArea, sheathArea, bulkArea, roofIntThick, roofExtRval, atticMCInit);   // instantiate moisture model
-		Weather weatherFile(terrain, eaveHeight);	// instantiate weatherFile object
+		Weather weatherFile(terrain, eaveHeight);																		// instantiate weatherFile object
 
 		cout << endl;
 		cout << "Simulation: " << simNum << endl;
@@ -958,7 +958,7 @@ int main(int argc, char *argv[], char* envp[])
 			ifstream fanScheduleFile;
 			fanScheduleFile.open(fanScheduleFileName); 
 			if(!fanScheduleFile) { 
-				cout << "Cannot open fan schedule: " << fanScheduleFileName << endl;
+				cerr << "Cannot open fan schedule: " << fanScheduleFileName << endl;
 				return 1; 		
 			}
 
@@ -2350,7 +2350,6 @@ int main(int argc, char *argv[], char* envp[])
 							capacityc = SHR * capacity / 3.413;									// sensible (equals total if SHR=1)
 							// correct the sensible cooling for fan power heating
 							capacityc = capacityc - AHfanHeat;
-							//cout << "minute" << minute << " comptime=" << compTime << " compTimeCount=" << compTimeCount << "capc=" << capacityc << " SHR=" << SHR << endl;
 							// tracking mass on coil (Mcoil) including condensation and evaporation - do this in main program
 							evapcap = 0;
 							latcap = 0;
@@ -2394,9 +2393,7 @@ int main(int argc, char *argv[], char* envp[])
 
 						// [START] Heat and Mass Transport ==============================================================================================================================
 						double mCeilingOld = -1000;														// inital guess
-						double mCeilingLimit = envC / 10;
-						if(mCeilingLimit < .00001)
-							mCeilingLimit = .00001;
+						double mCeilingLimit = max(envC / 10, 0.00001);
 
 						// Ventilation and heat transfer calculations
 						int mainIterations = 0;
@@ -2806,7 +2803,7 @@ int main(int argc, char *argv[], char* envp[])
 		// Write summary output file (RC2 file)
 		ofstream ou2File(summaryFileName); 
 		if(!ou2File) { 
-			cout << "Cannot open summary file: " << summaryFileName << endl;
+			cerr << "Cannot open summary file: " << summaryFileName << endl;
 			return 1; 
 		}
 
