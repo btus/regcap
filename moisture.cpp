@@ -590,7 +590,7 @@ void Moisture::cond_bal(int pressure) {
 			double fluxTotal = 0;
 			double fluxTo[4];
 			if(moisture_nodes > 11) {
-				massCondensed[6] = timeStep * (-A[6][6] * PW[6] + x611 * PW[1] + x612 * PW[12] + x62 * PW[2] + PWInit[6]);
+				massCondensed[6] = timeStep * (-A[6][6] * PW[6] + x611 * PW[11] + x612 * PW[12] + x62 * PW[2] + PWInit[6]);
 				}
 			else {
 				massCondensed[6] = timeStep * (-A[6][6] * PW[6] + x60 * PW[0] + x61 * PW[1] + x62 * PW[2] + PWInit[6]);
