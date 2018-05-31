@@ -273,15 +273,15 @@ void Moisture::mass_cond_bal(double* node_temps, double tempOut, double RHOut,
 
 	//NODE 6 IS ATTIC AIR
 	x66 = volume[6] / RWATER / temperature[6] / timeStep;
-	x6out = -mAtticOut / airDensityAttic / RWATER / temperature[6];
+	x6out = (-mAtticOut - mRetLeak) / airDensityAttic / RWATER / temperature[6];
 	if(mCeiling < 0) {
-		x67 = (mRetAHoff + mRetLeak) / RWATER / temperature[7] / airDensityRet;
-		x68 = (mSupAHoff + mSupLeak) / RWATER / temperature[8] / airDensitySup;
+		x67 = mRetAHoff / RWATER / temperature[7] / airDensityRet;
+		x68 = (mSupAHoff - mSupLeak) / RWATER / temperature[8] / airDensitySup;
 		x69 = mCeiling / RWATER / temperature[9] / airDensityHouse;
 		}
 	else {
-		x67 = mRetLeak / RWATER / temperature[7] / airDensityRet;
-		x68 = mSupLeak / RWATER / temperature[8] / airDensitySup;
+		x67 = 0;
+		x68 = - mSupLeak / RWATER / temperature[8] / airDensitySup;
 		x69 = 0;
 		x66 += (mCeiling + mSupAHoff + mRetAHoff) / RWATER / temperature[6] / airDensityAttic;
 		}
