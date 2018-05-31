@@ -460,10 +460,10 @@ void sub_heat (
 			cpShingles = 1260;									// CP asphalt shingles
 			break;
 		case 5:			// prescriptive roof tile finish per Title 24 2016 Prescriptive Package A, CZ 10-15.
-			absorptivityRoof = .8;
-			emissivityRoof = .75;
+			absorptivityRoof = .8; //0.8
+			emissivityRoof = .9; //Brennan changed from 0.75 to align with all other roof finishes.
 			Rshingles = .5;
-			denShingles = 50;
+			denShingles = 50; //50
 			cpShingles = 880;										// CP for tile roof
 			break;
 	}
