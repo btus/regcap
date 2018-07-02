@@ -167,6 +167,7 @@ void Moisture::mass_cond_bal(double* node_temps, double tempOut, double RHOut,
 	const double LEWIS = 0.919;	// Lewis number for air and water vapor from ASHRAE 1989 p5-9
 	const double diffCoefWood = 3E-10; // diffusion coefficient for pine from Cunningham 1990 (m2/s)
 	const double diffCoefIns = 2.12E-5; // diffusion coefficient for fiberglass (106 perm-in) (m2/s)
+	//const double diffCoefIns = 2.2472e-07; //diffusion coefficient for fiber insulation with vapor retarder (1 perm). (m2/s).
 	const int RWATER = 462;			// gas constant for water vapor (J/KgK)
 	double PWOut;						// outdoor air vapor pressure (Pa)
 	double hw0, hw1, hw2;			// mass transfer coefficients for water vapor (m/s)
