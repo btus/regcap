@@ -2098,6 +2098,7 @@ int main(int argc, char *argv[], char* envp[])
 
 					// [START] Heat and Mass Transport ==============================================================================================================================
 					double mCeilingOld = -1000;														// inital guess
+					double PatticintOld = 0;
 					double mCeilingLimit = envC / 10;
 					if(mCeilingLimit < .00001)
 						mCeilingLimit = .00001;
@@ -2137,14 +2138,17 @@ int main(int argc, char *argv[], char* envp[])
 
 							if(abs(mCeilingOld - mCeiling) < mCeilingLimit || leakIterations > 5)
 								break;
-							else
+							else {
 								mCeilingOld = mCeiling;
+								PatticintOld = Patticint;
+								}
 
 							// call atticleak subroutine to calculate air flow to/from the attic
 							sub_atticLeak(leakIterations, weather.windSpeed, weather.windDirection, tempHouse, weather.dryBulb, tempAttic, atticC, atticPressureExp, eaveHeight, roofPeakHeight,
 								flueShelterFactor, Sw, numAtticVents, atticVent, soffit, mAtticIN, mAtticOUT, Patticint, mCeiling, rowHouse,
 								soffitFraction, roofPitch, roofPeakPerpendicular, numAtticFans, atticFan, mSupReg, mRetLeak, mSupLeak, matticenvin,
 								matticenvout, mSupAHoff, mRetAHoff, airDensityIN, airDensityOUT, airDensityATTIC);
+							Patticint = (Patticint + PatticintOld) / 2;
 						}
 
 
