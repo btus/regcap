@@ -567,7 +567,8 @@ int main(int argc, char *argv[], char* envp[])
 				return 1; 
 			}
 
-			moistureFile << "RHOut\tTempOut";
+            /*
+            moistureFile << "RHOut\tTempOut";
 			for(int i=0; i<6; i++) {
 				moistureFile << "\t" << "MC" << i <<"\tVP" << i << "\tMassCond" << i << "\tTemp" << i;
 				}
@@ -575,8 +576,13 @@ int main(int argc, char *argv[], char* envp[])
 				moistureFile << "\t" << "RH" << i << "\tVP" << i << "\tTemp" << i;
 				}
 			moistureFile << endl;
-			//moistureFile << "HROut\tHRHouse\tHRAttic\tHRSupply\tHRReturn\t";
-			//moistureFile << "RHHouse\tRHAttic\tTempHouse\ttempAttic" << endl;
+			
+            moistureFile << "TempOut";
+            moistureFile << "\tsInsSurf\tsInsIn\tsSheathSurf\tsSheathIn\tsSheathOut";
+            moistureFile << "\tnInsSurf\tnInsIn\tnSheathSurf\tnSheathIn\tnSheathOut";
+            moistureFile << "\ttempAttic\tTemp0\tTemp1" << endl;
+            */
+            moistureFile << "HROut\tHRHouse\tHRAttic\tHRSupply\tHRReturn\tSHR\tlatcap" << endl;
 		}
 
 		// Filter loading file
@@ -2392,7 +2398,8 @@ int main(int argc, char *argv[], char* envp[])
 						// [END] Equipment Model ======================================================================================================================================
 
 						// [START] Heat and Mass Transport ==============================================================================================================================
-						double mCeilingOld = -1000;														// inital guess
+						double mCeilingOld = -1000;														// set so first iteration is forced
+						double PatticintOld = 0;
 						double mCeilingLimit = max(envC / 10, 0.00001);
 
 						// Ventilation and heat transfer calculations
@@ -2411,17 +2418,22 @@ int main(int argc, char *argv[], char* envp[])
 								//Yihuan : put the mCeilingIN on comment 
 								leakIterations = leakIterations + 1;
 
-								if(abs(mCeilingOld - mCeiling) < mCeilingLimit || leakIterations > 5)
+								if(abs(mCeilingOld - mCeiling) < mCeilingLimit || leakIterations > 5) {
 									break;
-								else
-									mCeilingOld = mCeiling;
+									}
+								else {
+                            		mCeilingOld = mCeiling;
+                            		PatticintOld = Patticint;
+									}
 
 								// call atticleak subroutine to calculate air flow to/from the attic
 								sub_atticLeak(leakIterations, cur_weather.windSpeedLocal, cur_weather.windDirection, tempHouse, cur_weather.dryBulb, tempAttic, atticC, atticPressureExp, eaveHeight, roofPeakHeight,
 									flueShelterFactor, Sw, numAtticVents, atticVent, soffit, mAtticIN, mAtticOUT, Patticint, mCeiling, rowHouse,
 									soffitFraction, roofPitch, roofPeakPerpendicular, numAtticFans, atticFan, mSupReg, mRetLeak, mSupLeak, matticenvin,
 									matticenvout, mSupAHoff, mRetAHoff, airDensityIN, airDensityOUT, airDensityATTIC);
+								Patticint = (Patticint + PatticintOld) / 2;
 							}
+
 
 							// adding fan heat for supply fans, internalGains1 is from input file, fanHeat reset to zero each minute, internalGains is common
 							internalGains = internalGains1 + fanHeat;
@@ -2439,13 +2451,12 @@ int main(int argc, char *argv[], char* envp[])
 								dh.sensible, H2, H4, H6, bulkArea, sheathArea, radiantBarrier);
 
 							if((abs(b[0] - tempAttic) < .2) || (mainIterations > 10)) {	// Testing for convergence
-								tempAttic        = b[0];					
+								tempAttic        = b[0];
 								tempReturn       = b[11];
 								tempSupply       = b[14];
 								tempHouse        = b[15];
 								break;
 							}
-
 							tempAttic = b[0];
 							tempHouse = b[15];
 						}
@@ -2713,6 +2724,12 @@ int main(int argc, char *argv[], char* envp[])
 
 						// ================================= WRITING MOISTURE DATA FILE =================================
 						if(printMoistureFile) {
+						    /*
+						    moistureFile << cur_weather.dryBulb << "\t";
+						    moistureFile << b[17] << "\t" << moisture_nodes.temperature[11] << "\t" << b[3] << "\t" << moisture_nodes.temperature[3] << "\t" << b[4] << "\t";
+						    moistureFile << b[16] << "\t" << moisture_nodes.temperature[12] << "\t" << b[1] << "\t" << moisture_nodes.temperature[4] << "\t" << b[2] << "\t";
+						    moistureFile << tempAttic << "\t" << moisture_nodes.temperature[0] << "\t" << moisture_nodes.temperature[1] << endl;
+						    
 							moistureFile << cur_weather.relativeHumidity << "\t" << cur_weather.dryBulb - C_TO_K;
 							for(int i=0; i<6; i++) {   // humidity model wood nodes
 								moistureFile << "\t" << moisture_nodes.moistureContent[i] << "\t" << moisture_nodes.PW[i] << "\t" << moisture_nodes.mTotal[i] << "\t" << moisture_nodes.temperature[i] - C_TO_K;
@@ -2721,7 +2738,9 @@ int main(int argc, char *argv[], char* envp[])
 								moistureFile << "\t" << moisture_nodes.moistureContent[i] << "\t" << moisture_nodes.PW[i] << "\t" << moisture_nodes.temperature[i] - C_TO_K;
 								}
 							moistureFile << endl;
-							//moistureFile << cur_weather.humidityRatio << "\t" << HRHouse << "\t" << HRAttic << "\t" << HRSupply << "\t" << HRReturn << "\t";
+							*/
+							moistureFile << cur_weather.humidityRatio << "\t" << HRHouse << "\t" << HRAttic << "\t" << HRSupply << "\t" << HRReturn << "\t";
+							moistureFile << SHR << "\t" << latcap << endl;
 							//moistureFile << RHHouse << "\t" << RHAttic << "\t" << tempHouse - C_TO_K << "\t" << tempAttic - C_TO_K << endl;
 						}
 			
