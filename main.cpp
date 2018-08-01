@@ -567,7 +567,7 @@ int main(int argc, char *argv[], char* envp[])
 				return 1; 
 			}
 
-            /*
+            
             moistureFile << "RHOut\tTempOut";
 			for(int i=0; i<6; i++) {
 				moistureFile << "\t" << "MC" << i <<"\tVP" << i << "\tMassCond" << i << "\tTemp" << i;
@@ -577,12 +577,12 @@ int main(int argc, char *argv[], char* envp[])
 				}
 			moistureFile << endl;
 			
-            moistureFile << "TempOut";
-            moistureFile << "\tsInsSurf\tsInsIn\tsSheathSurf\tsSheathIn\tsSheathOut";
-            moistureFile << "\tnInsSurf\tnInsIn\tnSheathSurf\tnSheathIn\tnSheathOut";
-            moistureFile << "\ttempAttic\tTemp0\tTemp1" << endl;
-            */
-            moistureFile << "HROut\tHRHouse\tHRAttic\tHRSupply\tHRReturn\tSHR\tlatcap" << endl;
+//             moistureFile << "TempOut";
+//             moistureFile << "\tsInsSurf\tsInsIn\tsSheathSurf\tsSheathIn\tsSheathOut";
+//             moistureFile << "\tnInsSurf\tnInsIn\tnSheathSurf\tnSheathIn\tnSheathOut";
+//             moistureFile << "\ttempAttic\tTemp0\tTemp1" << endl;
+            
+            //moistureFile << "HROut\tHRHouse\tHRAttic\tHRSupply\tHRReturn\tSHR\tlatcap" << endl;
 		}
 
 		// Filter loading file
@@ -2724,11 +2724,11 @@ int main(int argc, char *argv[], char* envp[])
 
 						// ================================= WRITING MOISTURE DATA FILE =================================
 						if(printMoistureFile) {
-						    /*
-						    moistureFile << cur_weather.dryBulb << "\t";
-						    moistureFile << b[17] << "\t" << moisture_nodes.temperature[11] << "\t" << b[3] << "\t" << moisture_nodes.temperature[3] << "\t" << b[4] << "\t";
-						    moistureFile << b[16] << "\t" << moisture_nodes.temperature[12] << "\t" << b[1] << "\t" << moisture_nodes.temperature[4] << "\t" << b[2] << "\t";
-						    moistureFile << tempAttic << "\t" << moisture_nodes.temperature[0] << "\t" << moisture_nodes.temperature[1] << endl;
+
+// 						    moistureFile << cur_weather.dryBulb << "\t";
+// 						    moistureFile << b[17] << "\t" << moisture_nodes.temperature[11] << "\t" << b[3] << "\t" << moisture_nodes.temperature[3] << "\t" << b[4] << "\t";
+// 						    moistureFile << b[16] << "\t" << moisture_nodes.temperature[12] << "\t" << b[1] << "\t" << moisture_nodes.temperature[4] << "\t" << b[2] << "\t";
+// 						    moistureFile << tempAttic << "\t" << moisture_nodes.temperature[0] << "\t" << moisture_nodes.temperature[1] << endl;
 						    
 							moistureFile << cur_weather.relativeHumidity << "\t" << cur_weather.dryBulb - C_TO_K;
 							for(int i=0; i<6; i++) {   // humidity model wood nodes
@@ -2738,9 +2738,9 @@ int main(int argc, char *argv[], char* envp[])
 								moistureFile << "\t" << moisture_nodes.moistureContent[i] << "\t" << moisture_nodes.PW[i] << "\t" << moisture_nodes.temperature[i] - C_TO_K;
 								}
 							moistureFile << endl;
-							*/
-							moistureFile << cur_weather.humidityRatio << "\t" << HRHouse << "\t" << HRAttic << "\t" << HRSupply << "\t" << HRReturn << "\t";
-							moistureFile << SHR << "\t" << latcap << endl;
+
+// 							moistureFile << cur_weather.humidityRatio << "\t" << HRHouse << "\t" << HRAttic << "\t" << HRSupply << "\t" << HRReturn << "\t";
+// 							moistureFile << SHR << "\t" << latcap << endl;
 							//moistureFile << RHHouse << "\t" << RHAttic << "\t" << tempHouse - C_TO_K << "\t" << tempAttic - C_TO_K << endl;
 						}
 			
