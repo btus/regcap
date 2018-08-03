@@ -1182,7 +1182,7 @@ int main(int argc, char *argv[], char* envp[])
 							solgain = winShadingCoef * (windowS * incsolar[0] + windowWE / 2 * incsolar[1] + windowN * incsolar[2] + windowWE / 2 * incsolar[3]);
 							tsolair = totalSolar / 4 * .03 + cur_weather.dryBulb;		// the .03 is from 1993 AHSRAE Fund. SI 26.5
 						}
-			
+
 						// ====================== HEATING THERMOSTAT CALCULATIONS ============================
 						if(hcFlag == 1) {
 							qAH = qAH_heat;            // Heating Air Flow Rate [m3/s]
@@ -1589,7 +1589,6 @@ int main(int argc, char *argv[], char* envp[])
 						// [START] HRV's and ERV's===================================================================================================================================
 						// (Can be RIVEC controlled so after RIVEC algorithm decision)
 						//for(int i=0; i < numFans; i++) {
-
 							//Brennan. Stand-alone ERV MUST be entered two times in the input files, with half the fan power attributed to each. Same airflow, but one positive and one negative.
 
 							if(fan[i].oper == 5) {		// Standalone HRV not synched to air handler
@@ -1687,7 +1686,6 @@ int main(int argc, char *argv[], char* envp[])
 
 
 						// [START] Auxiliary Fan Controls ============================================================================================================
-
 						//for(int i = 0; i < numFans; i++) {
 
 							if(fan[i].oper == 1 && OccContType > 1) {		// RIVEC controlled exhaust fan.
@@ -2266,7 +2264,6 @@ int main(int argc, char *argv[], char* envp[])
 						// [END] Hybrid Systems ==================================================================================================================================
 
 						// [START] Equipment Model ===============================================================================================================================
-					
 						evapcap = 0;
 						latcap = 0;
 						capacity = 0;
@@ -2400,7 +2397,7 @@ int main(int argc, char *argv[], char* envp[])
 						// [START] Heat and Mass Transport ==============================================================================================================================
 						double mCeilingOld = -1000;														// set so first iteration is forced
 						double PatticintOld = 0;
-						double mCeilingLimit = max(envC / 10, 0.00001);
+						double mCeilingLimit = 0.00001;   //= max(envC / 10, 0.00001);
 
 						// Ventilation and heat transfer calculations
 						int mainIterations = 0;
@@ -2418,7 +2415,7 @@ int main(int argc, char *argv[], char* envp[])
 								//Yihuan : put the mCeilingIN on comment 
 								leakIterations = leakIterations + 1;
 
-								if(abs(mCeilingOld - mCeiling) < mCeilingLimit || leakIterations > 5) {
+								if(abs(mCeilingOld - mCeiling) < mCeilingLimit || leakIterations > 10) {
 									break;
 									}
 								else {

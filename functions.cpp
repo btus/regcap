@@ -968,6 +968,7 @@ void sub_heat (
 		if(abs(b[0] - toldcur[0]) < .1) {
 			break;
 		} else {
+//if(isnan(b[0])) exit(-1);
 			for(int i=0; i < attic_nodes; i++) {
 				toldcur[i] = b[i];
 			}
