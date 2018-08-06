@@ -2397,7 +2397,7 @@ int main(int argc, char *argv[], char* envp[])
 						// [START] Heat and Mass Transport ==============================================================================================================================
 						double mCeilingOld = -1000;														// set so first iteration is forced
 						double PatticintOld = 0;
-						double mCeilingLimit = 0.00001;   //= max(envC / 10, 0.00001);
+						double mCeilingLimit = 0.0001;   //= max(envC / 10, 0.00001);
 
 						// Ventilation and heat transfer calculations
 						int mainIterations = 0;
@@ -2416,6 +2416,8 @@ int main(int argc, char *argv[], char* envp[])
 								leakIterations = leakIterations + 1;
 
 								if(abs(mCeilingOld - mCeiling) < mCeilingLimit || leakIterations > 10) {
+//if(abs(mCeilingOld - mCeiling) >= mCeilingLimit)
+//    cout << "Leak Loop exceeded at " << hour << ":" << minute << " Delta=" << mCeilingOld - mCeiling << " Pattic=" << Patticint << endl;
 									break;
 									}
 								else {
@@ -2428,7 +2430,7 @@ int main(int argc, char *argv[], char* envp[])
 									flueShelterFactor, Sw, numAtticVents, atticVent, soffit, mAtticIN, mAtticOUT, Patticint, mCeiling, rowHouse,
 									soffitFraction, roofPitch, roofPeakPerpendicular, numAtticFans, atticFan, mSupReg, mRetLeak, mSupLeak, matticenvin,
 									matticenvout, mSupAHoff, mRetAHoff, airDensityIN, airDensityOUT, airDensityATTIC);
-								Patticint = (Patticint + PatticintOld) / 2;
+								Patticint += (PatticintOld - Patticint) * 0.6;   // Relax Attic pressure feedback
 							}
 
 
@@ -2448,6 +2450,8 @@ int main(int argc, char *argv[], char* envp[])
 								dh.sensible, H2, H4, H6, bulkArea, sheathArea, radiantBarrier);
 
 							if((abs(b[0] - tempAttic) < .2) || (mainIterations > 10)) {	// Testing for convergence
+if(abs(b[0] - tempAttic) >= .2)
+   cout << "Temp Loop exceeded at " << hour << ":" << minute << " Delta=" << b[0] - tempAttic << " tempAttic=" << tempAttic << endl;
 								tempAttic        = b[0];
 								tempReturn       = b[11];
 								tempSupply       = b[14];

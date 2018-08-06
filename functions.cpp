@@ -968,7 +968,11 @@ void sub_heat (
 		if(abs(b[0] - toldcur[0]) < .1) {
 			break;
 		} else {
-//if(isnan(b[0])) exit(-1);
+            if(isnan(b[0])) {
+                cout << "NAN in gauss elimination. Exiting" << endl;
+                exit(-1);
+                }
+//cout << "+";
 			for(int i=0; i < attic_nodes; i++) {
 				toldcur[i] = b[i];
 			}
