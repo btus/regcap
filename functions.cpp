@@ -1471,6 +1471,25 @@ void sub_atticLeak (
 			else
 				mAtticOUT = mAtticOUT + soffit[i].m;
 		}
+
+		//Brennan’s cheating attempt to force a supply fan into the attic volume, with 50 cfm per 1,000 ft2 of ceiling area. 2018-08-07.
+			
+		//2-story prototype
+		//if(eaveHeight > 4){ 
+		//	mAtticIN = mAtticIN + airDensityOUT * 50. * 1.450 / 2.118888 / 1000;
+		//1-story prototype
+		//} else{ 
+		//	mAtticIN = mAtticIN + airDensityOUT * 50. * 2.100 / 2.118888 / 1000;
+		//}
+		
+// 		2-story prototype
+// 		if(eaveHeight > 4){ 
+// 			mAtticIN = mAtticIN + airDensityOUT * 20. * 1.450 / 2.118888 / 1000;
+// 		1-story prototype
+// 		} else{ 
+// 			mAtticIN = mAtticIN + airDensityOUT * 20. * 2.100 / 2.118888 / 1000;
+// 		}
+
 		
 		for(int i=0; i < numAtticFans; i++) {
 			if(atticFan[i].on == 1) {        // for cycling fans hey will somtimes be off and we don;t want ot include them
