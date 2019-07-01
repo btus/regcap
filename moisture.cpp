@@ -167,6 +167,7 @@ void Moisture::mass_cond_bal(double* node_temps, double tempOut, double RHOut,
 	const double LEWIS = 0.919;	// Lewis number for air and water vapor from ASHRAE 1989 p5-9
 	const double diffCoefWood = 3E-10; // diffusion coefficient for pine from Cunningham 1990 (m2/s)
 	const double diffCoefIns = 2.12E-5; // diffusion coefficient for fiberglass (106 perm-in) (m2/s)
+	//const double diffCoefIns = 2.2472e-07; //diffusion coefficient for fiber insulation with vapor retarder (1 perm). (m2/s).
 	const int RWATER = 462;			// gas constant for water vapor (J/KgK)
 	double PWOut;						// outdoor air vapor pressure (Pa)
 	double hw0, hw1, hw2;			// mass transfer coefficients for water vapor (m/s)
@@ -273,15 +274,15 @@ void Moisture::mass_cond_bal(double* node_temps, double tempOut, double RHOut,
 
 	//NODE 6 IS ATTIC AIR
 	x66 = volume[6] / RWATER / temperature[6] / timeStep;
-	x6out = -mAtticOut / airDensityAttic / RWATER / temperature[6];
+	x6out = (-mAtticOut - mRetLeak) / airDensityAttic / RWATER / temperature[6];
 	if(mCeiling < 0) {
-		x67 = (mRetAHoff + mRetLeak) / RWATER / temperature[7] / airDensityRet;
-		x68 = (mSupAHoff + mSupLeak) / RWATER / temperature[8] / airDensitySup;
+		x67 = mRetAHoff / RWATER / temperature[7] / airDensityRet;
+		x68 = (mSupAHoff - mSupLeak) / RWATER / temperature[8] / airDensitySup;
 		x69 = mCeiling / RWATER / temperature[9] / airDensityHouse;
 		}
 	else {
-		x67 = mRetLeak / RWATER / temperature[7] / airDensityRet;
-		x68 = mSupLeak / RWATER / temperature[8] / airDensitySup;
+		x67 = 0;
+		x68 = - mSupLeak / RWATER / temperature[8] / airDensitySup;
 		x69 = 0;
 		x66 += (mCeiling + mSupAHoff + mRetAHoff) / RWATER / temperature[6] / airDensityAttic;
 		}

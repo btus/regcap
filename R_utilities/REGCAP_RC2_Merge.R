@@ -24,7 +24,11 @@ rowsn<-cbind(as.factor(rc2), rowsn)
 #fills in the empty matrix "summaries" with the rc2 file contents
 
 for(i in 1:length(rc2)){
-summaries[i,]<-as.matrix(read.table(rc2[i],sep="\t",skip=1))
+	if(file.info(rc2[i])$size!=0){
+		summaries[i,]<-as.matrix(read.table(rc2[i],sep="\t",skip=1))
+	} else {
+		summaries[i,]<-NA
+	}
 }
 
 name<-strsplit(getwd(), '/')[[1]][length(strsplit(getwd(), '/')[[1]])]

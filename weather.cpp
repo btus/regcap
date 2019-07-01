@@ -20,11 +20,95 @@ std::istream& operator>>(std::istream& str,CSVRow& data)
     return str;
 }   
 
-double interpolate(double begin, double end, int step) {
-	return begin + (end - begin) / 60 * step;
+/*
+ * Weather - Weather file class constructor
+ * @param fileName - name of weather file to open
+ */
+Weather::Weather(int terrain, double eaveHeight) {
+	// Terrain where the house is located (for wind shelter etc.) See ASHRAE Fundamentals 2009 F24.3
+	double layerThickness;		// Atmospheric boundary layer thickness [m]
+
+	switch (terrain) {
+	case 1:		// Large city centres, at least 50% of buildings are higher than 25m
+		windPressureExp = 0.33;
+		layerThickness = 460;
+		break;
+	case 2:		// Urban and suburban areas, wooded areas
+		windPressureExp = 0.22;
+		layerThickness = 370;
+		break;
+	case 3:		// Open terrain with scattered obsructions e.g. meteorlogical stations
+		windPressureExp = 0.14;
+		layerThickness = 270;
+		break;
+	case 4:		// Completely flat e.g. open water
+		windPressureExp = 0.10;
+		layerThickness = 210;
+		break;
+	}
+
+	// Wind speed correction to adjust met wind speed to that at building eaves height
+	const double metExponent = 0.14;		// Power law exponent of the wind speed profile at the met station
+	const double metThickness = 270;		// Atmospheric boundary layer thickness at met station [m]
+	const double metHeight = 10;			// Height of met station wind measurements [m]
+	windSpeedCorrection = pow((metThickness / metHeight), metExponent) * pow((eaveHeight / layerThickness), windPressureExp);
+	//double windSpeedCorrection = pow((80/ 10), .15) * pow((h / 80), .3);		// The old wind speed correction
+	}
+
+void Weather::open(string fileName) {
+	weatherFile.open(fileName);
+	if(!weatherFile) { 
+		throw fileName; 
+	}
+
+	// Determine weather file type and read in header
+	CSVRow row;					// row of data to read from TMY3 csv
+
+	weatherFile >> row;
+	if(row.size() > 2 && row.size() < 10) {			//TMY3, was >2
+		siteID = row[0];
+		//string siteName = row[1];
+		//string State = row[2];
+		timeZone = row[3];
+		latitude = row[4];
+		longitude = row[5];
+		elevation = row[6];
+		weatherFile >> row;					// drop header
+		begin = readTMY3();	// duplicate first hour for interpolation of 0->1
+		end = begin;
+		type = 1;
+	}
+	
+	else if(row.size() == 10) {			//EnergyPlus weather file EPW
+		siteID = row[5];
+		timeZone = row[8];
+		latitude = row[6];
+		longitude = row[7];
+		elevation = row[9];
+		for(int i = 0; i < 7; ++i) {	// drop rest of header lines
+			weatherFile >> row;
+			}
+		begin = readEPW();	// duplicate first hour for interpolation of 0->1
+		end = begin;
+		type = 2;
+	}
+	
+	else {							// 1 minute data
+		weatherFile.close();
+		weatherFile.open(fileName);
+		weatherFile >> latitude >> longitude >> timeZone >> elevation;
+		siteID = 0;
+		type = 0;
+	}
+
 }
 
-weatherData interpolateWind(weatherData begin, weatherData end, int step) {
+
+double Weather::interpolate(double b, double e, int step) {
+	return b + (e - b) / 60 * step;
+}
+
+weatherData Weather::interpolateWind(int step) {
 	weatherData result;
 	
 	if(begin.windSpeed == 0) {
@@ -52,10 +136,10 @@ weatherData interpolateWind(weatherData begin, weatherData end, int step) {
 	return result;
 }
 
-weatherData interpWeather(weatherData begin, weatherData end, int minute) {
+weatherData Weather::interpWeather(int minute) {
 	weatherData result;
 	
-	result = interpolateWind(begin, end, minute);
+	result = interpolateWind(minute);
 	result.directNormal = interpolate(begin.directNormal, end.directNormal, minute);
 	result.globalHorizontal = interpolate(begin.globalHorizontal, end.globalHorizontal, minute);
 	result.dryBulb = interpolate(begin.dryBulb, end.dryBulb, minute);
@@ -68,10 +152,10 @@ weatherData interpWeather(weatherData begin, weatherData end, int minute) {
 	return result;
 }
 
-weatherData readTMY3(ifstream& file) {
+weatherData Weather::readTMY3() {
 	CSVRow row;
 	weatherData result;
-	file >> row;
+	weatherFile >> row;
 	if(row.size() >= 68) {							// don't set if at EOF
 		result.directNormal = row[7];
 		result.globalHorizontal = row[4];
@@ -87,10 +171,10 @@ weatherData readTMY3(ifstream& file) {
 	return result;
 }	
 
-weatherData readEPW(ifstream& file) {
+weatherData Weather::readEPW() {
 	CSVRow row;
 	weatherData result;
-	file >> row;
+	weatherFile >> row;
 	if(row.size() >= 35) {							// hourly entry rows each have 35 columns. 10 is the header row. 
 		result.directNormal = row[14];
 		result.globalHorizontal = row[13];
@@ -106,11 +190,11 @@ weatherData readEPW(ifstream& file) {
 	return result;
 }	
 
-weatherData readOneMinuteWeather(ifstream& file) {
+weatherData Weather::readOneMinuteWeather() {
 	int day;
 	weatherData result;
 	double wd;
-	file >> day
+	weatherFile >> day
 		>> result.directNormal
 		>> result.globalHorizontal
 		>> result.dryBulb
@@ -128,6 +212,38 @@ weatherData readOneMinuteWeather(ifstream& file) {
 	return result;
 }
 
+weatherData Weather::readMinute(int minute) {
+weatherData current;
+
+	// Read in or interpolate weather data
+	if(type == 0) {  // minute
+		current = readOneMinuteWeather();
+		}
+	else {
+		current = interpWeather(minute);
+		}
+	if(current.windSpeed < 1)							// Minimum wind velocity allowed is 1 m/s to account for non-zero start up velocity of anenometers
+		current.windSpeed = 1;							// Wind speed is never zero
+	current.windSpeedLocal = current.windSpeed * windSpeedCorrection;		// Correct met wind speed to speed at building eaves height [m/s]
+	return current;
+	}
+
+void Weather::nextHour() {
+	begin = end;
+	switch (type) {
+	case 1:
+		end = readTMY3();
+		break;
+	case 2:
+		end = readEPW();
+		break;
+		}
+	}
+
+void Weather::close() {
+	weatherFile.close();
+	}
+		
 /*
 * surfaceInsolation()
 *
